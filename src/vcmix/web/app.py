@@ -1,5 +1,5 @@
 """
-app.py — FastAPI application for VCMix Web UI (Phase 9).
+app.py — FastAPI application for VCMix Web UI (Phase 11).
 
 Provides REST API endpoints that wrap the VCMix core engine,
 sharing the same rendering pipeline as the CLI — no code duplication.
@@ -25,6 +25,26 @@ Endpoints:
     POST /api/automix          — Run auto-mixing
     WS   /api/stream           — WebSocket DataStream forwarding
 
+Phase 11 — AI Agent API:
+    GET  /api/v1/projects      — List projects
+    POST /api/v1/projects      — Create project
+    GET  /api/v1/projects/{id} — Get project
+    PUT  /api/v1/projects/{id} — Update project
+    DELETE /api/v1/projects/{id} — Delete project
+    POST /api/v1/projects/{id}/tracks — Add track
+    PUT  /api/v1/projects/{id}/tracks/{name} — Update track
+    DELETE /api/v1/projects/{id}/tracks/{name} — Delete track
+    POST /api/v1/projects/{id}/tracks/{name}/effects — Add effect
+    PUT  /api/v1/projects/{id}/tracks/{name}/effects/{idx} — Update effect
+    DELETE /api/v1/projects/{id}/tracks/{name}/effects/{idx} — Delete effect
+    POST /api/v1/projects/{id}/render — Trigger render
+    GET  /api/v1/projects/{id}/render/status — Render status
+    GET  /api/v1/projects/{id}/analysis — Audio analysis
+    POST /api/v1/ai/mix        — AI mixing suggestions
+    POST /api/v1/ai/master     — AI mastering suggestions
+    WS   /ws/render/{id}       — Render progress WebSocket
+    WS   /ws/ai/{id}           — AI decision WebSocket
+
 The frontend is served from /static/ (minimal HTML+JS, no framework).
 
 Usage:
@@ -42,6 +62,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from vcmix.web.routes import arrangement, automation, automix, midi, plugins, presets, render
+from vcmix.web.routes.agent_api import router as agent_router
 from vcmix.web.websocket import router as ws_router
 
 # ── Application Factory ──────────────────────────────────────────────────
@@ -52,14 +73,14 @@ def create_app() -> FastAPI:
         title="VCMix Web API",
         description=(
             "AI-native open-source DAW — REST API + WebSocket. "
-            "Phase 9: MIDI, Automation, Chain Presets. Shares the same engine as CLI."
+            "Phase 11: AI Agent API with project CRUD, rendering control, and AI mixing decisions."
         ),
-        version="0.9.0",
+        version="0.11.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
     )
 
-    # ── Register API routers ──
+    # ── Register API routers (Phase 8-9) ──
     app.include_router(render.router, prefix="/api", tags=["render"])
     app.include_router(plugins.router, prefix="/api", tags=["plugins"])
     app.include_router(presets.router, prefix="/api", tags=["presets"])
@@ -68,6 +89,9 @@ def create_app() -> FastAPI:
     app.include_router(midi.router, prefix="/api", tags=["midi"])
     app.include_router(automation.router, prefix="/api", tags=["automation"])
     app.include_router(ws_router, prefix="/api", tags=["stream"])
+
+    # ── Register Phase 11 AI Agent API ──
+    app.include_router(agent_router, prefix="/api/v1", tags=["agent-api"])
 
     # ── Static frontend ──
     static_dir = Path(__file__).parent / "static"
@@ -85,7 +109,7 @@ def create_app() -> FastAPI:
     # ── Health check ──
     @app.get("/api/health", tags=["system"])
     async def health():
-        return {"status": "ok", "version": "0.9.0"}
+        return {"status": "ok", "version": "0.11.0"}
 
     return app
 

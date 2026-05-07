@@ -1,0 +1,741 @@
+"""
+agent_api.py — AI Agent API endpoints for VCMix (Phase 11).
+
+REST API under /api/v1/ for AI Agent project CRUD, track operations,
+rendering control, audio analysis, and AI mixing decisions.
+
+WebSocket endpoints under /ws/ for real-time render progress and
+AI decision log streaming.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import threading
+import time
+import uuid
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
+
+from vcmix.web.project_manager import ProjectManager
+from vcmix.web.analysis_service import AnalysisService
+from vcmix.web.ai_engine import AIEngine
+
+router = APIRouter()
+
+# ── Shared service instances ────────────────────────────────────────────────
+
+_pm = ProjectManager()
+_analysis = AnalysisService()
+_ai = AIEngine()
+
+# ── Render job tracking ─────────────────────────────────────────────────────
+
+_render_jobs: dict[str, dict[str, Any]] = {}
+_render_lock = threading.Lock()
+
+# ── WebSocket connection managers ────────────────────────────────────────────
+
+
+class RenderProgressManager:
+    """Manages WebSocket connections for render progress."""
+
+    def __init__(self) -> None:
+        self._connections: dict[str, list[WebSocket]] = {}
+
+    async def connect(self, project_id: str, ws: WebSocket) -> None:
+        await ws.accept()
+        self._connections.setdefault(project_id, []).append(ws)
+
+    def disconnect(self, project_id: str, ws: WebSocket) -> None:
+        conns = self._connections.get(project_id, [])
+        if ws in conns:
+            conns.remove(ws)
+
+    async def broadcast(self, project_id: str, message: dict[str, Any]) -> None:
+        conns = self._connections.get(project_id, [])
+        data = json.dumps(message, ensure_ascii=False)
+        dead = []
+        for ws in conns:
+            try:
+                await ws.send_text(data)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            conns.remove(ws)
+
+
+class AIDecisionManager:
+    """Manages WebSocket connections for AI decision streaming."""
+
+    def __init__(self) -> None:
+        self._connections: dict[str, list[WebSocket]] = {}
+
+    async def connect(self, project_id: str, ws: WebSocket) -> None:
+        await ws.accept()
+        self._connections.setdefault(project_id, []).append(ws)
+
+    def disconnect(self, project_id: str, ws: WebSocket) -> None:
+        conns = self._connections.get(project_id, [])
+        if ws in conns:
+            conns.remove(ws)
+
+    async def broadcast(self, project_id: str, message: dict[str, Any]) -> None:
+        conns = self._connections.get(project_id, [])
+        data = json.dumps(message, ensure_ascii=False)
+        dead = []
+        for ws in conns:
+            try:
+                await ws.send_text(data)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            conns.remove(ws)
+
+
+_render_ws = RenderProgressManager()
+_ai_ws = AIDecisionManager()
+
+
+# ── Pydantic Models ─────────────────────────────────────────────────────────
+
+class ProjectCreate(BaseModel):
+    """Request body for creating a project."""
+    name: str = Field(..., min_length=1, max_length=100, description="Project name")
+    yaml_content: str | None = Field(default=None, description="YAML content string")
+    json_data: dict[str, Any] | None = Field(default=None, description="Project config as JSON dict")
+
+
+class ProjectUpdate(BaseModel):
+    """Request body for updating a project."""
+    yaml_content: str | None = Field(default=None, description="New YAML content")
+    json_data: dict[str, Any] | None = Field(default=None, description="New config as JSON dict")
+
+
+class TrackCreate(BaseModel):
+    """Request body for adding a track."""
+    name: str = Field(..., description="Track name")
+    file: str = Field(default="", description="Audio file path")
+    type: str = Field(default="audio", description="Track type: audio/midi/vst3/sampler")
+    effects: list[dict[str, Any]] = Field(default_factory=list)
+    volume: float = Field(default=1.0, ge=0.0)
+    mute: bool = Field(default=False)
+    solo: bool = Field(default=False)
+
+
+class TrackUpdate(BaseModel):
+    """Request body for updating a track."""
+    file: str | None = None
+    type: str | None = None
+    effects: list[dict[str, Any]] | None = None
+    volume: float | None = None
+    mute: bool | None = None
+    solo: bool | None = None
+
+
+class EffectCreate(BaseModel):
+    """Request body for adding an effect."""
+    name: str = Field(..., description="Plugin name")
+    params: dict[str, Any] = Field(default_factory=dict, description="Plugin parameters")
+
+
+class EffectUpdate(BaseModel):
+    """Request body for updating effect parameters."""
+    params: dict[str, Any] = Field(..., description="Updated parameters")
+
+
+class RenderTrigger(BaseModel):
+    """Request body for triggering a render."""
+    report: bool = Field(default=False, description="Generate analysis report")
+    auto_fix: bool = Field(default=False, description="Enable auto-fix")
+    arrangement_aware: bool = Field(default=False, description="Arrangement-aware mode")
+    parallel: int = Field(default=1, ge=1, description="Parallel render threads")
+
+
+class AIMixRequest(BaseModel):
+    """Request body for AI mixing suggestions."""
+    mode: str = Field(default="step", description="step or one_click")
+    apply: bool = Field(default=False, description="Auto-apply suggestions")
+
+
+class AIMasterRequest(BaseModel):
+    """Request body for AI mastering suggestions."""
+    mode: str = Field(default="step", description="step or one_click")
+    apply: bool = Field(default=False, description="Auto-apply suggestions")
+
+
+# ── Project CRUD ─────────────────────────────────────────────────────────────
+
+@router.get("/projects")
+async def list_projects():
+    """List all projects."""
+    projects = _pm.list_projects()
+    return {"projects": projects, "count": len(projects)}
+
+
+@router.post("/projects", status_code=201)
+async def create_project(request: ProjectCreate):
+    """Create a new project from YAML or JSON."""
+    try:
+        pid = _pm.create(
+            name=request.name,
+            yaml_content=request.yaml_content,
+            json_data=request.json_data,
+        )
+        project = _pm.read(pid)
+        return {"id": pid, "name": request.name, "status": "created", "project": project}
+    except ValueError as e:
+        if "already exists" in str(e):
+            raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/projects/{project_id}")
+async def get_project(project_id: str):
+    """Get project details by ID."""
+    try:
+        return _pm.read(project_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+
+
+@router.put("/projects/{project_id}")
+async def update_project(project_id: str, request: ProjectUpdate):
+    """Update a project's configuration."""
+    try:
+        result = _pm.update(
+            project_id,
+            yaml_content=request.yaml_content,
+            json_data=request.json_data,
+        )
+        return {"id": project_id, "status": "updated", "project": result}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/projects/{project_id}")
+async def delete_project(project_id: str):
+    """Delete a project."""
+    deleted = _pm.delete(project_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+    return {"id": project_id, "status": "deleted"}
+
+
+# ── Track Operations ─────────────────────────────────────────────────────────
+
+@router.post("/projects/{project_id}/tracks", status_code=201)
+async def add_track(project_id: str, request: TrackCreate):
+    """Add a track to a project."""
+    track_data = {
+        "name": request.name,
+        "file": request.file,
+        "type": request.type,
+        "effects": request.effects,
+        "volume": request.volume,
+        "mute": request.mute,
+        "solo": request.solo,
+    }
+    try:
+        result = _pm.add_track(project_id, track_data)
+        return {"status": "added", "track": request.name, "project": result}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@router.put("/projects/{project_id}/tracks/{track_name}")
+async def update_track(project_id: str, track_name: str, request: TrackUpdate):
+    """Update a track in a project."""
+    updates = {k: v for k, v in request.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        result = _pm.update_track(project_id, track_name, updates)
+        return {"status": "updated", "track": track_name, "project": result}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/projects/{project_id}/tracks/{track_name}")
+async def delete_track(project_id: str, track_name: str):
+    """Delete a track from a project."""
+    try:
+        result = _pm.delete_track(project_id, track_name)
+        return {"status": "deleted", "track": track_name, "project": result}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# ── Effect Operations ────────────────────────────────────────────────────────
+
+@router.post("/projects/{project_id}/tracks/{track_name}/effects", status_code=201)
+async def add_effect(project_id: str, track_name: str, request: EffectCreate):
+    """Add an effect to a track's insert chain."""
+    effect_data = {"name": request.name, "params": request.params}
+    try:
+        result = _pm.add_effect(project_id, track_name, effect_data)
+        return {"status": "added", "effect": request.name, "track": track_name, "project": result}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.put("/projects/{project_id}/tracks/{track_name}/effects/{fx_idx}")
+async def update_effect(project_id: str, track_name: str, fx_idx: int, request: EffectUpdate):
+    """Update an effect's parameters."""
+    try:
+        result = _pm.update_effect(project_id, track_name, fx_idx, request.params)
+        return {"status": "updated", "effect_idx": fx_idx, "track": track_name, "project": result}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except IndexError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/projects/{project_id}/tracks/{track_name}/effects/{fx_idx}")
+async def delete_effect(project_id: str, track_name: str, fx_idx: int):
+    """Delete an effect from a track's insert chain."""
+    try:
+        result = _pm.delete_effect(project_id, track_name, fx_idx)
+        return {"status": "deleted", "effect_idx": fx_idx, "track": track_name, "project": result}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except IndexError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── Rendering Control ────────────────────────────────────────────────────────
+
+def _run_render(job_id: str, yaml_path: Path, options: dict[str, Any], project_id: str) -> None:
+    """Execute rendering in a background thread."""
+    from vcmix.config.parser import parse_project
+    from vcmix.engine.renderer import Renderer
+
+    with _render_lock:
+        _render_jobs[job_id]["status"] = "running"
+        _render_jobs[job_id]["progress"] = 0
+
+    t0 = time.time()
+    try:
+        cfg = parse_project(yaml_path)
+        cfg.__dict__["_project_dir"] = yaml_path.parent.resolve()
+
+        engine = Renderer(
+            cfg,
+            report=options.get("report", False),
+            auto_fix=options.get("auto_fix", False),
+            stream="dict",
+            arrangement_aware=options.get("arrangement_aware", False),
+            parallel=options.get("parallel", 1),
+        )
+        output_path = engine.run()
+        events = engine.get_stream_events()
+        elapsed = round(time.time() - t0, 2)
+
+        with _render_lock:
+            _render_jobs[job_id]["status"] = "completed"
+            _render_jobs[job_id]["output_path"] = str(output_path)
+            _render_jobs[job_id]["elapsed_s"] = elapsed
+            _render_jobs[job_id]["progress"] = 100
+            _render_jobs[job_id]["events"] = [e.to_dict() for e in events]
+
+    except Exception as e:
+        with _render_lock:
+            _render_jobs[job_id]["status"] = "failed"
+            _render_jobs[job_id]["error"] = str(e)
+            _render_jobs[job_id]["elapsed_s"] = round(time.time() - t0, 2)
+
+
+@router.post("/projects/{project_id}/render")
+async def trigger_render(project_id: str, request: RenderTrigger, background_tasks: BackgroundTasks):
+    """Trigger a render for a project."""
+    filepath = _pm.get_filepath(project_id)
+    if filepath is None:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+
+    job_id = str(uuid.uuid4())[:8]
+
+    with _render_lock:
+        _render_jobs[job_id] = {
+            "project_id": project_id,
+            "status": "pending",
+            "output_path": None,
+            "elapsed_s": None,
+            "progress": 0,
+            "events": [],
+            "error": None,
+        }
+
+    options = {
+        "report": request.report,
+        "auto_fix": request.auto_fix,
+        "arrangement_aware": request.arrangement_aware,
+        "parallel": request.parallel,
+    }
+
+    thread = threading.Thread(
+        target=_run_render,
+        args=(job_id, filepath, options, project_id),
+        daemon=True,
+    )
+    thread.start()
+
+    return {"job_id": job_id, "project_id": project_id, "status": "pending"}
+
+
+@router.get("/projects/{project_id}/render/status")
+async def get_render_status(project_id: str):
+    """Get render status for a project."""
+    # Find the most recent job for this project
+    with _render_lock:
+        project_jobs = [
+            (jid, job) for jid, job in _render_jobs.items()
+            if job.get("project_id") == project_id
+        ]
+
+    if not project_jobs:
+        return {"project_id": project_id, "status": "no_render_jobs"}
+
+    # Return the latest job
+    job_id, job = project_jobs[-1]
+    return {
+        "project_id": project_id,
+        "job_id": job_id,
+        "status": job["status"],
+        "progress": job.get("progress", 0),
+        "output_path": job.get("output_path"),
+        "elapsed_s": job.get("elapsed_s"),
+        "error": job.get("error"),
+    }
+
+
+# ── Audio Analysis ───────────────────────────────────────────────────────────
+
+@router.get("/projects/{project_id}/analysis")
+async def get_analysis(project_id: str):
+    """Get audio analysis data for a project."""
+    filepath = _pm.get_filepath(project_id)
+    if filepath is None:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+
+    try:
+        report = _analysis.analyze_project(filepath)
+        return {"project_id": project_id, "analysis": report}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Project file not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── AI Mixing ────────────────────────────────────────────────────────────────
+
+@router.post("/ai/mix")
+async def ai_mix(request: AIMixRequest, project_id: str | None = None):
+    """
+    Generate AI mixing suggestions.
+
+    If project_id is provided, analyzes that project.
+    Otherwise, requires analysis data in request body.
+    """
+    analysis_data: dict[str, Any] = {}
+    config_data: dict[str, Any] | None = None
+
+    if project_id:
+        filepath = _pm.get_filepath(project_id)
+        if filepath is None:
+            raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+        try:
+            analysis_data = _analysis.analyze_project(filepath)
+            import yaml
+            content = filepath.read_text(encoding="utf-8")
+            config_data = yaml.safe_load(content)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    else:
+        analysis_data = {"tracks": [], "master": {}}
+
+    mode = "one_click" if request.apply else request.mode
+    result = _ai.mix(analysis_data, mode=mode, config=config_data)
+
+    return {
+        "mode": result.mode,
+        "summary": result.summary,
+        "suggestions": result.suggestions,
+        "decision_log": result.decision_log,
+        "applied": result.applied,
+        "updated_config": result.updated_config,
+    }
+
+
+@router.post("/ai/mix/{project_id}")
+async def ai_mix_project(project_id: str, request: AIMixRequest):
+    """Generate AI mixing suggestions for a specific project."""
+    filepath = _pm.get_filepath(project_id)
+    if filepath is None:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+
+    try:
+        analysis_data = _analysis.analyze_project(filepath)
+        import yaml
+        content = filepath.read_text(encoding="utf-8")
+        config_data = yaml.safe_load(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    mode = "one_click" if request.apply else request.mode
+    result = _ai.mix(analysis_data, mode=mode, config=config_data)
+
+    return {
+        "project_id": project_id,
+        "mode": result.mode,
+        "summary": result.summary,
+        "suggestions": result.suggestions,
+        "decision_log": result.decision_log,
+        "applied": result.applied,
+        "updated_config": result.updated_config,
+    }
+
+
+@router.post("/ai/master")
+async def ai_master(request: AIMasterRequest, project_id: str | None = None):
+    """
+    Generate AI mastering suggestions.
+
+    If project_id is provided, analyzes that project.
+    Otherwise, returns generic mastering guidelines.
+    """
+    analysis_data: dict[str, Any] = {}
+    config_data: dict[str, Any] | None = None
+
+    if project_id:
+        filepath = _pm.get_filepath(project_id)
+        if filepath is None:
+            raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+        try:
+            analysis_data = _analysis.analyze_project(filepath)
+            import yaml
+            content = filepath.read_text(encoding="utf-8")
+            config_data = yaml.safe_load(content)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    else:
+        analysis_data = {"tracks": [], "master": {}}
+
+    mode = "one_click" if request.apply else request.mode
+    result = _ai.master(analysis_data, mode=mode, config=config_data)
+
+    return {
+        "mode": result.mode,
+        "summary": result.summary,
+        "suggestions": result.suggestions,
+        "decision_log": result.decision_log,
+        "applied": result.applied,
+        "updated_config": result.updated_config,
+    }
+
+
+@router.post("/ai/master/{project_id}")
+async def ai_master_project(project_id: str, request: AIMasterRequest):
+    """Generate AI mastering suggestions for a specific project."""
+    filepath = _pm.get_filepath(project_id)
+    if filepath is None:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+
+    try:
+        analysis_data = _analysis.analyze_project(filepath)
+        import yaml
+        content = filepath.read_text(encoding="utf-8")
+        config_data = yaml.safe_load(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    mode = "one_click" if request.apply else request.mode
+    result = _ai.master(analysis_data, mode=mode, config=config_data)
+
+    return {
+        "project_id": project_id,
+        "mode": result.mode,
+        "summary": result.summary,
+        "suggestions": result.suggestions,
+        "decision_log": result.decision_log,
+        "applied": result.applied,
+        "updated_config": result.updated_config,
+    }
+
+
+# ── WebSocket: Render Progress ───────────────────────────────────────────────
+
+@router.websocket("/ws/render/{project_id}")
+async def ws_render_progress(websocket: WebSocket, project_id: str):
+    """
+    WebSocket endpoint for real-time render progress.
+
+    Protocol:
+        - Server sends JSON events: {"type": "progress", "percent": N, ...}
+        - Client can send: {"action": "subscribe"} to start receiving
+        - Heartbeat every 30 seconds
+    """
+    await _render_ws.connect(project_id, websocket)
+
+    await websocket.send_text(json.dumps({
+        "type": "connected",
+        "project_id": project_id,
+        "message": "Render progress WebSocket connected",
+    }))
+
+    try:
+        while True:
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                try:
+                    msg = json.loads(data)
+                except json.JSONDecodeError:
+                    await websocket.send_text(json.dumps({"type": "error", "message": "Invalid JSON"}))
+                    continue
+
+                action = msg.get("action", "")
+                if action == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+                elif action == "status":
+                    with _render_lock:
+                        project_jobs = [
+                            job for job in _render_jobs.values()
+                            if job.get("project_id") == project_id
+                        ]
+                    status = "idle"
+                    progress = 0
+                    if project_jobs:
+                        latest = project_jobs[-1]
+                        status = latest["status"]
+                        progress = latest.get("progress", 0)
+                    await websocket.send_text(json.dumps({
+                        "type": "render_status",
+                        "status": status,
+                        "progress": progress,
+                    }))
+                else:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": f"Unknown action: {action}",
+                    }))
+
+            except asyncio.TimeoutError:
+                await websocket.send_text(json.dumps({"type": "heartbeat"}))
+
+    except WebSocketDisconnect:
+        _render_ws.disconnect(project_id, websocket)
+
+
+# ── WebSocket: AI Decision Stream ────────────────────────────────────────────
+
+@router.websocket("/ws/ai/{project_id}")
+async def ws_ai_decisions(websocket: WebSocket, project_id: str):
+    """
+    WebSocket endpoint for AI decision log streaming.
+
+    Protocol:
+        - Server sends AI decision events in real-time
+        - Client can send: {"action": "mix"} to trigger AI analysis
+        - Client can send: {"action": "master"} to trigger mastering analysis
+    """
+    await _ai_ws.connect(project_id, websocket)
+
+    await websocket.send_text(json.dumps({
+        "type": "connected",
+        "project_id": project_id,
+        "message": "AI decision WebSocket connected",
+    }))
+
+    try:
+        while True:
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                try:
+                    msg = json.loads(data)
+                except json.JSONDecodeError:
+                    await websocket.send_text(json.dumps({"type": "error", "message": "Invalid JSON"}))
+                    continue
+
+                action = msg.get("action", "")
+
+                if action == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+
+                elif action == "mix":
+                    filepath = _pm.get_filepath(project_id)
+                    if filepath is None:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "message": f"Project not found: {project_id}",
+                        }))
+                        continue
+                    try:
+                        analysis_data = _analysis.analyze_project(filepath)
+                        result = _ai.mix(analysis_data, mode="step")
+                        for log_entry in result.decision_log:
+                            await websocket.send_text(json.dumps({
+                                "type": "ai_decision",
+                                "step": log_entry["step"],
+                                "target": log_entry["target"],
+                                "action": log_entry["action"],
+                                "reason": log_entry["reason"],
+                            }))
+                        await websocket.send_text(json.dumps({
+                            "type": "mix_complete",
+                            "summary": result.summary,
+                            "suggestion_count": len(result.suggestions),
+                        }))
+                    except Exception as e:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "message": str(e),
+                        }))
+
+                elif action == "master":
+                    filepath = _pm.get_filepath(project_id)
+                    if filepath is None:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "message": f"Project not found: {project_id}",
+                        }))
+                        continue
+                    try:
+                        analysis_data = _analysis.analyze_project(filepath)
+                        result = _ai.master(analysis_data, mode="step")
+                        for log_entry in result.decision_log:
+                            await websocket.send_text(json.dumps({
+                                "type": "ai_decision",
+                                "step": log_entry["step"],
+                                "target": log_entry["target"],
+                                "action": log_entry["action"],
+                                "reason": log_entry["reason"],
+                            }))
+                        await websocket.send_text(json.dumps({
+                            "type": "master_complete",
+                            "summary": result.summary,
+                            "suggestion_count": len(result.suggestions),
+                        }))
+                    except Exception as e:
+                        await websocket.send_text(json.dumps({
+                            "type": "error",
+                            "message": str(e),
+                        }))
+
+                else:
+                    await websocket.send_text(json.dumps({
+                        "type": "error",
+                        "message": f"Unknown action: {action}",
+                    }))
+
+            except asyncio.TimeoutError:
+                await websocket.send_text(json.dumps({"type": "heartbeat"}))
+
+    except WebSocketDisconnect:
+        _ai_ws.disconnect(project_id, websocket)
