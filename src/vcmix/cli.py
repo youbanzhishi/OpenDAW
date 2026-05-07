@@ -177,7 +177,12 @@ def _validate_config(cfg) -> list[str]:
         issues.append("No tracks defined")
 
     for track in cfg.tracks:
-        if not track.file:
+        track_type = getattr(track, 'type', 'audio')
+        if track_type == 'sampler':
+            # Sampler tracks don't need a file field, they use zones
+            if not getattr(track, 'zones', []):
+                issues.append(f"Sampler track '{track.name}' has no zones defined")
+        elif not track.file:
             issues.append(f"Track '{track.name}' has no file path")
         for effect in track.effects:
             if not effect.name:
@@ -796,6 +801,118 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
             click.secho("YAML Overrides:", fg="yellow")
             import yaml
             click.echo(yaml.dump(overrides, default_flow_style=False))
+
+
+
+# ── Phase 9.5: sampler command ────────────────────────────────────────
+
+@main.group("sampler")
+def sampler_group() -> None:
+    """Sampler track operations (Phase 9.5).
+
+    \b
+    vcmix sampler info --project proj.yaml --track piano    — Show sampler info
+    vcmix sampler render --project proj.yaml --track piano   — Render sampler track
+    """
+    pass
+
+
+@sampler_group.command("info")
+@click.option("--project", required=True, type=click.Path(exists=True, path_type=Path),
+              help="Project YAML file")
+@click.option("--track", required=True, help="Sampler track name")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def sampler_info(project: Path, track: str, as_json: bool) -> None:
+    """Display sampler track information."""
+    from vcmix.config.parser import parse_project
+    from vcmix.sampler.sampler_track import SamplerTrack
+
+    cfg = parse_project(project)
+    project_dir = project.parent.resolve()
+
+    # Find the sampler track
+    track_cfg = None
+    for t in cfg.tracks:
+        if t.name == track:
+            track_cfg = t
+            break
+
+    if track_cfg is None:
+        click.secho(f"✗ Track '{track}' not found in project", fg="red")
+        sys.exit(1)
+
+    if getattr(track_cfg, 'type', 'audio') != 'sampler':
+        track_type = getattr(track_cfg, 'type', 'audio')
+        click.secho(f"✗ Track '{track}' is not a sampler track (type={track_type})", fg="red")
+        sys.exit(1)
+
+    sampler_track = SamplerTrack.from_config(track_cfg, project_dir)
+
+    if as_json:
+        click.echo(json.dumps(sampler_track.info, ensure_ascii=False, indent=2))
+    else:
+        info = sampler_track.info
+        click.secho("╔══════════════════════════════════════╗", fg="cyan")
+        click.secho(f"║   Sampler Track: {track:<20s}║", fg="cyan")
+        click.secho("╚══════════════════════════════════════╝", fg="cyan")
+        click.echo(f"  Sample Rate: {info['sample_rate']}")
+        click.echo(f"  BPM:         {info['bpm']}")
+        click.echo(f"  MIDI File:   {info['midi_file'] or 'N/A'}")
+        click.echo(f"  Zones:       {info['zone_count']}")
+        for z in info['zones']:
+            loaded = "✔" if z['sample_loaded'] else "✗"
+            loop_info = f"{z['loop_mode']} loop {z['loop_start']}-{z['loop_end']}"
+            loop_str = f" [{loop_info}]" if z['has_loop'] else ""
+            click.echo(f"    {loaded} {z['file']}")
+            click.echo(f"      key={z['key_range']} vel={z['velocity_range']} "
+                       f"root={z['root_key']} tune={z['tune_cents']}¢ "
+                       f"gain={z['gain_db']}dB{loop_str}")
+            click.echo(f"      trigger={z['trigger_mode']} samples={z['sample_length']}")
+
+
+@sampler_group.command("render")
+@click.option("--project", required=True, type=click.Path(exists=True, path_type=Path),
+              help="Project YAML file")
+@click.option("--track", required=True, help="Sampler track name")
+@click.option("--output", type=click.Path(path_type=Path), help="Output WAV file path")
+def sampler_render(project: Path, track: str, output: Path | None) -> None:
+    """Render a sampler track to audio."""
+    from vcmix.audio.io import write_audio
+    from vcmix.config.parser import parse_project
+    from vcmix.sampler.sampler_track import SamplerTrack
+
+    cfg = parse_project(project)
+    project_dir = project.parent.resolve()
+
+    track_cfg = None
+    for t in cfg.tracks:
+        if t.name == track:
+            track_cfg = t
+            break
+
+    if track_cfg is None:
+        click.secho(f"✗ Track '{track}' not found", fg="red")
+        sys.exit(1)
+
+    if getattr(track_cfg, 'type', 'audio') != 'sampler':
+        click.secho(f"✗ Track '{track}' is not a sampler track", fg="red")
+        sys.exit(1)
+
+    sampler_track = SamplerTrack.from_config(track_cfg, project_dir, sample_rate=cfg.sample_rate)
+    sampler_track.bpm = cfg.bpm
+
+    if sampler_track.zone_count == 0:
+        click.secho("✗ No sample zones loaded", fg="red")
+        sys.exit(1)
+
+    audio = sampler_track.render_full()
+
+    if output is None:
+        output = project_dir / f"{track}_sampler_output.wav"
+
+    write_audio(audio, output, cfg.sample_rate)
+    click.secho(f"✔ Sampler track '{track}' rendered → {output}", fg="green")
+    click.echo(f"  Duration: {len(audio) / cfg.sample_rate:.2f}s ({len(audio)} samples)")
 
 
 # ── Phase 9: chain-presets command ────────────────────────────────────────

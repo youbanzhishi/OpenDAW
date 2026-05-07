@@ -71,6 +71,9 @@ from vcmix.engine.bus import BusManager
 from vcmix.midi.midi_parser import MidiParser
 from vcmix.midi.note_scheduler import NoteScheduler
 from vcmix.plugins.registry import PluginRegistry
+
+# Phase 9.5: Sampler integration
+from vcmix.sampler.sampler_track import SamplerTrack
 from vcmix.separation.arrangement import ArrangementExtractor, Section
 from vcmix.stream.emitter import DataStream
 from vcmix.vst3.vst3_track import VST3ParamOverride, VST3Track, VST3TrackConfig
@@ -435,11 +438,14 @@ class Renderer:
             Rendered audio array.
         """
         # Phase 9: MIDI track rendering / VST3 track rendering
+        # Phase 9.5: Sampler track rendering
         track_type = getattr(track, 'type', 'audio')
         if track_type == 'midi' and track.midi_file:
             audio = self._render_midi_track(track, sr, project_dir)
         elif track_type == 'vst3' and getattr(track, 'plugin_path', None):
             audio = self._render_vst3_track(track, sr, project_dir)
+        elif track_type == 'sampler':
+            audio = self._render_sampler_track(track, sr, project_dir)
         else:
             track_path = project_dir / track.file
             audio, audio_sr = read_audio(track_path)
@@ -727,6 +733,77 @@ class Renderer:
 
         return audio
 
+
+    # ── Phase 9.5: Sampler track rendering ──────────────────────────
+
+    def _render_sampler_track(
+        self,
+        track: Any,
+        sr: int,
+        project_dir: Path,
+    ) -> np.ndarray:
+        """Render a sampler track using the SamplerEngine.
+
+        Loads sample zones from the track config, parses the MIDI file,
+        schedules note events, and renders audio.
+
+        Args:
+            track: TrackConfig with type='sampler' and zones list.
+            sr: Project sample rate.
+            project_dir: Project directory for resolving file paths.
+
+        Returns:
+            1D or 2D float32 audio array.
+        """
+        # Build SamplerTrack from config
+        sampler_track = SamplerTrack.from_config(track, project_dir, sample_rate=sr)
+        sampler_track.bpm = self.config.bpm
+
+        if sampler_track.zone_count == 0:
+            self._emit("9.5_sampler_render", {
+                "track": track.name,
+                "status": "no_zones",
+            })
+            return np.zeros(1, dtype=np.float32)
+
+        # Parse MIDI file
+        midi_file = getattr(track, 'midi_file', None)
+        if not midi_file:
+            self._emit("9.5_sampler_render", {
+                "track": track.name,
+                "status": "no_midi_file",
+            })
+            return np.zeros(1, dtype=np.float32)
+
+        notes = sampler_track.parse_midi(str(project_dir / midi_file))
+
+        if not notes:
+            self._emit("9.5_sampler_render", {
+                "track": track.name,
+                "status": "no_notes",
+            })
+            return np.zeros(1, dtype=np.float32)
+
+        # Compute total duration
+        bpm = self.config.bpm
+        samples_per_beat = (60.0 / bpm) * sr if bpm > 0 else 0.5 * sr
+        max_end_beat = max(n.start_beat + n.duration_beats for n in notes)
+        total_samples = int(max_end_beat * samples_per_beat) + sr  # +1s tail
+
+        # Render
+        audio = sampler_track.render_from_midi(notes, total_samples, bpm)
+
+        self._emit("9.5_sampler_render", {
+            "track": track.name,
+            "zones": sampler_track.zone_count,
+            "bpm": bpm,
+            "note_count": len(notes),
+            "total_beats": round(max_end_beat, 2),
+            "duration_samples": len(audio),
+        })
+
+        return audio
+
     # ── Phase 9: Automation parameter application ──────────────────────
 
     def _render_track_with_automation(
@@ -862,6 +939,17 @@ class Renderer:
                 midi_path = project_dir / track.midi_file
                 if not midi_path.exists():
                     raise FileNotFoundError(f"MIDI file not found: {midi_path}")
+            elif getattr(track, 'type', 'audio') == 'sampler':
+                # Validate sampler zones
+                zones = getattr(track, 'zones', [])
+                for zone in zones:
+                    zone_path = project_dir / zone.file
+                    if not zone_path.exists():
+                        raise FileNotFoundError(f"Sample file not found: {zone_path}")
+                if getattr(track, 'midi_file', None):
+                    midi_path = project_dir / track.midi_file
+                    if not midi_path.exists():
+                        raise FileNotFoundError(f"MIDI file not found: {midi_path}")
             else:
                 track_path = project_dir / track.file
                 if not track_path.exists():

@@ -144,6 +144,27 @@ class AutomationPointConfig(BaseModel):
     curve_type: str = Field(default="linear", description="Interpolation: step, linear, smooth")
 
 
+
+class SampleZoneConfig(BaseModel):
+    """A single sample zone definition for sampler tracks (Phase 9.5).
+
+    Maps an audio file to a MIDI key/velocity range with playback options.
+    """
+    file: str = Field(..., description="Path to WAV/AIFF sample file")
+    root_key: int = Field(default=60, ge=0, le=127, description="Root MIDI note (original pitch)")
+    key_low: int = Field(default=0, ge=0, le=127, description="Lowest MIDI note for this zone")
+    key_high: int = Field(default=127, ge=0, le=127, description="Highest MIDI note for this zone")
+    velocity_low: int = Field(default=0, ge=0, le=127, description="Lowest velocity for this zone")
+    velocity_high: int = Field(
+        default=127, ge=0, le=127, description="Highest velocity for this zone"
+    )
+    loop_start: int | None = Field(default=None, description="Loop start in samples")
+    loop_end: int | None = Field(default=None, description="Loop end in samples")
+    loop_mode: str = Field(default="forward", description="Loop mode: forward/reverse/alternate")
+    trigger_mode: str = Field(default="gate", description="Trigger mode: gate/one-shot")
+    tune_cents: float = Field(default=0.0, ge=-100, le=100, description="Fine tuning in cents")
+    gain_db: float = Field(default=0.0, description="Gain adjustment in dB")
+
 class TrackConfig(BaseModel):
     """A single audio track with its insert effect chain.
 
@@ -157,7 +178,7 @@ class TrackConfig(BaseModel):
     file: str = Field(default="", description="Path to audio file (relative to project dir)")
     type: str = Field(
         default="audio",
-        description="Track type: 'audio', 'midi', or 'vst3' (Phase 9)",
+        description="Track type: 'audio', 'midi', 'vst3', or 'sampler' (Phase 9.5)",
     )
     midi_file: str | None = Field(
         default=None,
@@ -206,6 +227,12 @@ class TrackConfig(BaseModel):
     params: list[dict[str, Any]] = Field(
         default_factory=list,
         description="VST3 parameter overrides: [{index: int, value: float}, ...] (Phase 9)"
+    )
+
+    # Phase 9.5: Sampler zone definitions
+    zones: list[SampleZoneConfig] = Field(
+        default_factory=list,
+        description="Sample zones for type=sampler tracks (Phase 9.5)"
     )
 
 

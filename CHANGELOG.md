@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.11.0] - 2026-05-08
+
+### Added
+#### Phase 9.5: Sampler Module
+- SampleZone: 键位/力度映射+循环模式(forward/reverse/alternate)+触发模式(gate/one-shot)
+- SamplerEngine: 多区域映射+线性插值音高偏移+ActiveVoice管理
+- SamplerTrack: VCMix集成+MIDI文件解析+逐块渲染
+- YAML sampler轨道类型+CLI sampler命令(info/render)
+- 45个新测试
+
+#### Web UI Phase 9 Extension
+- 3个新tab: MIDI🎹 / Chains🔗 / Auto🎚️
+- MIDI API: scan/parse/synths
+- Chain Presets API: list/detail/apply
+- Automation API: preview/apply
+- 14个新API测试
+- 曲线可视化(Canvas)
+
+### Tests
+- 528 tests passed (from 483)
+
 ## [0.10.0] - 2026-05-08
 
 ### Added
