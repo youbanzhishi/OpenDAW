@@ -6,10 +6,23 @@ Provides the `vcmix` CLI with subcommands:
     validate  — Validate a YAML config without rendering
     graph     — Visualize the signal routing graph
     analyze   — Analyze audio file(s) for RMS/Peak/spectrum
+    automix   — Auto-analyze dry vocal and generate YAML config (Phase 4)
+    presets   — List all built-in presets (Phase 4)
+    separate  — Source separation via Demucs (Phase 4)
 
 Phase 2 additions:
     --ab      — Render A/B comparison versions
     --diff    — Include difference analysis in A/B mode
+
+Phase 7 additions:
+    --arrangement-aware — Enable arrangement-aware rendering
+    arrangement         — Display arrangement analysis results
+    arrangement --strategy — Display mixing strategy
+
+Phase 4 additions:
+    automix   — Intelligent auto-mixing from dry vocal analysis
+    presets   — List/inspect built-in effect chain presets
+    separate  — Demucs-based source separation
 
 Usage:
     vcmix render project.yaml
@@ -21,6 +34,12 @@ Usage:
     vcmix validate project.yaml
     vcmix graph project.yaml
     vcmix analyze track.wav
+    vcmix automix vocal.wav
+    vcmix automix vocal.wav --bpm 120 --output mix.yaml
+    vcmix presets
+    vcmix presets --name pop_vocal
+    vcmix separate song.wav
+    vcmix separate song.wav --model htdemucs --two-stems vocals
 
 Exit Codes (AI Agent processable):
     0  Success
@@ -41,7 +60,6 @@ import sys
 from pathlib import Path
 
 import click
-import numpy as np
 
 
 @click.group()
@@ -61,7 +79,10 @@ def main() -> None:
 )
 @click.option("--ab", is_flag=True, help="Render A/B comparison versions (Phase 2)")
 @click.option("--diff", is_flag=True, help="Include difference analysis in A/B mode")
-def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, diff: bool) -> None:
+@click.option("--arrangement-aware", is_flag=True,
+              help="Enable arrangement-aware rendering (Phase 7)")
+def render(project: Path, report: bool, auto_fix: bool, stream: str,
+           ab: bool, diff: bool, arrangement_aware: bool) -> None:
     """Render a mix project from YAML config."""
     import vcmix
 
@@ -75,7 +96,7 @@ def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, d
 
         engine = Renderer(
             cfg, report=report, auto_fix=auto_fix, stream=stream,
-            ab_mode=ab, ab_diff=diff,
+            ab_mode=ab, ab_diff=diff, arrangement_aware=arrangement_aware,
         )
         output_path = engine.run()
 
@@ -260,13 +281,13 @@ def _graph_mermaid(cfg) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def analyze(audio_file: Path, as_json: bool) -> None:
     """Analyze an audio file for RMS/Peak/spectrum/sibilance."""
-
     import vcmix
+    import numpy as np
 
     try:
         from vcmix.audio.io import read_audio
-        from vcmix.audio.meter import Meter
         from vcmix.engine.analyzer import Analyzer
+        from vcmix.audio.meter import Meter
 
         audio, sr = read_audio(audio_file)
         analyzer = Analyzer(sample_rate=sr)
@@ -302,106 +323,270 @@ def analyze(audio_file: Path, as_json: bool) -> None:
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
+# ── Phase 4: automix command ──────────────────────────────────────────────
 
 @main.command()
-def presets() -> None:
-    """List all available mixing presets."""
-    from vcmix.presets.manager import get_preset, list_presets
-    for name in list_presets():
-        chain = get_preset(name)
-        effects = ', '.join(e["name"] for e in chain)
-        click.echo(f"  {name}: {effects}")
+@click.argument("vocal_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--bpm", type=float, default=120.0, help="Project BPM (default: 120)")
+@click.option("--output", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output YAML file path (default: <vocal>_automix.yaml)")
+@click.option("--json", "as_json", is_flag=True, help="Output analysis as JSON instead of YAML")
+def automix(vocal_file: Path, bpm: float, output: Path | None, as_json: bool) -> None:
+    """Auto-analyze dry vocal and generate VCMix YAML config."""
+    import vcmix
+    import numpy as np
 
-
-@main.command()
-@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
-@click.option("--output-dir", "-o", type=click.Path(), default=None,
-              help="Output directory for stems")
-@click.option("--model", default="htdemucs", help="Demucs model name")
-@click.option("--two-stems", default=None,
-              help="Only separate this stem (e.g. vocals)")
-def separate(audio_file: Path, output_dir, model: str, two_stems: str) -> None:
-    """Separate a mixed audio file into stems using Demucs."""
     try:
-        from vcmix.separation.demucs_wrapper import separate_stems
-        stems = separate_stems(audio_file, output_dir=output_dir,
-                               model=model, two_stems=two_stems)
-        for name, path in stems.items():
-            click.echo(f"  {name}: {path}")
-    except ImportError:
-        click.secho("Demucs not installed. Install with: pip install demucs", fg="yellow")
-    except Exception as e:
-        click.secho(f"Separation failed: {e}", fg="red")
-
-
-@main.command("automix")
-@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
-@click.option("--preset", "-p", default=None,
-              help="Apply a preset instead of auto-analysis")
-@click.option("--output", "-o", type=click.Path(), default=None,
-              help="Output YAML config path")
-def automix_cmd(audio_file: Path, preset: str, output: str) -> None:
-    """Auto-generate a VCMix config for a dry vocal."""
-    try:
-        import yaml
-
         from vcmix.audio.io import read_audio
-        from vcmix.presets.manager import get_preset
+        from vcmix.engine.automix import AutoMixer
 
-        audio, sr = read_audio(audio_file)
+        audio, sr = read_audio(vocal_file)
+        mixer = AutoMixer(sample_rate=sr, bpm=bpm)
+        analysis = mixer.analyze_dry_vocal(audio, sr)
 
-        if preset:
-            chain = get_preset(preset)
-            if chain is None:
-                click.secho(f"Unknown preset: {preset}", fg="red")
-                return
+        if as_json:
+            # Output analysis as JSON
+            result = {
+                "file": str(vocal_file),
+                "sample_rate": sr,
+                "bpm": bpm,
+                "analysis": analysis,
+                "effects_chain": mixer.generate_chain(analysis),
+            }
+            click.echo(json.dumps(result, ensure_ascii=False, indent=2))
         else:
-            # Auto-analyze
-            from vcmix.engine.analyzer import Analyzer
-            analyzer = Analyzer(sample_rate=sr)
-            rms = analyzer.compute_rms(audio)
-            _rms_db = 20 * np.log10(rms) if rms > 0 else -120.0  # noqa: F841
+            # Generate and output YAML config
+            yaml_config = mixer.generate_yaml(
+                track_name=vocal_file.stem,
+                audio_path=str(vocal_file),
+                analysis=analysis,
+            )
 
-            # Simple auto-chain based on analysis
-            chain = [
-                {"name": "vc-deesser", "params": {"threshold": -40, "reduction": -6}},
-                {"name": "vc-eq", "params": {"low_cut": 80, "high_shelf": 8000}},
-                {"name": "vc-comp", "params": {
-                    "threshold": -24, "ratio": 3,
-                    "attack": 5, "release": 50
-                }},
-                {"name": "vc-reverb", "params": {
-                    "room": 30, "decay": 35, "damping": 50,
-                    "mix": 10, "predelay": 50, "wetlpf": 5000
-                }},
-                {"name": "vc-limiter", "params": {"ceiling": -1}},
-            ]
+            if output is None:
+                output = vocal_file.with_name(vocal_file.stem + "_automix.yaml")
 
-        config = {
-            "name": f"automix_{audio_file.stem}",
-            "bpm": 120,
-            "sample_rate": sr,
-            "tracks": [
-                {"name": "vocal", "file": str(audio_file), "effects": chain}
-            ],
-            "master": {
-                "levels": {"vocal": 1.0},
-                "effects": [],
-                "output": f"{audio_file.stem}_mix.wav",
-            },
-        }
+            import yaml
+            with open(output, "w", encoding="utf-8") as f:
+                yaml.dump(yaml_config, f, default_flow_style=False, allow_unicode=True)
 
-        yaml_str = yaml.dump(config, default_flow_style=False, allow_unicode=True)
+            click.secho(f"✔ AutoMix analysis complete", fg="green")
+            click.echo(f"  RMS:       {analysis['rms_db']:.1f} dBFS")
+            click.echo(f"  Peak:      {analysis['peak_db']:.1f} dBFS")
+            click.echo(f"  DR:        {analysis['dynamic_range_db']:.1f} dB")
+            click.echo(f"  Sibilance: {analysis['sibilance_ratio']:.4f}"
+                        f" {'⚠ needs de-ess' if analysis['needs_deesser'] else '✓ OK'}")
+            click.echo(f"  Gain:      {analysis['gain_needed_db']:+.1f} dB")
+            click.echo(f"  Config:    {output}")
 
-        if output:
-            with open(output, "w") as f:
-                f.write(yaml_str)
-            click.secho(f"Config saved to {output}", fg="green")
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ AutoMix failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+# ── Phase 4: presets command ──────────────────────────────────────────────
+
+@main.command("presets")
+@click.option("--name", type=str, default=None, help="Show details for a specific preset")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def presets_cmd(name: str | None, as_json: bool) -> None:
+    """List all built-in effect chain presets."""
+    from vcmix.presets.manager import list_presets, get_preset
+
+    if name:
+        chain = get_preset(name)
+        if chain is None:
+            click.secho(f"✗ Preset not found: {name}", fg="red")
+            sys.exit(1)
+        if as_json:
+            click.echo(json.dumps({"name": name, "effects": chain}, ensure_ascii=False, indent=2))
         else:
-            click.echo(yaml_str)
+            click.secho(f"Preset: {name}", fg="cyan")
+            for i, effect in enumerate(chain, 1):
+                params_str = ", ".join(f"{k}={v}" for k, v in effect.get("params", {}).items())
+                click.echo(f"  {i}. {effect['name']} ({params_str})")
+    else:
+        preset_names = list_presets()
+        if as_json:
+            click.echo(json.dumps({"presets": preset_names}, ensure_ascii=False, indent=2))
+        else:
+            click.secho(f"Built-in Presets ({len(preset_names)}):", fg="cyan")
+            for pname in preset_names:
+                chain = get_preset(pname)
+                n_effects = len(chain) if chain else 0
+                click.echo(f"  • {pname} ({n_effects} effects)")
+
+
+# ── Phase 4: separate command ─────────────────────────────────────────────
+
+@main.command()
+@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--model", type=str, default="htdemucs", help="Demucs model name")
+@click.option("--output-dir", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output directory for separated stems")
+@click.option("--two-stems", type=str, default=None,
+              help="Separate into 2 stems (e.g. 'vocals')")
+@click.option("--device", type=str, default="cpu", help="Device: cpu or cuda")
+def separate(
+    audio_file: Path,
+    model: str,
+    output_dir: Path | None,
+    two_stems: str | None,
+    device: str,
+) -> None:
+    """Separate audio into stems using Demucs."""
+    import vcmix
+
+    try:
+        from vcmix.separation import separate_stems
+
+        click.secho(f"Separating {audio_file.name} with {model}...", fg="cyan")
+        results = separate_stems(
+            input_path=audio_file,
+            output_dir=output_dir,
+            model=model,
+            device=device,
+            two_stems=two_stems,
+        )
+
+        click.secho("✔ Separation complete:", fg="green")
+        for stem_name, stem_path in sorted(results.items()):
+            click.echo(f"  • {stem_name}: {stem_path}")
+
+    except ImportError as e:
+        click.secho(f"✗ Demucs not installed: {e}", fg="red")
+        click.echo("  Install with: pip install demucs")
+        sys.exit(vcmix.EXIT_MISSING_DEP)
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Separation failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command()
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--strategy", is_flag=True,
+              help="Display the arrangement mixing strategy")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
+    """Display arrangement analysis and mixing strategy.
+
+    Analyzes the song structure (intro/verse/chorus/bridge/outro) from
+    the project's audio tracks and displays the detected sections.
+    With --strategy, also shows the per-section mixing parameters.
+
+    Phase 7 feature.
+    """
+    try:
+        from vcmix.config.parser import parse_project
+        from vcmix.engine.arrangement_strategy import ArrangementStrategy
+        from vcmix.separation.arrangement import ArrangementExtractor
+
+        cfg = parse_project(project)
+        project_dir = project.parent.resolve()
+        sr = cfg.sample_rate
+        bpm = cfg.bpm
+
+        # Try to extract arrangement from audio
+        stems = getattr(cfg, "_stems", None)
+        if stems and len(stems) > 0:
+            extractor = ArrangementExtractor()
+            sections = extractor.extract(stems, sr, bpm)
+        else:
+            # Build from audio files
+            import numpy as np
+            from vcmix.audio.io import read_audio
+
+            stems = {}
+            for track in cfg.tracks:
+                track_path = project_dir / track.file
+                try:
+                    audio, track_sr = read_audio(track_path)
+                    # Convert to mono if stereo
+                    if audio.ndim == 2:
+                        audio = np.mean(audio, axis=0)
+                    stems[track.name] = audio.flatten().astype(np.float64)
+                except Exception:
+                    continue
+
+            if stems:
+                extractor = ArrangementExtractor()
+                sections = extractor.extract(stems, sr, bpm)
+            else:
+                sections = []
+
+        if not sections:
+            click.secho("No arrangement sections detected", fg="yellow")
+            return
+
+        if as_json:
+            result = {
+                "project": cfg.name,
+                "bpm": bpm,
+                "sections": [
+                    {
+                        "name": s.name,
+                        "start_beat": s.start_beat,
+                        "end_beat": s.end_beat,
+                        "start_sec": round(s.start_sec, 2),
+                        "end_sec": round(s.end_sec, 2),
+                        "energy_level": s.energy_level,
+                        "active_stems": s.active_stems,
+                    }
+                    for s in sections
+                ],
+            }
+            if strategy:
+                strat = ArrangementStrategy.from_sections(sections)
+                result["strategy"] = {}
+                for idx, sec_params in enumerate(strat.sections):
+                    start_beat = strat._find_start_beat(idx)
+                    result["strategy"][f"section_{idx}_{sec_params.section_name}"] = {
+                        "start_beat": start_beat,
+                        "reverb_mix": sec_params.reverb_mix,
+                        "delay_mix": sec_params.delay_mix,
+                        "compression_ratio": sec_params.compression_ratio,
+                        "gain_db": sec_params.gain_db,
+                        "crossfade_beats": sec_params.crossfade_beats,
+                    }
+            click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            click.secho(f"Arrangement Analysis: {cfg.name}", fg="cyan", bold=True)
+            click.echo(f"BPM: {bpm} | Sections: {len(sections)}")
+            click.echo()
+            for s in sections:
+                bar = "█" * ((s.end_beat - s.start_beat) // 2)
+                click.echo(
+                    f"  {s.name:<8} beats {s.start_beat:>3}-{s.end_beat:<3} "
+                    f"({s.start_sec:.1f}s-{s.end_sec:.1f}s) "
+                    f"energy={s.energy_level:<6} "
+                    f"stems={s.active_stems} {bar}"
+                )
+
+            if strategy:
+                click.echo()
+                click.secho("Mixing Strategy:", fg="cyan", bold=True)
+                strat = ArrangementStrategy.from_sections(sections)
+                for idx, sec_params in enumerate(strat.sections):
+                    start_beat = strat._find_start_beat(idx)
+                    click.echo(
+                        f"  [{sec_params.section_name}] @beat {start_beat}: "
+                        f"reverb={sec_params.reverb_mix:.0%} "
+                        f"delay={sec_params.delay_mix:.0%} "
+                        f"comp={sec_params.compression_ratio:.1f}:1 "
+                        f"gain={sec_params.gain_db:+.1f}dB "
+                        f"fade={sec_params.crossfade_beats}beats"
+                    )
 
     except Exception as e:
-        click.secho(f"AutoMix failed: {e}", fg="red")
+        click.secho(f"✗ Arrangement analysis failed: {e}", fg="red")
+        import vcmix
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
 
 if __name__ == "__main__":
     main()

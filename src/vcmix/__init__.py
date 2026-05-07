@@ -18,6 +18,9 @@ Usage (CLI):
     vcmix render project.yaml --ab         # A/B comparison rendering
     vcmix render project.yaml --ab --diff  # A/B with diff analysis
     vcmix render project.yaml --auto-fix   # with gain staging auto-fix
+    vcmix render project.yaml --arrangement-aware  # arrangement-aware rendering (Phase 7)
+    vcmix arrangement project.yaml            # show arrangement analysis
+    vcmix arrangement project.yaml --strategy # show mixing strategy
     vcmix validate project.yaml            # validate config
     vcmix graph project.yaml               # signal routing graph
     vcmix analyze track.wav                # audio analysis
@@ -44,7 +47,8 @@ Module Map:
     audio/meter.py     — Level metering (RMS/Peak/TruePeak/LUFS)
     bpm/detector.py    — BPM detection via librosa
     bpm/sync.py        — BPM note-value to ms conversion
-    cli.py             — CLI entry point (render/validate/graph/analyze)
+    engine/arrangement_strategy.py — Arrangement-aware mixing strategy (Phase 7)
+    cli.py             — CLI entry point (render/validate/graph/analyze/arrangement)
 
 Standardized Exit Codes (AI Agent processable):
     0  OK
@@ -56,10 +60,10 @@ Standardized Exit Codes (AI Agent processable):
     6  Missing dependency
 
 Dependencies: numpy, soundfile, pyyaml, pydantic, click, rich, librosa
-Version: 0.2.0 (Phase 2)
+Version: 0.7.0 (Phase 7)
 """
 
-__version__ = "0.2.0"
+__version__ = "0.7.0"
 __author__ = "youbanzhishi"
 
 # ── Standardized exit codes for AI Agent programmatic handling ──
