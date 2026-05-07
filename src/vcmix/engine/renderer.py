@@ -29,6 +29,11 @@ Phase 7 additions:
     - Crossfade interpolation between sections
     - Integration with ArrangementStrategy for section-level mixing
 
+Phase 9 additions:
+    - MIDI track rendering via NoteScheduler
+    - Automation curve parameter application (gain + plugin params)
+    - Chain preset integration for effect chains
+
 Features:
     - --report mode: emit RMS/Peak/spectrum after each effect
     - --stream log|json: real-time structured progress output
@@ -56,10 +61,15 @@ import numpy as np
 
 from vcmix.audio.io import read_audio, write_audio
 from vcmix.audio.mixer import Mixer
+from vcmix.automation.automation_engine import AutomationEngine
 from vcmix.engine.analyzer import Analyzer
 from vcmix.engine.arrangement_strategy import ArrangementStrategy
 from vcmix.engine.autofix import AutoFix
 from vcmix.engine.bus import BusManager
+
+# Phase 9: MIDI and automation integration
+from vcmix.midi.midi_parser import MidiParser
+from vcmix.midi.note_scheduler import NoteScheduler
 from vcmix.plugins.registry import PluginRegistry
 from vcmix.separation.arrangement import ArrangementExtractor, Section
 from vcmix.stream.emitter import DataStream
@@ -408,6 +418,10 @@ class Renderer:
         """
         Render a single track through its effect chain.
 
+        Phase 9: Supports MIDI tracks (type='midi') rendered via NoteScheduler,
+        and audio tracks loaded from file. Automation curves are applied
+        after the initial audio source is loaded/generated.
+
         Args:
             track: TrackConfig instance.
             registry: Plugin registry.
@@ -419,8 +433,13 @@ class Renderer:
         Returns:
             Rendered audio array.
         """
-        track_path = project_dir / track.file
-        audio, audio_sr = read_audio(track_path)
+        # Phase 9: MIDI track rendering
+        track_type = getattr(track, 'type', 'audio')
+        if track_type == 'midi' and track.midi_file:
+            audio = self._render_midi_track(track, sr, project_dir)
+        else:
+            track_path = project_dir / track.file
+            audio, audio_sr = read_audio(track_path)
 
         # Apply track volume
         audio = audio * track.volume
@@ -436,6 +455,9 @@ class Renderer:
         effects = getattr(track, chain_key, None) or track.effects
 
         # Process insert chain
+        # Phase 9: Check if track has plugin parameter automation
+        has_automation = bool(getattr(track, 'automation', None))
+
         prev_audio = audio
         for effect in effects:
             plugin = registry.get(effect.name)
@@ -447,11 +469,24 @@ class Renderer:
                 })
                 continue
 
+            # Phase 9: Apply automation overrides to plugin params if needed
+            # For block-level automation, use midpoint of current audio
+            effect_params = dict(effect.params)
+            if has_automation:
+                # Use midpoint beat position for this effect processing pass
+                bpm = self.config.bpm
+                samples_per_beat = 60.0 / bpm * sr if bpm > 0 else sr * 0.5
+                total_samples = len(prev_audio.flatten())
+                mid_beat = (total_samples / 2) / samples_per_beat if samples_per_beat > 0 else 0.0
+                effect_params = self._get_automation_overrides(
+                    track, effect.name, effect.params, mid_beat
+                )
+
             # Handle sidechain routing
             if effect.sidechain is not None and effect.sidechain in rendered_tracks:
                 sc_audio = rendered_tracks[effect.sidechain]
                 processed = plugin.process_with_sidechain(
-                    prev_audio, effect.params, sr,
+                    prev_audio, effect_params, sr,
                     sidechain_audio=sc_audio,
                 )
                 self._emit("4_render", {
@@ -460,7 +495,7 @@ class Renderer:
                     "sidechain": effect.sidechain,
                 })
             else:
-                processed = plugin.process(prev_audio, effect.params, sr)
+                processed = plugin.process(prev_audio, effect_params, sr)
 
             # Phase 4: Emit effect delta (before/after each effect)
             self._emit_effect_delta(track.name, effect.name, prev_audio, processed, sr)
@@ -472,6 +507,14 @@ class Renderer:
                 self._emit("4_report", {"before": before, "after": after})
 
             prev_audio = processed
+
+        # Phase 9: Apply gain automation curves (block-by-block)
+        if has_automation:
+            prev_audio = self._render_track_with_automation(track, prev_audio, sr)
+            self._emit("9_automation", {
+                "track": track.name,
+                "status": "applied",
+            })
 
         # Phase 4: Check for warnings on rendered track
         self._check_warnings(track.name, prev_audio, sr)
@@ -502,6 +545,186 @@ class Renderer:
 
         return prev_audio
 
+    # ── Phase 9: MIDI track rendering ──────────────────────────────────
+
+    def _render_midi_track(
+        self,
+        track: Any,
+        sr: int,
+        project_dir: Path,
+    ) -> np.ndarray:
+        """Render a MIDI track using the NoteScheduler.
+
+        Parses the MIDI file, creates a NoteScheduler with the configured
+        synth type, and renders all notes into an audio buffer.
+
+        Args:
+            track: TrackConfig with type='midi' and midi_file set.
+            sr: Project sample rate.
+            project_dir: Project directory for resolving MIDI file path.
+
+        Returns:
+            1D or 2D float32 audio array.
+        """
+        midi_path = project_dir / track.midi_file
+        parser = MidiParser()
+        midi_tracks, midi_info = parser.parse(midi_path)
+
+        # Determine BPM: prefer MIDI file tempo, fall back to project BPM
+        bpm = midi_info.bpm if midi_info.bpm > 0 else self.config.bpm
+
+        # Determine synth type
+        synth_type = track.synth or 'sine'
+
+        # Create NoteScheduler
+        scheduler = NoteScheduler(
+            bpm=bpm,
+            sample_rate=sr,
+            synth=synth_type,
+        )
+
+        # Merge all MIDI tracks' notes into a single list
+        all_notes = []
+        for mt in midi_tracks:
+            all_notes.extend(mt.notes)
+
+        if not all_notes:
+            self._emit("9_midi_render", {
+                "track": track.name,
+                "status": "no_notes",
+            })
+            return np.zeros(1, dtype=np.float32)
+
+        # Compute total beats from all notes
+        max_end_beat = max(n.start_beat + n.duration_beats for n in all_notes)
+
+        # Render all notes
+        audio = scheduler.render_note_list(
+            notes=all_notes,
+            total_beats=max_end_beat,
+        )
+
+        # Ensure output is at least 1D
+        if audio.ndim == 0 or len(audio) == 0:
+            audio = np.zeros(1, dtype=np.float32)
+
+        self._emit("9_midi_render", {
+            "track": track.name,
+            "synth": synth_type,
+            "bpm": bpm,
+            "note_count": len(all_notes),
+            "total_beats": round(max_end_beat, 2),
+            "duration_samples": len(audio),
+        })
+
+        return audio
+
+    # ── Phase 9: Automation parameter application ──────────────────────
+
+    def _render_track_with_automation(
+        self,
+        track: Any,
+        audio: np.ndarray,
+        sr: int,
+    ) -> np.ndarray:
+        """Apply automation curves to a track's audio.
+
+        Processes the audio block-by-block, applying gain automation
+        and preparing plugin parameter overrides for each block's
+        beat position.
+
+        Args:
+            track: TrackConfig with automation definitions.
+            audio: Pre-rendered audio (after effects chain).
+            sr: Project sample rate.
+
+        Returns:
+            Audio with automation applied.
+        """
+        automation = getattr(track, 'automation', None)
+        if not automation:
+            return audio
+
+        # Build AutomationEngine from the track's automation config
+        track_config_dict = {
+            "name": track.name,
+            "automation": automation,
+        }
+        auto_engine = AutomationEngine.from_config(
+            [track_config_dict],
+            bpm=self.config.bpm,
+        )
+
+        if not auto_engine.has_automation:
+            return audio
+
+        bpm = self.config.bpm
+        samples_per_beat = 60.0 / bpm * sr if bpm > 0 else sr * 0.5
+        block_size = min(1024, len(audio))
+        audio_flat = audio.flatten().astype(np.float64)
+        total_samples = len(audio_flat)
+        output = np.zeros_like(audio_flat)
+
+        for i in range(0, total_samples, block_size):
+            end = min(i + block_size, total_samples)
+            block = audio_flat[i:end].copy()
+            position_beat = i / samples_per_beat
+
+            # Get automation parameters at this beat position
+            params = auto_engine.get_params_at_beat(track.name, position_beat)
+
+            # Apply gain automation (gain is in dB)
+            if 'gain' in params:
+                gain_db = params['gain']
+                gain_linear = 10.0 ** (gain_db / 20.0)
+                block *= gain_linear
+
+            output[i:end] = block
+
+        if audio.ndim == 2:
+            return output.reshape(audio.shape).astype(np.float32)
+        return output.astype(np.float32)
+
+    def _get_automation_overrides(
+        self,
+        track: Any,
+        plugin_name: str,
+        static_params: dict[str, Any],
+        beat: float,
+    ) -> dict[str, Any]:
+        """Get plugin parameters with automation overrides applied.
+
+        Automation values take precedence over static values.
+
+        Args:
+            track: TrackConfig with automation definitions.
+            plugin_name: Plugin identifier (e.g. 'vc-reverb').
+            static_params: Original (static) parameters from YAML.
+            beat: Current beat position.
+
+        Returns:
+            Updated parameters dict with automation overrides.
+        """
+        automation = getattr(track, 'automation', None)
+        if not automation:
+            return dict(static_params)
+
+        track_config_dict = {
+            "name": track.name,
+            "automation": automation,
+        }
+        auto_engine = AutomationEngine.from_config(
+            [track_config_dict],
+            bpm=self.config.bpm,
+        )
+
+        return auto_engine.apply_automation_to_params(
+            track.name,
+            plugin_name,
+            static_params,
+            beat,
+        )
+
     def run(self) -> Path:
         """
         Execute the full rendering pipeline.
@@ -525,10 +748,16 @@ class Renderer:
         self._emit("1_parse", {"name": project.name, "bpm": project.bpm})
 
         # ── Step 2: Validate ──
+        # Phase 9: MIDI tracks validated differently from audio tracks
         for track in project.tracks:
-            track_path = project_dir / track.file
-            if not track_path.exists():
-                raise FileNotFoundError(f"Track audio not found: {track_path}")
+            if getattr(track, 'type', 'audio') == 'midi' and track.midi_file:
+                midi_path = project_dir / track.midi_file
+                if not midi_path.exists():
+                    raise FileNotFoundError(f"MIDI file not found: {midi_path}")
+            else:
+                track_path = project_dir / track.file
+                if not track_path.exists():
+                    raise FileNotFoundError(f"Track audio not found: {track_path}")
         self._emit("2_validate", {"tracks": len(project.tracks), "ok": True})
 
         # ── Step 3: Build DAG ──

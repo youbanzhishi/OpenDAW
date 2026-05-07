@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.10.0] - 2026-05-08
+
+### Added
+#### Phase 9: MIDI + Automation + Chain Presets
+- MIDI文件解析（MidiParser，支持Format 0/1，tick→beat转换）
+- 音符调度与内置合成器（NoteScheduler，sine/sawtooth/square/triangle）
+- 自动化曲线（AutomationCurve，step/linear/smooth三种插值）
+- 自动化引擎（AutomationEngine，gain+插件参数自动化）
+- 插件链预设（ChainPresetManager，4个内置链：vocal/drum/master/guitar）
+- CLI chain-presets命令组（list/show/apply/save）
+- Renderer集成：MIDI轨道渲染+自动化参数实时应用
+- Web UI Phase 9扩展：MIDI tab + Chains tab
+- VST3 Hosting架构设计文档（docs/VST3-Hosting-Design.md + vst3_host/原型）
+
+### Fixed
+- ruff lint 100错误→0（import排序+未使用变量+长行+重复定义）
+- MIDI parser bug：set_tempo事件在time=0时被忽略
+- Automation STEP曲线语义测试修正
+
+### Tests
+- 439测试全绿（从315增长到439）
+
+
 ## [0.9.0] - 2026-05-08
 
 ### Added

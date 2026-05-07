@@ -155,7 +155,7 @@ class TrackConfig(BaseModel):
     """
     name: str = Field(..., description="Track name, e.g. 'vocal', 'accomp'")
     file: str = Field(default="", description="Path to audio file (relative to project dir)")
-    type: str = Field(default="audio", description="Track type: 'audio' or 'midi' (Phase 9)")
+    type: str = Field(default="audio", description="Track type: 'audio', 'midi', or 'vst3' (Phase 9)")
     midi_file: str | None = Field(
         default=None,
         description="Path to .mid file for MIDI tracks (Phase 9)"
@@ -186,6 +186,23 @@ class TrackConfig(BaseModel):
     automation: dict[str, list[list[float | str]]] = Field(
         default_factory=dict,
         description="Parameter automation: {param_name: [[beat, value, curve_type], ...]} (Phase 9)"
+    )
+    # Phase 9: VST3 plugin hosting
+    plugin_path: str | None = Field(
+        default=None,
+        description="Path to VST3 plugin bundle (.vst3) for type=vst3 tracks (Phase 9)"
+    )
+    preset: str | None = Field(
+        default=None,
+        description="Factory preset name for VST3 plugin (Phase 9)"
+    )
+    preset_file: str | None = Field(
+        default=None,
+        description="Path to .vstpreset file for VST3 plugin (Phase 9)"
+    )
+    params: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="VST3 parameter overrides: [{index: int, value: float}, ...] (Phase 9)"
     )
 
 

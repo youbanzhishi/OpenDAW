@@ -37,3 +37,7 @@ output/
 # Temp files
 *.tmp
 *.bak
+
+# Backups
+.backups/
+*.backup
