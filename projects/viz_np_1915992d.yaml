@@ -1,0 +1,10 @@
+bpm: 120
+master:
+  effects: []
+  levels: {}
+  output: out.wav
+name: VizPeaksTest
+sample_rate: 44100
+tracks:
+- file: nonexistent.wav
+  name: vocal

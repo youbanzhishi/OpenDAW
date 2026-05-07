@@ -1,0 +1,21 @@
+name: TestProject
+bpm: 120
+sample_rate: 44100
+
+tracks:
+  - name: vocal
+    file: vocal.wav
+    effects:
+      - name: vc-gain
+        params:
+          gain: 0
+      - name: vc-comp
+        params:
+          threshold: -20
+          ratio: 3
+
+master:
+  levels:
+    vocal: 0.8
+  effects: []
+  output: output.wav
