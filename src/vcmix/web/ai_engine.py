@@ -629,3 +629,144 @@ class AIEngine:
             "confidence": log.confidence,
             "timestamp": round(log.timestamp, 3),
         }
+
+
+    # ── Phase 12: Arrangement & Mix Preset Suggestions ──────────────────
+
+    def suggest_arrangement(
+        self,
+        genre: str,
+        duration: float | None = None,
+        mood: str = "neutral",
+    ) -> dict[str, Any]:
+        """Suggest an arrangement template based on genre, duration, and mood.
+
+        Args:
+            genre: Target genre (pop/rock/edm/hiphop/rnb/progressive/lofi/orchestral).
+            duration: Optional target duration in seconds.
+            mood: Mood hint (neutral/upbeat/mellow/dark/epic).
+
+        Returns:
+            Dict with recommended template, suggested BPM, and key.
+        """
+        from vcmix.arrangement.templates import (
+            TEMPLATE_REGISTRY,
+            list_templates,
+            list_templates_by_genre,
+        )
+
+        # Find best matching template
+        genre_templates = list_templates_by_genre(genre)
+        if not genre_templates:
+            # Fuzzy match: try partial genre
+            genre_lower = genre.lower()
+            for key in list_templates():
+                tmpl = TEMPLATE_REGISTRY[key]
+                if genre_lower in tmpl.genre or tmpl.genre in genre_lower:
+                    genre_templates.append(key)
+
+        if not genre_templates:
+            genre_templates = list_templates()[:1]  # Default to first
+
+        # Pick template based on mood
+        template_key = genre_templates[0]
+        if mood == "epic" and "progressive" in [k for k in genre_templates]:
+            template_key = "progressive"
+        elif mood == "mellow" and "lofi" in genre_templates:
+            template_key = "lofi"
+        elif mood == "dark" and "orchestral" in genre_templates:
+            template_key = "orchestral"
+
+        template = TEMPLATE_REGISTRY[template_key]
+
+        # Suggest BPM based on genre and mood
+        bpm_low, bpm_high = template.bpm_range
+        suggested_bpm = (bpm_low + bpm_high) / 2
+        if mood == "upbeat":
+            suggested_bpm = bpm_high
+        elif mood == "mellow":
+            suggested_bpm = bpm_low
+
+        # Suggest key based on mood
+        key_suggestions = {
+            "neutral": template.default_key,
+            "upbeat": "C" if "m" not in template.default_key.lower() else "C",
+            "mellow": "Fm" if "m" not in template.default_key.lower() else template.default_key,
+            "dark": "Dm",
+            "epic": "Em",
+        }
+        suggested_key = key_suggestions.get(mood, template.default_key)
+
+        result: dict[str, Any] = {
+            "template_key": template_key,
+            "template_name": template.name,
+            "genre": template.genre,
+            "suggested_bpm": suggested_bpm,
+            "suggested_key": suggested_key,
+            "sections": template.section_names,
+            "total_bars": template.total_bars,
+            "bpm_range": list(template.bpm_range),
+            "description": template.description,
+        }
+
+        # If duration specified, calculate bar scaling
+        if duration and suggested_bpm > 0:
+            bar_duration = (60.0 / suggested_bpm) * 4
+            target_bars = int(duration / bar_duration)
+            if target_bars > 0 and template.total_bars > 0:
+                scale = target_bars / template.total_bars
+                result["duration_scaling"] = round(scale, 2)
+                result["target_bars"] = target_bars
+
+        return result
+
+    def suggest_mix_preset(
+        self,
+        genre: str,
+        track_types: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Suggest a mix preset based on genre and track types.
+
+        Args:
+            genre: Target genre.
+            track_types: Optional list of track types present.
+
+        Returns:
+            Dict with recommended preset details.
+        """
+        from vcmix.presets.mix_presets import (
+            MIX_PRESET_REGISTRY,
+            list_mix_presets,
+            suggest_mix_preset as _suggest,
+        )
+
+        preset = _suggest(genre, track_types)
+        if preset is None:
+            return {"error": "No matching preset found", "genre": genre}
+
+        result: dict[str, Any] = {
+            "preset_key": None,
+            "name": preset.name,
+            "genre": preset.genre,
+            "description": preset.description,
+            "track_types": preset.track_types,
+            "master_target_lufs": preset.master.target_lufs,
+            "tracks": [],
+        }
+
+        # Find the registry key
+        for key, val in MIX_PRESET_REGISTRY.items():
+            if val is preset:
+                result["preset_key"] = key
+                break
+
+        for tp in preset.tracks:
+            result["tracks"].append({
+                "track_type": tp.track_type,
+                "effect_count": len(tp.effects),
+                "volume_db": tp.volume_db,
+                "pan": tp.pan,
+                "effect_names": [e.plugin for e in tp.effects],
+            })
+
+        return result

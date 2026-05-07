@@ -739,3 +739,127 @@ async def ws_ai_decisions(websocket: WebSocket, project_id: str):
 
     except WebSocketDisconnect:
         _ai_ws.disconnect(project_id, websocket)
+
+
+# ── Phase 12: Arrangement Template & Mix Preset Endpoints ────────────────────
+
+class ArrangementSuggestRequest(BaseModel):
+    """Request body for AI arrangement suggestions."""
+    genre: str = Field(default="pop", description="Target genre")
+    duration: float | None = Field(default=None, description="Target duration in seconds")
+    mood: str = Field(default="neutral", description="Mood: neutral/upbeat/mellow/dark/epic")
+
+
+class MixPresetSuggestRequest(BaseModel):
+    """Request body for mix preset suggestions."""
+    genre: str = Field(default="pop", description="Target genre")
+    track_types: list[str] | None = Field(default=None, description="Track types present")
+
+
+@router.post("/ai/arrangement")
+async def ai_arrangement_suggestion(request: ArrangementSuggestRequest):
+    """
+    Get AI arrangement template suggestion.
+
+    Recommends an arrangement template based on genre, duration, and mood,
+    including suggested BPM, key, and section structure.
+    """
+    result = _ai.suggest_arrangement(
+        genre=request.genre,
+        duration=request.duration,
+        mood=request.mood,
+    )
+    return result
+
+
+@router.get("/presets/arrangement")
+async def list_arrangement_presets():
+    """
+    List all available arrangement templates.
+
+    Returns template names, genres, section counts, and BPM ranges.
+    """
+    from vcmix.arrangement.templates import TEMPLATE_REGISTRY, list_templates
+
+    templates = []
+    for key in list_templates():
+        tmpl = TEMPLATE_REGISTRY[key]
+        templates.append({
+            "key": key,
+            "name": tmpl.name,
+            "genre": tmpl.genre,
+            "sections": len(tmpl.structure),
+            "section_names": tmpl.section_names,
+            "total_bars": tmpl.total_bars,
+            "bpm_range": list(tmpl.bpm_range),
+            "default_key": tmpl.default_key,
+            "description": tmpl.description,
+        })
+    return {"templates": templates, "count": len(templates)}
+
+
+@router.get("/presets/arrangement/{key}")
+async def get_arrangement_preset(key: str):
+    """Get detailed arrangement template by key."""
+    from vcmix.arrangement.templates import get_template
+
+    tmpl = get_template(key)
+    if tmpl is None:
+        raise HTTPException(status_code=404, detail=f"Arrangement template not found: {key}")
+
+    return {
+        "key": key,
+        "template": tmpl.to_dict(),
+    }
+
+
+@router.get("/presets/mix")
+async def list_mix_presets_endpoint():
+    """
+    List all available mix presets.
+
+    Returns preset names, genres, track types, and descriptions.
+    """
+    from vcmix.presets.mix_presets import MIX_PRESET_REGISTRY, list_mix_presets
+
+    presets = []
+    for key in list_mix_presets():
+        preset = MIX_PRESET_REGISTRY[key]
+        presets.append({
+            "key": key,
+            "name": preset.name,
+            "genre": preset.genre,
+            "description": preset.description,
+            "track_types": preset.track_types,
+            "master_target_lufs": preset.master.target_lufs,
+        })
+    return {"presets": presets, "count": len(presets)}
+
+
+@router.get("/presets/mix/{key}")
+async def get_mix_preset_detail(key: str):
+    """Get detailed mix preset by key."""
+    from vcmix.presets.mix_presets import get_mix_preset
+
+    preset = get_mix_preset(key)
+    if preset is None:
+        raise HTTPException(status_code=404, detail=f"Mix preset not found: {key}")
+
+    return {
+        "key": key,
+        "preset": preset.to_dict(),
+    }
+
+
+@router.post("/ai/mix-preset")
+async def ai_mix_preset_suggestion(request: MixPresetSuggestRequest):
+    """
+    Get AI mix preset suggestion.
+
+    Recommends a mix preset based on genre and track types.
+    """
+    result = _ai.suggest_mix_preset(
+        genre=request.genre,
+        track_types=request.track_types,
+    )
+    return result

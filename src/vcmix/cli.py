@@ -1377,3 +1377,112 @@ def generate_config_cmd(
     except Exception as e:
         click.secho(f"✗ Config generation failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+# ── Phase 12: Arrangement Template & Mix Preset Commands ──────────────────────
+
+@main.command("templates")
+@click.option("--genre", type=str, default=None, help="Filter by genre")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def list_arrangement_templates(genre: str | None, as_json: bool) -> None:
+    """List available arrangement templates (Phase 12)."""
+    from vcmix.arrangement.templates import TEMPLATE_REGISTRY, list_templates, list_templates_by_genre
+
+    keys = list_templates_by_genre(genre) if genre else list_templates()
+
+    if as_json:
+        result = []
+        for key in keys:
+            tmpl = TEMPLATE_REGISTRY[key]
+            result.append({
+                "key": key,
+                "name": tmpl.name,
+                "genre": tmpl.genre,
+                "bpm_range": list(tmpl.bpm_range),
+                "sections": len(tmpl.structure),
+                "total_bars": tmpl.total_bars,
+                "default_key": tmpl.default_key,
+                "description": tmpl.description,
+            })
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        click.secho(f"\n  Arrangement Templates ({len(keys)}):\n", fg="cyan", bold=True)
+        for key in keys:
+            tmpl = TEMPLATE_REGISTRY[key]
+            sections_str = " → ".join(tmpl.section_names)
+            click.echo(f"  {key}")
+            click.echo(f"    {tmpl.name} [{tmpl.genre}] — BPM {tmpl.bpm_range[0]}-{tmpl.bpm_range[1]}")
+            click.echo(f"    {sections_str}")
+            click.echo(f"    {tmpl.total_bars} bars, key: {tmpl.default_key}")
+            click.echo()
+
+
+@main.command("apply-template")
+@click.argument("template_name")
+@click.option("--bpm", type=float, default=120.0, help="BPM")
+@click.option("--key", "musical_key", type=str, default="C", help="Musical key")
+@click.option("--output", "-o", type=click.Path(path_type=Path), default=None, help="Output YAML path")
+def apply_template(template_name: str, bpm: float, musical_key: str, output: Path | None) -> None:
+    """Apply an arrangement template to generate a VCMix YAML project (Phase 12)."""
+    import vcmix
+    from vcmix.arrangement.templates import get_template
+    from vcmix.arrangement.template_applier import TemplateApplier
+
+    template = get_template(template_name)
+    if template is None:
+        click.secho(f"✗ Template not found: {template_name}", fg="red")
+        click.echo("  Use 'vcmix templates' to list available templates.")
+        sys.exit(vcmix.EXIT_CONFIG_ERROR)
+
+    try:
+        applier = TemplateApplier()
+        yaml_str = applier.apply(template, bpm=bpm, key=musical_key)
+
+        if output is None:
+            output = Path(f"{template_name}_{musical_key}_{int(bpm)}bpm.yaml")
+
+        output.write_text(yaml_str, encoding="utf-8")
+
+        click.secho(f"✔ Applied template: {template.name}", fg="green")
+        click.echo(f"  BPM: {bpm}, Key: {musical_key}")
+        click.echo(f"  Sections: {len(template.structure)}, Total bars: {template.total_bars}")
+        click.echo(f"  Output → {output}")
+
+    except Exception as e:
+        click.secho(f"✗ Template application failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("mix-presets")
+@click.option("--genre", type=str, default=None, help="Filter by genre")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def list_mix_presets_cmd(genre: str | None, as_json: bool) -> None:
+    """List available mix presets (Phase 12)."""
+    from vcmix.presets.mix_presets import MIX_PRESET_REGISTRY, list_mix_presets, list_mix_presets_by_genre
+
+    keys = list_mix_presets_by_genre(genre) if genre else list_mix_presets()
+
+    if as_json:
+        result = []
+        for key in keys:
+            preset = MIX_PRESET_REGISTRY[key]
+            result.append({
+                "key": key,
+                "name": preset.name,
+                "genre": preset.genre,
+                "description": preset.description,
+                "track_types": preset.track_types,
+                "master_target_lufs": preset.master.target_lufs,
+            })
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        click.secho(f"\n  Mix Presets ({len(keys)}):\n", fg="cyan", bold=True)
+        for key in keys:
+            preset = MIX_PRESET_REGISTRY[key]
+            track_types_str = ", ".join(preset.track_types)
+            click.echo(f"  {key}")
+            click.echo(f"    {preset.name} [{preset.genre}]")
+            click.echo(f"    {preset.description}")
+            click.echo(f"    Tracks: {track_types_str}")
+            click.echo(f"    Master target: {preset.master.target_lufs} LUFS")
+            click.echo()
