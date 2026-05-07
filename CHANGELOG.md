@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.18.0] - 2026-05-08
+
+### Added
+#### Phase 16: 跨平台打包
+- pyproject.toml完善+wheel构建成功（274K）
+
+#### Docker镜像
+- Dockerfile+docker-compose+.dockerignore
+
+#### GitHub Actions CI矩阵
+- 3OS×4Python版本+PyPI发布+Docker GHCR+Tauri桌面构建
+
+#### Tauri桌面应用配置
+- Windows NSIS/macOS DMG/Linux AppImage+deb
+
+#### CLI serve命令
+- vcmix serve --host --port --reload
+
+### Tests
+- 63新测试
+- 总计1346测试全绿
+
 ## [0.17.0] - 2026-05-18
 
 ### Added
