@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
             "AI-native open-source DAW — REST API + WebSocket. "
             "Phase 9: MIDI, Automation, Chain Presets. Shares the same engine as CLI."
         ),
-        version="0.10.0",
+        version="0.9.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
     )
@@ -85,7 +85,7 @@ def create_app() -> FastAPI:
     # ── Health check ──
     @app.get("/api/health", tags=["system"])
     async def health():
-        return {"status": "ok", "version": "0.10.0"}
+        return {"status": "ok", "version": "0.9.0"}
 
     return app
 

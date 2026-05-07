@@ -5,6 +5,10 @@ Manages built-in and user-defined effect chain presets.
 Phase 9: Extended with chain preset endpoints.
 
 Uses the same preset manager and chain preset manager as the CLI.
+
+IMPORTANT: More specific routes (/presets/chains, /presets/chains/{name})
+must be registered BEFORE the catch-all /presets/{name} route to avoid
+route shadowing in FastAPI.
 """
 
 from __future__ import annotations
@@ -14,10 +18,12 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from vcmix.presets.manager import get_preset, list_presets, save_preset
 from vcmix.presets.chain_presets import (
     ChainPresetManager,
+    get_chain_preset,
+    list_chain_presets,
 )
-from vcmix.presets.manager import get_preset, list_presets, save_preset
 
 router = APIRouter()
 
@@ -43,43 +49,12 @@ class ApplyChainRequest(BaseModel):
 _chain_manager = ChainPresetManager()
 
 
-# ── Single-effect Preset Endpoints ───────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════
+# IMPORTANT: More specific routes MUST come before /presets/{name}
+# Otherwise FastAPI matches {name}="chains" before the specific route.
+# ═══════════════════════════════════════════════════════════════════════════
 
-@router.get("/presets")
-async def list_all_presets():
-    """List all available presets."""
-    names = list_presets()
-    preset_list = []
-    for name in names:
-        chain = get_preset(name)
-        preset_list.append({
-            "name": name,
-            "effect_count": len(chain) if chain else 0,
-        })
-    return {"presets": preset_list, "count": len(preset_list)}
-
-
-@router.get("/presets/{name}")
-async def get_preset_detail(name: str):
-    """Get the full effect chain for a specific preset."""
-    chain = get_preset(name)
-    if chain is None:
-        raise HTTPException(status_code=404, detail=f"Preset not found: {name}")
-
-    return {"name": name, "effects": chain, "effect_count": len(chain)}
-
-
-@router.post("/presets")
-async def create_preset(request: SavePresetRequest):
-    """Save a custom preset."""
-    try:
-        path = save_preset(request.name, request.effects)
-        return {"name": request.name, "saved": True, "path": str(path)}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-# ── Chain Preset Endpoints (Phase 9) ────────────────────────────────────
+# ── Chain Preset Endpoints (Phase 9) — MUST be before /presets/{name} ───
 
 @router.get("/presets/chains")
 async def list_chain_presets_endpoint():
@@ -155,3 +130,39 @@ async def apply_chain_preset(name: str, request: ApplyChainRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Apply error: {e}")
+
+
+# ── Single-effect Preset Endpoints ───────────────────────────────────────
+
+@router.get("/presets")
+async def list_all_presets():
+    """List all available presets."""
+    names = list_presets()
+    preset_list = []
+    for name in names:
+        chain = get_preset(name)
+        preset_list.append({
+            "name": name,
+            "effect_count": len(chain) if chain else 0,
+        })
+    return {"presets": preset_list, "count": len(preset_list)}
+
+
+@router.get("/presets/{name}")
+async def get_preset_detail(name: str):
+    """Get the full effect chain for a specific preset."""
+    chain = get_preset(name)
+    if chain is None:
+        raise HTTPException(status_code=404, detail=f"Preset not found: {name}")
+
+    return {"name": name, "effects": chain, "effect_count": len(chain)}
+
+
+@router.post("/presets")
+async def create_preset(request: SavePresetRequest):
+    """Save a custom preset."""
+    try:
+        path = save_preset(request.name, request.effects)
+        return {"name": request.name, "saved": True, "path": str(path)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
