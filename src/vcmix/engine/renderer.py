@@ -17,6 +17,12 @@ Phase 2 additions:
     - A/B comparison rendering
     - Gain staging chain analysis (AutoFix v2)
 
+Phase 4 additions:
+    - DataStream integration for closed-loop control rendering
+    - Real-time track level / effect delta / master level events
+    - Warning detection (clipping, low SNR, sibilance)
+    - Decision events (auto-fix applied)
+
 Features:
     - --report mode: emit RMS/Peak/spectrum after each effect
     - --stream log|json: real-time structured progress output
@@ -35,8 +41,9 @@ Dependencies: numpy, soundfile, vcmix.config, vcmix.audio, vcmix.plugins
 from __future__ import annotations
 
 import json
+import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -45,9 +52,15 @@ import numpy as np
 from vcmix.audio.io import read_audio, write_audio
 from vcmix.audio.mixer import Mixer
 from vcmix.engine.analyzer import Analyzer
-from vcmix.engine.autofix import AutoFix
+from vcmix.engine.autofix import AutoFix, ChainAnalysis
 from vcmix.engine.bus import BusManager
 from vcmix.plugins.registry import PluginRegistry
+from vcmix.stream.emitter import DataStream, EventLevel
+
+# ── Thresholds for warning detection ──────────────────────────────────────
+_CLIP_THRESHOLD_DB = -1.0       # Peak above this = clipping warning
+_LOW_SNR_THRESHOLD_DB = -36.0   # RMS below this = low SNR warning
+_SIBILANCE_THRESHOLD = 0.15     # Sibilance ratio above this = de-ess needed
 
 
 @dataclass
@@ -70,6 +83,15 @@ class Renderer:
     stream: str = "log"
     ab_mode: bool = False
     ab_diff: bool = False
+    # Phase 4: DataStream instance for real-time closed-loop data
+    data_stream: DataStream = field(default=None, init=False, repr=False)  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        """Initialize DataStream based on stream format."""
+        if self.stream == "json":
+            self.data_stream = DataStream(format="json")
+        else:
+            self.data_stream = DataStream(format="dict")
 
     def _emit(self, step: str, data: dict[str, Any]) -> None:
         """Emit progress data in the configured stream format."""
@@ -80,6 +102,107 @@ class Renderer:
         else:  # log
             msg = f"[{step}] " + " | ".join(f"{k}={v}" for k, v in data.items())
             print(msg, flush=True)
+
+    # ── DataStream helper methods (Phase 4) ───────────────────────────────
+
+    def _db(self, linear: float) -> float:
+        """Convert linear value to dBFS, returning -120 for near-zero."""
+        if linear > 1e-10:
+            return float(20 * np.log10(linear))
+        return -120.0
+
+    def _emit_track_level(self, track_name: str, audio: np.ndarray, sr: int) -> None:
+        """Emit per-track level data via DataStream."""
+        analyzer = Analyzer(sample_rate=sr)
+        rms = analyzer.compute_rms(audio)
+        peak = analyzer.compute_peak(audio)
+        true_peak = analyzer.compute_true_peak(audio)
+        self.data_stream.emit_track_level(
+            track_name,
+            rms_db=self._db(rms),
+            peak_db=self._db(peak),
+            true_peak_db=self._db(true_peak),
+        )
+
+    def _emit_effect_delta(
+        self,
+        track_name: str,
+        effect_name: str,
+        before: np.ndarray,
+        after: np.ndarray,
+        sr: int,
+    ) -> None:
+        """Emit per-effect before/after analysis via DataStream."""
+        analyzer = Analyzer(sample_rate=sr)
+        before_rms = analyzer.compute_rms(before)
+        after_rms = analyzer.compute_rms(after)
+        before_peak = analyzer.compute_peak(before)
+        after_peak = analyzer.compute_peak(after)
+        delta_db = self._db(after_rms) - self._db(before_rms) if before_rms > 1e-10 else 0.0
+        self.data_stream.emit_effect_delta(
+            track_name,
+            effect_name,
+            before_rms=self._db(before_rms),
+            after_rms=self._db(after_rms),
+            before_peak=self._db(before_peak),
+            after_peak=self._db(after_peak),
+            delta_db=delta_db,
+        )
+
+    def _emit_master_level(self, audio: np.ndarray, sr: int) -> None:
+        """Emit master bus level data via DataStream."""
+        analyzer = Analyzer(sample_rate=sr)
+        rms = analyzer.compute_rms(audio)
+        peak = analyzer.compute_peak(audio)
+        true_peak = analyzer.compute_true_peak(audio)
+        self.data_stream.emit_master_level(
+            rms_db=self._db(rms),
+            peak_db=self._db(peak),
+            true_peak_db=self._db(true_peak),
+        )
+
+    def _check_warnings(
+        self,
+        track_name: str,
+        audio: np.ndarray,
+        sr: int,
+    ) -> None:
+        """Check for clipping, low SNR, and sibilance warnings."""
+        analyzer = Analyzer(sample_rate=sr)
+        rms = analyzer.compute_rms(audio)
+        peak = analyzer.compute_peak(audio)
+        sibilance = analyzer.compute_sibilance(audio)
+
+        rms_db = self._db(rms)
+        peak_db = self._db(peak)
+
+        # Clipping detection
+        if peak_db > _CLIP_THRESHOLD_DB:
+            self.data_stream.emit_warning(
+                track_name,
+                "clipping",
+                f"Peak {peak_db:.1f} dBFS exceeds {_CLIP_THRESHOLD_DB:.1f} dBFS — clip risk",
+            )
+
+        # Low SNR detection
+        if rms_db < _LOW_SNR_THRESHOLD_DB and rms_db > -120.0:
+            self.data_stream.emit_warning(
+                track_name,
+                "low_snr",
+                f"RMS {rms_db:.1f} dBFS below {_LOW_SNR_THRESHOLD_DB:.1f} dBFS — poor SNR",
+            )
+
+        # Sibilance detection
+        if sibilance > _SIBILANCE_THRESHOLD:
+            sib_db = float(20 * np.log10(sibilance)) if sibilance > 1e-10 else -120.0
+            self.data_stream.emit_sibilance(track_name, sib_db)
+            self.data_stream.emit_warning(
+                track_name,
+                "sibilance",
+                f"Sibilance ratio {sibilance:.3f} exceeds {_SIBILANCE_THRESHOLD:.2f} — de-ess needed",
+            )
+
+    # ── Legacy analysis method ────────────────────────────────────────────
 
     def _analyze_step(self, audio: np.ndarray, sr: int, label: str) -> dict[str, Any]:
         """Run analyzer on audio and return metrics dict."""
@@ -98,6 +221,8 @@ class Renderer:
             "sibilance_db": round(sibilance, 2),
             "spectrum_bands": len(spectrum),
         }
+
+    # ── Track rendering ───────────────────────────────────────────────────
 
     def _render_track(
         self,
@@ -127,6 +252,9 @@ class Renderer:
 
         # Apply track volume
         audio = audio * track.volume
+
+        # Phase 4: Emit initial track level
+        self._emit_track_level(track.name, audio, sr)
 
         # Get the effect chain
         effects = getattr(track, chain_key, None) or track.effects
@@ -158,6 +286,9 @@ class Renderer:
             else:
                 processed = plugin.process(prev_audio, effect.params, sr)
 
+            # Phase 4: Emit effect delta (before/after each effect)
+            self._emit_effect_delta(track.name, effect.name, prev_audio, processed, sr)
+
             if self.report:
                 label = f"{track.name}/before_{effect.name}"
                 before = self._analyze_step(prev_audio, sr, label)
@@ -165,6 +296,12 @@ class Renderer:
                 self._emit("4_report", {"before": before, "after": after})
 
             prev_audio = processed
+
+        # Phase 4: Check for warnings on rendered track
+        self._check_warnings(track.name, prev_audio, sr)
+
+        # Phase 4: Emit final track level after all effects
+        self._emit_track_level(track.name, prev_audio, sr)
 
         # Auto-fix gain staging if requested
         if self.auto_fix:
@@ -176,6 +313,13 @@ class Renderer:
                     "track": track.name,
                     "gain_db": adjustments["gain_db"]
                 })
+                # Phase 4: Emit decision event for auto-fix
+                self.data_stream.emit_decision(
+                    track.name,
+                    action="auto_fix_gain",
+                    params={"gain_db": adjustments["gain_db"]},
+                    reason=f"Auto-fix applied {adjustments['gain_db']:.1f} dB gain to hit target RMS",
+                )
 
         return prev_audio
 
@@ -194,6 +338,9 @@ class Renderer:
         project = self.config
         sr = project.sample_rate
         project_dir = getattr(project, "_project_dir", Path("."))
+
+        # Phase 4: Start the DataStream timer
+        self.data_stream.start()
 
         # ── Step 1: Parse (already done) ──
         self._emit("1_parse", {"name": project.name, "bpm": project.bpm})
@@ -223,8 +370,7 @@ class Renderer:
         for track_name in render_order:
             track = next((t for t in project.tracks if t.name == track_name), None)
             if track is None or track.mute:
-                status = "muted" if track else "missing"
-                self._emit("4_render", {"track": track_name, "status": status})
+                self._emit("4_render", {"track": track_name, "status": "muted" if track else "missing"})
                 continue
 
             prev_audio = self._render_track(track, registry, sr, project_dir, rendered_tracks)
@@ -290,6 +436,9 @@ class Renderer:
         else:
             self._emit("5_mix", {"tracks": len(track_audios)})
 
+        # Phase 4: Emit master level after mix (before master effects)
+        self._emit_master_level(mixed, sr)
+
         # ── Step 6: Master insert chain ──
         prev_audio = mixed
         for effect in project.master.effects:
@@ -297,10 +446,18 @@ class Renderer:
             if plugin is None:
                 continue
             processed = plugin.process(prev_audio, effect.params, sr)
+
+            # Phase 4: Emit effect delta for master effects
+            self._emit_effect_delta("master", effect.name, prev_audio, processed, sr)
+
             if self.report:
                 after = self._analyze_step(processed, sr, f"master/{effect.name}")
                 self._emit("6_master_report", {"effect": effect.name, "analysis": after})
             prev_audio = processed
+
+        # Phase 4: Emit final master level + check warnings
+        self._emit_master_level(prev_audio, sr)
+        self._check_warnings("master", prev_audio, sr)
 
         self._emit("6_master", {"effects": len(project.master.effects)})
 
@@ -418,12 +575,8 @@ class Renderer:
 
             diff_rms = float(np.sqrt(np.mean(diff_audio ** 2)))
             diff_peak = float(np.max(np.abs(diff_audio)))
-            diff_report["diff_rms_db"] = round(
-                20 * np.log10(diff_rms) if diff_rms > 0 else -120.0, 2
-            )
-            diff_report["diff_peak_db"] = round(
-                20 * np.log10(diff_peak) if diff_peak > 0 else -120.0, 2
-            )
+            diff_report["diff_rms_db"] = round(20 * np.log10(diff_rms) if diff_rms > 0 else -120.0, 2)
+            diff_report["diff_peak_db"] = round(20 * np.log10(diff_peak) if diff_peak > 0 else -120.0, 2)
 
             self._emit("7ab_diff", diff_report)
 
@@ -474,3 +627,7 @@ class Renderer:
         order.extend(remaining)
 
         return order
+
+    def get_stream_events(self) -> list[Any]:
+        """Get all accumulated DataStream events (for format='dict')."""
+        return self.data_stream.get_events()

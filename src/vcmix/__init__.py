@@ -15,6 +15,9 @@ Usage (CLI):
     vcmix render project.yaml              # render mix
     vcmix render project.yaml --report     # with analysis report
     vcmix render project.yaml --stream json # JSON structured output
+    vcmix render project.yaml --ab         # A/B comparison rendering
+    vcmix render project.yaml --ab --diff  # A/B with diff analysis
+    vcmix render project.yaml --auto-fix   # with gain staging auto-fix
     vcmix validate project.yaml            # validate config
     vcmix graph project.yaml               # signal routing graph
     vcmix analyze track.wav                # audio analysis
@@ -29,10 +32,11 @@ Usage (Python API):
 
 Module Map:
     config/parser.py   — YAML parsing + pydantic validation + BPM note conversion
-    engine/renderer.py — 7-step rendering pipeline
+    engine/renderer.py — Rendering pipeline (insert+sends+sidechain+AB)
     engine/analyzer.py — RMS/Peak/spectrum/sibilance/RT60 analysis
-    engine/autofix.py  — Gain staging auto-correction
-    plugins/adapter.py — PluginAdapter base class
+    engine/autofix.py  — Gain staging auto-correction (v2: chain analysis)
+    engine/bus.py      — Send/Return bus system
+    plugins/adapter.py — PluginAdapter base class + sidechain support
     plugins/vc_plugins.py — VC plugin CLI subprocess adapter
     plugins/registry.py  — Plugin registry by name
     audio/io.py        — WAV/FLAC/MP3 read/write (soundfile + ffmpeg)
@@ -52,10 +56,10 @@ Standardized Exit Codes (AI Agent processable):
     6  Missing dependency
 
 Dependencies: numpy, soundfile, pyyaml, pydantic, click, rich, librosa
-Version: 0.1.0 (Phase 1 MVP)
+Version: 0.2.0 (Phase 2)
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "youbanzhishi"
 
 # ── Standardized exit codes for AI Agent programmatic handling ──

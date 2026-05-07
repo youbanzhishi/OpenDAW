@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vcmix"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI-native open-source DAW — YAML-driven, cross-platform, AI Agent friendly"
 readme = "README.md"
 license = {text = "MIT"}
