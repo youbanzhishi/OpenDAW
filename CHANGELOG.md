@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.9.0] - 2026-05-08
+
+### Added
+- 38个端到端集成测试（tests/integration/test_e2e.py）
+  - Render/Validate/Graph/Analyze/Automix/Arrangement/Presets/CLI基本/Exit Codes 9个测试类
+- Tauri桌面壳设计文档（Phase 8.5）
+
+### Fixed
+- arrangement CLI命令6个Bug修复：
+  - ArrangementExtractor不接受bpm参数
+  - extract()需要音频数据而非文件路径
+  - Section字段名section_type→name, confidence→energy_level
+  - SectionMixParams字段名gain_offset_db→gain_db
+  - ArrangementStrategy.from_sections()不接受bpm参数
+
 ## v0.8.0 — Phase 8 Web UI (2025-05-08)
 
 ### Phase 8: Web UI

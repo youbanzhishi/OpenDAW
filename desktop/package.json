@@ -1,0 +1,17 @@
+{
+  "name": "vcmix-desktop",
+  "version": "0.8.5",
+  "description": "VCMix — AI-native open-source DAW desktop application (Tauri shell)",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  }
+}
