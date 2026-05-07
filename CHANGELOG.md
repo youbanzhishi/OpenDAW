@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.16.0] - 2026-05-17
+
+### Added
+#### Phase 14: VST3 Hosting深化
+- C++ Host完整实现+参数自动化+状态序列化+MIDI处理
+
+#### 实时音频引擎
+- RealtimeEngine+AudioDriver+Transport
+- 多轨实时混音+播放/暂停/seek/loop/录音
+
+#### VST3 Python接口深化
+- ctypes桥接+自动mock回退+参数枚举+预设管理+状态快照undo/redo
+
+#### VST3插件扫描器V2
+- JSON缓存+增量扫描+跨平台路径+AU stub
+
+### Tests
+- 194新测试（106实时引擎+88 VST3）
+- 总计1100测试全绿
+
 ## [0.15.0] - 2026-05-16
 
 ### Added
