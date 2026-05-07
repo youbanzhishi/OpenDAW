@@ -82,10 +82,14 @@ def main() -> None:
 )
 @click.option("--ab", is_flag=True, help="Render A/B comparison versions (Phase 2)")
 @click.option("--diff", is_flag=True, help="Include difference analysis in A/B mode")
+@click.option("--parallel", type=int, default=1, help="Parallel track rendering workers (Phase 10)")
+@click.option("--cache-size", type=int, default=500, help="Audio cache size in MB (Phase 10)")
+@click.option("--incremental", is_flag=True, help="Only re-render changed tracks (Phase 10)")
 @click.option("--arrangement-aware", is_flag=True, help="Apply arrangement-aware mixing (Phase 7)")
 def render(
     project: Path, report: bool, auto_fix: bool, stream: str,
-    ab: bool, diff: bool, arrangement_aware: bool,
+    ab: bool, diff: bool, parallel: int, cache_size: int, incremental: bool,
+    arrangement_aware: bool,
 ) -> None:
     """Render a mix project from YAML config."""
     import vcmix
@@ -101,10 +105,18 @@ def render(
         engine = Renderer(
             cfg, report=report, auto_fix=auto_fix, stream=stream,
             ab_mode=ab, ab_diff=diff,
+            parallel=parallel, cache_size_mb=cache_size,
+            incremental=incremental,
         )
         if arrangement_aware:
             engine.arrangement_aware = True
             click.secho("  Arrangement-aware mixing enabled", fg="cyan")
+        if parallel > 1:
+            click.secho(f"  Parallel rendering: {parallel} workers", fg="cyan")
+        if incremental:
+            click.secho("  Incremental rendering enabled", fg="cyan")
+        if cache_size != 500:
+            click.secho(f"  Audio cache: {cache_size} MB", fg="cyan")
         output_path = engine.run()
 
         if stream != "json":

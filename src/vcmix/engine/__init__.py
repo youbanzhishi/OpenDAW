@@ -9,15 +9,18 @@ This subpackage provides:
     - AutoMixer: Intelligent auto-mixing from dry vocal analysis (Phase 4)
                   + DataStream closed-loop control (Phase 6)
     - ReferenceMatcher: Reference track spectral/dynamic matching (Phase 6)
+    - AudioCache: LRU audio file cache for performance optimization (Phase 10)
+    - IncrementalRenderer: Incremental rendering with cache (Phase 10)
 
 Usage:
     from vcmix.engine import Renderer, Analyzer, AutoFix, AutoMixer
-    from vcmix.engine import ReferenceMatcher
+    from vcmix.engine import ReferenceMatcher, AudioCache
 
 Dependencies: numpy, soundfile
 """
 
 from vcmix.engine.analyzer import Analyzer
+from vcmix.engine.audio_cache import AudioCache
 from vcmix.engine.autofix import AutoFix
 from vcmix.engine.automix import (
     AdjustmentSuggestion,
@@ -27,6 +30,7 @@ from vcmix.engine.automix import (
     TrackMixState,
 )
 from vcmix.engine.bus import BusManager, SendReturnBus
+from vcmix.engine.incremental import IncrementalRenderer
 from vcmix.engine.reference_matcher import (
     MatchDiff,
     ReferenceAdjustment,
@@ -50,4 +54,6 @@ __all__ = [
     "MatchDiff",
     "ReferenceAdjustment",
     "SpectralFeatures",
+    "AudioCache",
+    "IncrementalRenderer",
 ]

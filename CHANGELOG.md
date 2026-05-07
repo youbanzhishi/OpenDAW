@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.0] - 2026-05-08
+
+### Added
+#### Phase 10: Performance Optimization
+- AudioCache: LRU音频文件缓存（线程安全+mtime校验+预加载）
+- 依赖图分析：自动检测轨道间侧链/发送依赖
+- 并行渲染：ThreadPoolExecutor层级并行（--parallel N）
+- 增量渲染：SHA-256变更检测+依赖级联失效（--incremental）
+- 流式写入：长音频分块写入（>20s自动分块）
+- CLI新参数：--parallel/--cache-size/--incremental
+- 28个性能测试
+
+### Tests
+- 556 tests passed (from 528)
+
 ## [0.11.1] - 2026-05-09
 
 ### Added

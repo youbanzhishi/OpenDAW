@@ -34,16 +34,26 @@ Phase 9 additions:
     - Automation curve parameter application (gain + plugin params)
     - Chain preset integration for effect chains
 
+Phase 10 additions (Performance Optimization):
+    - Track-level parallel rendering (ThreadPoolExecutor)
+    - AudioCache: LRU cache to avoid redundant file reads
+    - Dependency graph analysis with topological level grouping
+    - Streaming write for large projects
+    - Integration with IncrementalRenderer for incremental mode
+
 Features:
     - --report mode: emit RMS/Peak/spectrum after each effect
     - --stream log|json: real-time structured progress output
     - --auto-fix: automatic gain staging correction
     - --ab: render both A and B effect chains
     - --ab --diff: include difference analysis
+    - --parallel N: render N tracks in parallel (default 1 = serial)
+    - --cache-size MB: audio cache size limit (default 500)
+    - --incremental: only re-render changed tracks
 
 Usage:
     from vcmix.engine.renderer import Renderer
-    renderer = Renderer(config, report=True, stream="json")
+    renderer = Renderer(config, report=True, stream="json", parallel=4)
     output_path = renderer.run()
 
 Dependencies: numpy, soundfile, vcmix.config, vcmix.audio, vcmix.plugins
@@ -53,6 +63,7 @@ from __future__ import annotations
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -64,6 +75,7 @@ from vcmix.audio.mixer import Mixer
 from vcmix.automation.automation_engine import AutomationEngine
 from vcmix.engine.analyzer import Analyzer
 from vcmix.engine.arrangement_strategy import ArrangementStrategy
+from vcmix.engine.audio_cache import AudioCache
 from vcmix.engine.autofix import AutoFix
 from vcmix.engine.bus import BusManager
 
@@ -140,6 +152,10 @@ class Renderer:
         ab_mode: Enable A/B comparison rendering (Phase 2).
         ab_diff: Include difference analysis in A/B mode (Phase 2).
         arrangement_aware: Enable arrangement-aware rendering (Phase 7).
+        parallel: Number of parallel track renderers (Phase 10).
+            1 = serial (default), 2+ = parallel.
+        cache_size_mb: Audio cache size in MB (Phase 10, default 500).
+        incremental: Enable incremental rendering (Phase 10).
     """
 
     config: Any  # ProjectConfig
@@ -150,11 +166,17 @@ class Renderer:
     ab_diff: bool = False
     # Phase 7: Arrangement-aware rendering
     arrangement_aware: bool = False
+    # Phase 10: Performance optimization
+    parallel: int = 1
+    cache_size_mb: int = 500
+    incremental: bool = False
     # Phase 4: DataStream instance for real-time closed-loop data
     data_stream: DataStream = field(default=None, init=False, repr=False)  # type: ignore[assignment]
     # Phase 7: Arrangement strategy (populated in __post_init__ if arrangement_aware)
     _arrangement_strategy: Any = field(default=None, init=False, repr=False)
     _arrangement_sections: list = field(default_factory=list, init=False, repr=False)
+    # Phase 10: Audio cache
+    _audio_cache: AudioCache = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize DataStream based on stream format and arrangement strategy."""
@@ -165,6 +187,8 @@ class Renderer:
         # Phase 7: Initialize arrangement strategy if arrangement_aware mode
         if self.arrangement_aware:
             self._init_arrangement_strategy()
+        # Phase 10: Initialize audio cache
+        self._audio_cache = AudioCache(max_size_mb=self.cache_size_mb)
 
     # ── Arrangement-aware rendering methods (Phase 7) ────────────────────
 
@@ -408,6 +432,68 @@ class Renderer:
             "spectrum_bands": len(spectrum),
         }
 
+    # ── Phase 10: Dependency graph analysis ──────────────────────────────
+
+    def _build_dependency_graph(self, project: Any) -> dict[str, set[str]]:
+        """
+        Build a track dependency graph based on sidechain and send routing.
+
+        Returns:
+            Dict mapping track_name -> set of track_names it depends on.
+            A track depends on another if it uses it as a sidechain source
+            or sends audio to a bus that the other track also uses.
+        """
+        track_names = {t.name for t in project.tracks}
+        deps: dict[str, set[str]] = {name: set() for name in track_names}
+
+        for track in project.tracks:
+            # Sidechain dependencies
+            for effect in track.effects:
+                if effect.sidechain is not None and effect.sidechain in track_names:
+                    deps[track.name].add(effect.sidechain)
+            # Send dependencies (tracks that send to buses need bus processing)
+            # This doesn't create inter-track deps, but marks the track as having sends
+            # (send processing happens after all tracks are rendered)
+
+        return deps
+
+    def _topological_levels(self, project: Any) -> list[list[str]]:
+        """
+        Group tracks into topological levels for parallel rendering.
+
+        Tracks at the same level have no mutual dependencies and can
+        be rendered in parallel. Level 0 tracks have no dependencies,
+        level 1 tracks depend only on level 0, etc.
+
+        Returns:
+            List of levels, each level is a list of track names.
+        """
+        deps = self._build_dependency_graph(project)
+        track_names = [t.name for t in project.tracks]
+
+        # Build in-degree map
+        in_degree: dict[str, int] = {name: len(deps[name]) for name in track_names}
+
+        levels: list[list[str]] = []
+        remaining = set(track_names)
+
+        while remaining:
+            # All tracks with in_degree 0 can be in this level
+            level = [n for n in track_names if n in remaining and in_degree[n] == 0]
+            if not level:
+                # Cycle detected — put remaining in one level
+                level = list(remaining)
+            levels.append(level)
+            for n in level:
+                remaining.discard(n)
+                # Decrease in-degree for dependents
+                for other in remaining:
+                    if n in deps.get(other, set()):
+                        deps[other].discard(n)
+                        in_degree[other] = len(deps[other])
+
+        return levels
+
     # ── Track rendering ───────────────────────────────────────────────────
 
     def _render_track(
@@ -425,6 +511,8 @@ class Renderer:
         Phase 9: Supports MIDI tracks (type='midi') rendered via NoteScheduler,
         and audio tracks loaded from file. Automation curves are applied
         after the initial audio source is loaded/generated.
+
+        Phase 10: Uses AudioCache for audio file reads when available.
 
         Args:
             track: TrackConfig instance.
@@ -447,8 +535,12 @@ class Renderer:
         elif track_type == 'sampler':
             audio = self._render_sampler_track(track, sr, project_dir)
         else:
+            # Phase 10: Use AudioCache for file reads
             track_path = project_dir / track.file
-            audio, audio_sr = read_audio(track_path)
+            if self._audio_cache is not None:
+                audio, audio_sr = self._audio_cache.load(track_path)
+            else:
+                audio, audio_sr = read_audio(track_path)
 
         # Apply track volume
         audio = audio * track.volume
@@ -643,7 +735,11 @@ class Renderer:
                 )
 
             input_path = project_dir / track.file
-            input_audio, _ = read_audio(input_path)
+            # Phase 10: Use AudioCache for VST3 input reads
+            if self._audio_cache is not None:
+                input_audio, _ = self._audio_cache.load(input_path)
+            else:
+                input_audio, _ = read_audio(input_path)
 
             self._emit("4_vst3_render", {
                 "track": track.name,
@@ -910,9 +1006,157 @@ class Renderer:
             beat,
         )
 
+    # ── Phase 10: Parallel track rendering ──────────────────────────────
+
+    def _render_tracks_parallel(
+        self,
+        project: Any,
+        registry: PluginRegistry,
+        sr: int,
+        project_dir: Path,
+        max_workers: int,
+    ) -> dict[str, np.ndarray]:
+        """
+        Render tracks in parallel using topological level grouping.
+
+        Tracks at the same dependency level are rendered concurrently.
+        Tracks with sidechain dependencies wait for their source tracks.
+
+        Args:
+            project: ProjectConfig.
+            registry: Plugin registry.
+            sr: Project sample rate.
+            project_dir: Project directory.
+            max_workers: Max number of parallel workers.
+
+        Returns:
+            Dict of track_name -> rendered audio.
+        """
+        levels = self._topological_levels(project)
+        rendered_tracks: dict[str, np.ndarray] = {}
+
+        # Lock for thread-safe writes to rendered_tracks
+        import threading
+        lock = threading.Lock()
+
+        for level_idx, level in enumerate(levels):
+            self._emit("4_parallel_level", {
+                "level": level_idx,
+                "tracks": level,
+                "workers": min(max_workers, len(level)),
+            })
+
+            if len(level) == 1 or max_workers <= 1:
+                # Serial rendering for this level
+                for track_name in level:
+                    track = next((t for t in project.tracks if t.name == track_name), None)
+                    if track is None or track.mute:
+                        status = "muted" if track else "missing"
+                        self._emit("4_render", {"track": track_name, "status": status})
+                        continue
+
+                    prev_audio = self._render_track(
+                        track, registry, sr, project_dir, rendered_tracks
+                    )
+                    rendered_tracks[track.name] = prev_audio
+                    self._emit("4_render", {"track": track.name, "status": "done"})
+            else:
+                # Parallel rendering for this level
+                with ThreadPoolExecutor(max_workers=min(max_workers, len(level))) as executor:
+                    futures = {}
+                    for track_name in level:
+                        track = next((t for t in project.tracks if t.name == track_name), None)
+                        if track is None or track.mute:
+                            status = "muted" if track else "missing"
+                            self._emit("4_render", {"track": track_name, "status": status})
+                            continue
+
+                        # Note: rendered_tracks is shared but only read (not written)
+                        # by worker threads; results are collected after all futures complete
+                        future = executor.submit(
+                            self._render_track,
+                            track, registry, sr, project_dir, dict(rendered_tracks),
+                        )
+                        futures[future] = track
+
+                    # Collect results
+                    for future in as_completed(futures):
+                        track = futures[future]
+                        try:
+                            result = future.result()
+                            with lock:
+                                rendered_tracks[track.name] = result
+                            self._emit("4_render", {"track": track.name, "status": "done"})
+                        except Exception as e:
+                            self._emit("4_render", {
+                                "track": track.name,
+                                "status": "error",
+                                "error": str(e),
+                            })
+                            raise
+
+        return rendered_tracks
+
+    # ── Phase 10: Streaming write ──────────────────────────────────────
+
+    def _write_streaming(
+        self,
+        audio: np.ndarray,
+        output_path: Path,
+        sr: int,
+        chunk_seconds: float = 10.0,
+    ) -> Path:
+        """
+        Write audio to file in chunks to reduce peak memory.
+
+        For very long projects, this avoids holding the entire output
+        in memory during write. Falls back to standard write_audio
+        for short audio.
+
+        Args:
+            audio: Audio array to write.
+            output_path: Output file path.
+            sr: Sample rate.
+            chunk_seconds: Seconds per chunk (default 10.0).
+
+        Returns:
+            Path to written file.
+        """
+        import soundfile as sf
+
+        chunk_samples = int(sr * chunk_seconds)
+        audio_flat = audio.flatten()
+
+        # For audio shorter than 2 chunks, just write normally
+        if len(audio_flat) < chunk_samples * 2:
+            return write_audio(audio, output_path, sr)
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Determine channels
+        if audio.ndim == 1:
+            channels = 1
+            data = audio_flat
+        else:
+            channels = audio.shape[0]
+            # Interleave for soundfile (samples, channels) format
+            data = audio.T
+
+        with sf.SoundFile(
+            str(output_path), 'w', sr, channels, subtype='FLOAT'
+        ) as f:
+            for i in range(0, len(data), chunk_samples):
+                chunk = data[i:i + chunk_samples]
+                f.write(chunk)
+
+        return output_path
+
     def run(self) -> Path:
         """
         Execute the full rendering pipeline.
+
+        Phase 10: Supports parallel rendering when self.parallel > 1,
+        and uses AudioCache for file reads.
 
         Returns:
             Path to the rendered output file.
@@ -921,6 +1165,12 @@ class Renderer:
             FileNotFoundError: If a track audio file doesn't exist.
             RuntimeError: If a plugin CLI execution fails.
         """
+        # Phase 10: Incremental rendering mode
+        if self.incremental:
+            from vcmix.engine.incremental import IncrementalRenderer
+            inc_renderer = IncrementalRenderer(self)
+            return inc_renderer.run()
+
         t0 = time.time()
         project = self.config
         sr = project.sample_rate
@@ -958,29 +1208,52 @@ class Renderer:
 
         # ── Step 3: Build DAG ──
         has_sends = len(project.sends) > 0 or any(t.sends for t in project.tracks)
+        self._build_dependency_graph(project)
         self._emit("3_dag", {
             "topology": "send_return" if has_sends else "linear_insert_chain",
             "sends": len(project.sends),
+            "parallel_levels": len(self._topological_levels(project)),
         })
+
+        # Phase 10: Pre-load audio files into cache
+        if self._audio_cache is not None:
+            for track in project.tracks:
+                track_type = getattr(track, 'type', 'audio')
+                if track_type == 'audio':
+                    track_path = project_dir / track.file
+                    try:
+                        self._audio_cache.load(track_path)
+                    except Exception:
+                        pass
+            cache_info = self._audio_cache.stats()
+            self._emit("3_cache", {
+                "entries": cache_info["entries"],
+                "size_mb": cache_info["size_mb"],
+            })
 
         # ── Step 4: Render tracks ──
         registry = PluginRegistry()
 
-        # Determine render order: sidechain sources must be rendered first
-        render_order = self._resolve_render_order(project)
+        # Phase 10: Use parallel rendering if enabled
+        if self.parallel > 1:
+            rendered_tracks = self._render_tracks_parallel(
+                project, registry, sr, project_dir, self.parallel
+            )
+        else:
+            # Original serial rendering
+            render_order = self._resolve_render_order(project)
+            rendered_tracks: dict[str, np.ndarray] = {}
 
-        rendered_tracks: dict[str, np.ndarray] = {}
+            for track_name in render_order:
+                track = next((t for t in project.tracks if t.name == track_name), None)
+                if track is None or track.mute:
+                    status = "muted" if track else "missing"
+                    self._emit("4_render", {"track": track_name, "status": status})
+                    continue
 
-        for track_name in render_order:
-            track = next((t for t in project.tracks if t.name == track_name), None)
-            if track is None or track.mute:
-                status = "muted" if track else "missing"
-                self._emit("4_render", {"track": track_name, "status": status})
-                continue
-
-            prev_audio = self._render_track(track, registry, sr, project_dir, rendered_tracks)
-            rendered_tracks[track.name] = prev_audio
-            self._emit("4_render", {"track": track.name, "status": "done"})
+                prev_audio = self._render_track(track, registry, sr, project_dir, rendered_tracks)
+                rendered_tracks[track.name] = prev_audio
+                self._emit("4_render", {"track": track.name, "status": "done"})
 
         # ── Step 4.5: Process Send/Return buses ──
         bus_return_audio = np.zeros(1, dtype=np.float32)
@@ -1070,9 +1343,15 @@ class Renderer:
 
         elapsed = round(time.time() - t0, 2)
         final_analysis = self._analyze_step(prev_audio, sr, "final") if self.report else {}
+
+        # Phase 10: Include cache stats in output
+        cache_stats = self._audio_cache.stats() if self._audio_cache else {}
+
         self._emit("7_output", {
             "path": str(output_path),
             "elapsed_s": elapsed,
+            "parallel": self.parallel,
+            "cache_stats": cache_stats,
             **final_analysis,
         })
 
@@ -1213,3 +1492,9 @@ class Renderer:
     def get_stream_events(self) -> list[Any]:
         """Get all accumulated DataStream events (for format='dict')."""
         return self.data_stream.get_events()
+
+    def get_cache_stats(self) -> dict:
+        """Get audio cache statistics (Phase 10)."""
+        if self._audio_cache is not None:
+            return self._audio_cache.stats()
+        return {}
