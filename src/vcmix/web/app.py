@@ -1,5 +1,5 @@
 """
-app.py — FastAPI application for VCMix Web UI (Phase 11).
+app.py — FastAPI application for VCMix Web UI (Phase 13).
 
 Provides REST API endpoints that wrap the VCMix core engine,
 sharing the same rendering pipeline as the CLI — no code duplication.
@@ -45,6 +45,11 @@ Phase 11 — AI Agent API:
     WS   /ws/render/{id}       — Render progress WebSocket
     WS   /ws/ai/{id}           — AI decision WebSocket
 
+Phase 13 — Visualization API:
+    GET  /api/v1/waveform/{project_id}/{track} — Waveform peak data
+    GET  /api/v1/spectrum/{project_id}/{track}  — FFT spectrum data
+    GET  /api/v1/midi/{project_id}/{track}      — MIDI note data
+
 The frontend is served from /static/ (minimal HTML+JS, no framework).
 
 Usage:
@@ -63,6 +68,8 @@ from fastapi.staticfiles import StaticFiles
 
 from vcmix.web.routes import arrangement, automation, automix, midi, plugins, presets, render
 from vcmix.web.routes.agent_api import router as agent_router
+from vcmix.web.routes.waveform import router as waveform_router
+from vcmix.web.routes.piano_roll import router as piano_roll_router
 from vcmix.web.websocket import router as ws_router
 
 # ── Application Factory ──────────────────────────────────────────────────
@@ -73,9 +80,9 @@ def create_app() -> FastAPI:
         title="VCMix Web API",
         description=(
             "AI-native open-source DAW — REST API + WebSocket. "
-            "Phase 11: AI Agent API with project CRUD, rendering control, and AI mixing decisions."
+            "Phase 13: Native GUI deepening with waveform, spectrum, and piano roll visualization."
         ),
-        version="0.11.0",
+        version="0.13.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
     )
@@ -93,6 +100,10 @@ def create_app() -> FastAPI:
     # ── Register Phase 11 AI Agent API ──
     app.include_router(agent_router, prefix="/api/v1", tags=["agent-api"])
 
+    # ── Register Phase 13 Visualization API ──
+    app.include_router(waveform_router, prefix="/api/v1", tags=["visualization"])
+    app.include_router(piano_roll_router, prefix="/api/v1", tags=["visualization"])
+
     # ── Static frontend ──
     static_dir = Path(__file__).parent / "static"
     if static_dir.exists():
@@ -109,7 +120,7 @@ def create_app() -> FastAPI:
     # ── Health check ──
     @app.get("/api/health", tags=["system"])
     async def health():
-        return {"status": "ok", "version": "0.11.0"}
+        return {"status": "ok", "version": "0.13.0"}
 
     return app
 

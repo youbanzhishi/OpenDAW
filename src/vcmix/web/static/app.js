@@ -787,3 +787,139 @@ loadPlugins();
 loadPresets();
 loadSynths();
 loadChainPresets();
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── Phase 13: Waveform, Spectrum, Piano Roll Tabs ─────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Waveform Tab ──────────────────────────────────────────────────────
+let waveformView = null;
+
+function initWaveformTab() {
+    waveformView = new WaveformView('waveform-canvas');
+
+    document.getElementById('btn-wf-load').addEventListener('click', async () => {
+        const projectId = document.getElementById('wf-project-id').value.trim();
+        const track = document.getElementById('wf-track-name').value.trim();
+        if (!projectId || !track) {
+            showResult('waveform-info', 'Enter Project ID and Track name', 'invalid');
+            return;
+        }
+        try {
+            const resp = await fetch(`${API}/v1/waveform/${projectId}/${track}`);
+            const data = await resp.json();
+            if (resp.status !== 200) {
+                showResult('waveform-info', `❌ ${data.detail || 'Load failed'}`, 'invalid');
+                return;
+            }
+            waveformView.loadFromAPI(data);
+            showResult('waveform-info',
+                `✅ Loaded: ${data.sample_count} samples | ${data.duration_s.toFixed(2)}s | ${data.sample_rate}Hz | ${data.channels}ch`,
+                'valid');
+        } catch (err) {
+            showResult('waveform-info', `Load failed: ${err.message}`, 'invalid');
+        }
+    });
+
+    document.getElementById('btn-wf-demo').addEventListener('click', () => {
+        waveformView.loadSynthetic(15, 44100, 2000);
+        showResult('waveform-info', '🎵 Demo waveform loaded (15s, 44100Hz)', 'info');
+    });
+
+    document.getElementById('btn-wf-reset').addEventListener('click', () => {
+        waveformView.resetView();
+    });
+}
+
+// ── Spectrum Tab ──────────────────────────────────────────────────────
+let spectrumView = null;
+
+function initSpectrumTab() {
+    spectrumView = new SpectrumView('spectrum-canvas', 'spectrum-meters', 'spectrogram-canvas');
+
+    // Set canvas sizes
+    const specCanvas = document.getElementById('spectrum-canvas');
+    if (specCanvas) {
+        specCanvas.width = 700;
+        specCanvas.height = 250;
+    }
+    const sgCanvas = document.getElementById('spectrogram-canvas');
+    if (sgCanvas) {
+        sgCanvas.width = 900;
+        sgCanvas.height = 150;
+    }
+
+    document.getElementById('btn-sp-load').addEventListener('click', async () => {
+        const projectId = document.getElementById('sp-project-id').value.trim();
+        const track = document.getElementById('sp-track-name').value.trim();
+        if (!projectId || !track) {
+            return;
+        }
+        try {
+            const resp = await fetch(`${API}/v1/spectrum/${projectId}/${track}`);
+            const data = await resp.json();
+            if (resp.status !== 200) return;
+            spectrumView.loadFromAPI(data);
+        } catch (err) {
+            // silently ignore
+        }
+    });
+
+    document.getElementById('btn-sp-demo').addEventListener('click', () => {
+        spectrumView.loadSynthetic();
+    });
+
+    document.getElementById('btn-sp-clear').addEventListener('click', () => {
+        spectrumView.clearSpectrogram();
+    });
+}
+
+// ── Piano Roll Tab ────────────────────────────────────────────────────
+let pianoRollView = null;
+
+function initPianoRollTab() {
+    pianoRollView = new PianoRollView('piano-roll-canvas');
+
+    const prCanvas = document.getElementById('piano-roll-canvas');
+    if (prCanvas) {
+        prCanvas.width = 900;
+        prCanvas.height = 400;
+    }
+
+    document.getElementById('btn-pr-load').addEventListener('click', async () => {
+        const projectId = document.getElementById('pr-project-id').value.trim();
+        const track = document.getElementById('pr-track-name').value.trim();
+        if (!projectId || !track) {
+            showResult('piano-roll-info', 'Enter Project ID and Track name', 'invalid');
+            return;
+        }
+        try {
+            const resp = await fetch(`${API}/v1/midi/${projectId}/${track}`);
+            const data = await resp.json();
+            if (resp.status !== 200) {
+                showResult('piano-roll-info', `❌ ${data.detail || 'Load failed'}`, 'invalid');
+                return;
+            }
+            pianoRollView.loadFromAPI(data);
+            showResult('piano-roll-info',
+                `✅ ${data.note_count} notes | BPM: ${data.bpm} | Beats: ${data.total_beats.toFixed(1)}`,
+                'valid');
+        } catch (err) {
+            showResult('piano-roll-info', `Load failed: ${err.message}`, 'invalid');
+        }
+    });
+
+    document.getElementById('btn-pr-demo').addEventListener('click', () => {
+        pianoRollView.loadSynthetic();
+        showResult('piano-roll-info', '🎵 Demo MIDI data loaded (C major scale + chord + bass)', 'info');
+    });
+
+    document.getElementById('btn-pr-reset').addEventListener('click', () => {
+        pianoRollView.resetView();
+    });
+}
+
+// ── Initialize Phase 13 tabs ──────────────────────────────────────────
+initWaveformTab();
+initSpectrumTab();
+initPianoRollTab();

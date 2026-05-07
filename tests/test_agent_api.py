@@ -1053,7 +1053,7 @@ class TestIntegration:
         resp = client.get("/api/health")
         data = resp.json()
         assert data["status"] == "ok"
-        assert data["version"] == "0.11.0"
+        assert data["version"] == "0.13.0"
 
     def test_original_api_still_works(self, client):
         resp = client.get("/api/plugins")
