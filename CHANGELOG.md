@@ -47,3 +47,39 @@
 - AutoFix gain staging
 - CLI: render/validate/graph/analyze
 - 48 tests
+
+## [0.6.0] — 2026-05-07
+
+### Phase 6: AutoMix + Reference Matcher
+
+**AutoMixer Engine** (automix.py)
+- Analyze dry vocal audio → generate complete effect chain
+- `analyze_dry_vocal()`: RMS/Peak/Spectrum/Sibilance/Dynamic analysis
+- `generate_chain()`: Create effect chain from analysis results
+- `generate_yaml()`: Output complete VCMix YAML project config
+- `suggest()`: DataStream-based closed-loop parameter suggestions
+- `apply()`: Generate modified config without altering original
+- Rules: target RMS -18dBFS (vocal), dynamic range 6-12dB, true peak ≤-1dBFS
+
+**Reference Matcher** (reference_matcher.py)
+- `analyze_reference()`: Octave-band spectral + dynamic profiling
+- `compute_match()`: Per-band delta + similarity scoring
+- `generate_adjustments()`: EQ/Comp/Gain adjustment suggestions
+- 8-band spectral analysis (63Hz-8kHz octave bands)
+
+### Phase 7: Arrangement-Aware Mixing
+
+**ArrangementStrategy** (arrangement_strategy.py)
+- Section-level effect parameters (intro/verse/chorus/bridge/outro)
+- Crossfade interpolation at section boundaries
+- YAML export for arrangement strategy overrides
+- Default rules: intro=low reverb, chorus=high reverb+gain+2dB, outro=fade
+
+### Plugin Registry Update
+- Added VC-Stereo + VC-PitchShift (18 plugins total: 16 Gen1 + 2 Gen2)
+
+### Bug Fixes
+- automix: empty state no longer triggers false over-compression warning
+- engine/__init__.py: fixed import names for ReferenceMatcher
+
+249/249 tests passing
