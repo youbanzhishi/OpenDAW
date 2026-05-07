@@ -259,13 +259,13 @@ def _graph_mermaid(cfg) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def analyze(audio_file: Path, as_json: bool) -> None:
     """Analyze an audio file for RMS/Peak/spectrum/sibilance."""
+
     import vcmix
-    import numpy as np
 
     try:
         from vcmix.audio.io import read_audio
-        from vcmix.engine.analyzer import Analyzer
         from vcmix.audio.meter import Meter
+        from vcmix.engine.analyzer import Analyzer
 
         audio, sr = read_audio(audio_file)
         analyzer = Analyzer(sample_rate=sr)

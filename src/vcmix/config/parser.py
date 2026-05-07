@@ -39,7 +39,6 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
-
 # ── BPM Note-Value Conversion ──────────────────────────────────────────────
 
 _NOTE_RE = re.compile(r"^(\d+)/(\d+)([dt]?)\.?$")

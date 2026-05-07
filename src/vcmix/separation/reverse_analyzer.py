@@ -2,13 +2,16 @@
 reverse_analyzer.py - Reverse engineering mixing/arrangement from audio.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
 import numpy as np
+
 from vcmix.audio.io import read_audio
-from vcmix.engine.analyzer import Analyzer
 from vcmix.bpm.detector import detect_bpm
+from vcmix.engine.analyzer import Analyzer
 
 
 @dataclass
@@ -50,11 +53,17 @@ def _vocal_chain(audio, sr, analyzer, stem):
     chain = []
     sibilance = analyzer.compute_sibilance(audio)
     if sibilance > -25:
-        chain.append({"name": "vc-deesser", "params": {"threshold": -40, "reduction": round(max(-3, sibilance + 20), 1)}})
+        chain.append({
+            "name": "vc-deesser",
+            "params": {"threshold": -40, "reduction": round(max(-3, sibilance + 20), 1)}
+        })
     chain.append({"name": "vc-eq", "params": {"low_cut": 80, "high_shelf": 8000}})
     dynamic_range = stem.peak_db - stem.rms_db
     if dynamic_range > 12:
-        chain.append({"name": "vc-comp", "params": {"threshold": -24, "ratio": min(4.0, dynamic_range / 5), "attack": 5, "release": 50}})
+        chain.append({"name": "vc-comp", "params": {"threshold": -24,
+                "ratio": min(4.0, dynamic_range / 5),
+                "attack": 5, "release": 50
+            }})
     chain.append({"name": "vc-limiter", "params": {"ceiling": -1}})
     return chain
 
@@ -114,7 +123,11 @@ def _generate_config(analysis):
     tracks = []
     levels = {}
     for stem_name, stem in analysis.stems.items():
-        tracks.append({"name": stem_name, "file": f"{stem_name}.wav", "effects": stem.effects_chain})
+        tracks.append({
+            "name": stem_name,
+            "file": f"{stem_name}.wav",
+            "effects": stem.effects_chain,
+        })
         level = min(1.0, max(0.1, 10 ** (stem.rms_db / 20) * 5))
         levels[stem_name] = round(level, 2)
     return {

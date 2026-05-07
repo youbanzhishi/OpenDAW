@@ -35,9 +35,8 @@ Dependencies: numpy, soundfile, vcmix.config, vcmix.audio, vcmix.plugins
 from __future__ import annotations
 
 import json
-import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +45,7 @@ import numpy as np
 from vcmix.audio.io import read_audio, write_audio
 from vcmix.audio.mixer import Mixer
 from vcmix.engine.analyzer import Analyzer
-from vcmix.engine.autofix import AutoFix, ChainAnalysis
+from vcmix.engine.autofix import AutoFix
 from vcmix.engine.bus import BusManager
 from vcmix.plugins.registry import PluginRegistry
 
@@ -224,7 +223,8 @@ class Renderer:
         for track_name in render_order:
             track = next((t for t in project.tracks if t.name == track_name), None)
             if track is None or track.mute:
-                self._emit("4_render", {"track": track_name, "status": "muted" if track else "missing"})
+                status = "muted" if track else "missing"
+                self._emit("4_render", {"track": track_name, "status": status})
                 continue
 
             prev_audio = self._render_track(track, registry, sr, project_dir, rendered_tracks)
@@ -418,8 +418,12 @@ class Renderer:
 
             diff_rms = float(np.sqrt(np.mean(diff_audio ** 2)))
             diff_peak = float(np.max(np.abs(diff_audio)))
-            diff_report["diff_rms_db"] = round(20 * np.log10(diff_rms) if diff_rms > 0 else -120.0, 2)
-            diff_report["diff_peak_db"] = round(20 * np.log10(diff_peak) if diff_peak > 0 else -120.0, 2)
+            diff_report["diff_rms_db"] = round(
+                20 * np.log10(diff_rms) if diff_rms > 0 else -120.0, 2
+            )
+            diff_report["diff_peak_db"] = round(
+                20 * np.log10(diff_peak) if diff_peak > 0 else -120.0, 2
+            )
 
             self._emit("7ab_diff", diff_report)
 

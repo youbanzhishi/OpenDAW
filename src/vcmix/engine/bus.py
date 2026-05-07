@@ -28,7 +28,6 @@ from typing import Any
 
 import numpy as np
 
-from vcmix.plugins.adapter import PluginAdapter
 from vcmix.plugins.registry import PluginRegistry
 
 

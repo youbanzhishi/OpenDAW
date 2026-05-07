@@ -2,11 +2,10 @@
 demucs_wrapper.py - Demucs source separation for VCMix.
 """
 from __future__ import annotations
+
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
-import numpy as np
 
 
 def separate_stems(
