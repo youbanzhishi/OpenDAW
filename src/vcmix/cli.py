@@ -7,11 +7,17 @@ Provides the `vcmix` CLI with subcommands:
     graph     — Visualize the signal routing graph
     analyze   — Analyze audio file(s) for RMS/Peak/spectrum
 
+Phase 2 additions:
+    --ab      — Render A/B comparison versions
+    --diff    — Include difference analysis in A/B mode
+
 Usage:
     vcmix render project.yaml
     vcmix render project.yaml --report
     vcmix render project.yaml --auto-fix --stream log
     vcmix render project.yaml --stream json
+    vcmix render project.yaml --ab
+    vcmix render project.yaml --ab --diff
     vcmix validate project.yaml
     vcmix graph project.yaml
     vcmix analyze track.wav
@@ -52,7 +58,9 @@ def main() -> None:
     "--stream", type=click.Choice(["log", "json", "none"]),
     default="log", help="Output stream format"
 )
-def render(project: Path, report: bool, auto_fix: bool, stream: str) -> None:
+@click.option("--ab", is_flag=True, help="Render A/B comparison versions (Phase 2)")
+@click.option("--diff", is_flag=True, help="Include difference analysis in A/B mode")
+def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, diff: bool) -> None:
     """Render a mix project from YAML config."""
     import vcmix
 
@@ -64,11 +72,21 @@ def render(project: Path, report: bool, auto_fix: bool, stream: str) -> None:
         # Attach project directory for relative path resolution
         cfg.__dict__["_project_dir"] = project.parent.resolve()
 
-        engine = Renderer(cfg, report=report, auto_fix=auto_fix, stream=stream)
+        engine = Renderer(
+            cfg, report=report, auto_fix=auto_fix, stream=stream,
+            ab_mode=ab, ab_diff=diff,
+        )
         output_path = engine.run()
 
         if stream != "json":
             click.secho(f"✔ Render complete → {output_path}", fg="green")
+            if ab:
+                output_a = output_path.with_name(output_path.stem + "_a" + output_path.suffix)
+                output_b = output_path.with_name(output_path.stem + "_b" + output_path.suffix)
+                if output_a.exists():
+                    click.secho(f"  A version → {output_a}", fg="cyan")
+                if output_b.exists():
+                    click.secho(f"  B version → {output_b}", fg="cyan")
 
     except FileNotFoundError as e:
         click.secho(f"✗ File not found: {e}", fg="red")
@@ -142,6 +160,24 @@ def _validate_config(cfg) -> list[str]:
         if name not in track_names:
             issues.append(f"Master level references unknown track: '{name}'")
 
+    # Check send references
+    bus_names = {s.name for s in cfg.sends} if cfg.sends else set()
+    for track in cfg.tracks:
+        for bus_name in track.sends:
+            if bus_name not in bus_names:
+                issues.append(
+                    f"Track '{track.name}' sends to unknown bus: '{bus_name}'"
+                )
+
+    # Check sidechain references
+    for track in cfg.tracks:
+        for effect in track.effects:
+            if effect.sidechain is not None and effect.sidechain not in track_names:
+                issues.append(
+                    f"Track '{track.name}' effect '{effect.name}' sidechains "
+                    f"from unknown track: '{effect.sidechain}'"
+                )
+
     return issues
 
 
@@ -169,6 +205,14 @@ def _graph_text(cfg) -> None:
     click.echo(f"Project: {cfg.name} | BPM: {cfg.bpm} | SR: {cfg.sample_rate}")
     click.echo()
 
+    # Show send buses
+    if cfg.sends:
+        click.echo("  Send/Return Buses:")
+        for bus in cfg.sends:
+            chain = " → ".join(e.name for e in bus.effects) if bus.effects else "(direct)"
+            click.echo(f"    {bus.name}: {chain} (return={bus.return_level})")
+        click.echo()
+
     for track in cfg.tracks:
         click.echo(f"  Track: {track.name} ({track.file})")
         if track.effects:
@@ -176,6 +220,14 @@ def _graph_text(cfg) -> None:
             click.echo(f"    Chain: {chain}")
         else:
             click.echo("    Chain: (direct)")
+        if track.sends:
+            sends_str = ", ".join(f"{k}={v}" for k, v in track.sends.items())
+            click.echo(f"    Sends: {sends_str}")
+        if track.effects_a or track.effects_b:
+            a_chain = " → ".join(e.name for e in (track.effects_a or [])) or "(same)"
+            b_chain = " → ".join(e.name for e in (track.effects_b or [])) or "(same)"
+            click.echo(f"    A: {a_chain}")
+            click.echo(f"    B: {b_chain}")
         level = cfg.master.levels.get(track.name, 1.0)
         click.echo(f"    → Master (level={level})")
         click.echo()
@@ -207,13 +259,13 @@ def _graph_mermaid(cfg) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def analyze(audio_file: Path, as_json: bool) -> None:
     """Analyze an audio file for RMS/Peak/spectrum/sibilance."""
-
     import vcmix
+    import numpy as np
 
     try:
         from vcmix.audio.io import read_audio
-        from vcmix.audio.meter import Meter
         from vcmix.engine.analyzer import Analyzer
+        from vcmix.audio.meter import Meter
 
         audio, sr = read_audio(audio_file)
         analyzer = Analyzer(sample_rate=sr)

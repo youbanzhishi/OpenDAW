@@ -32,8 +32,8 @@ class PluginRegistry:
 
     # All known VC plugin names
     VC_PLUGIN_NAMES = [
-        "vc-eq", "vc-comp", "vc-gain", "vc-deesser", "vc-saturator",
-        "vc-limiter", "vc-delay", "vc-reverb", "vc-dynamiceq", "vc-smooth",
+        "vc-eq", "vc-comp", "vc-gain", "vc-deesser", "vc-saturator", "vc-surgicaldeesser",
+        "vc-limiter", "vc-delay", "vc-reverb", "vc-dynamiceq", "vc-smooth", "vc-distortion", "vc-noise", "vc-tune", "vc-gate", "vc-chorus",
     ]
 
     def __init__(self) -> None:

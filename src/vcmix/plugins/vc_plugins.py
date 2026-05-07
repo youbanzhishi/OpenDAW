@@ -12,9 +12,10 @@ CLI Path Resolution (priority order):
     3. YAML config plugin_paths section
     4. Default: /tmp/AudioFX/VC-{Name}/VC-{Name}-CLI-Standalone
 
-Supported VC Plugins (10 total):
+Supported VC Plugins (16 total):
     VC-EQ, VC-Comp, VC-Gain, VC-DeEsser, VC-Saturator,
-    VC-Limiter, VC-Delay, VC-Reverb, VC-DynamicEQ, VC-Smooth
+    VC-Limiter, VC-Delay, VC-Reverb, VC-DynamicEQ, VC-Smooth,
+    VC-SurgicalDeEsser, VC-Distortion, VC-Noise, VC-Tune, VC-Gate, VC-Chorus
 
 Usage:
     from vcmix.plugins.vc_plugins import VCPluginAdapter
@@ -50,6 +51,12 @@ _VC_CLI_DEFAULTS: dict[str, str] = {
     "vc-reverb":   "VC-Reverb/VC-Reverb-CLI-Standalone",
     "vc-dynamiceq":"VC-DynamicEQ/VC-DynamicEQ-CLI-Standalone",
     "vc-smooth":   "VC-Smooth/VC-Smooth-CLI-Standalone",
+    "vc-surgicaldeesser": "VC-SurgicalDeEsser/VC-SurgicalDeEsser-CLI-Standalone",
+    "vc-distortion": "VC-Distortion/VC-Distortion-CLI-Standalone",
+    "vc-noise": "VC-Noise/VC-Noise-CLI-Standalone",
+    "vc-tune": "VC-Tune/VC-Tune-CLI-Standalone",
+    "vc-gate": "VC-Gate/VC-Gate-CLI-Standalone",
+    "vc-chorus": "VC-Chorus/VC-Chorus-CLI-Standalone",
 }
 
 # Base directory for VC CLI tools
@@ -95,6 +102,32 @@ _PARAM_MAPS: dict[str, dict[str, str]] = {
     },
     "vc-smooth": {
         "amount": "--amount",
+    },
+    "vc-surgicaldeesser": {
+        "threshold": "--threshold", "reduction": "--reduction",
+        "frequency": "--frequency",
+    },
+    "vc-distortion": {
+        "mode": "--mode", "drive": "--drive", "mix": "--mix",
+    },
+    "vc-noise": {
+        "type": "--type", "level": "--level",
+    },
+    "vc-tune": {
+        "speed": "--speed", "scale": "--scale",
+        "transpose": "--transpose", "cents": "--cents",
+        "formant": "--formant", "autokey": "--autokey",
+    },
+    "vc-gate": {
+        "threshold": "--threshold", "ratio": "--ratio",
+        "attack": "--attack", "hold": "--hold",
+        "release": "--release", "range": "--range",
+    },
+    "vc-chorus": {
+        "rate": "--rate", "depth": "--depth",
+        "voices": "--voices", "mix": "--mix",
+        "delay": "--delay", "width": "--width",
+        "feedback": "--feedback",
     },
 }
 
