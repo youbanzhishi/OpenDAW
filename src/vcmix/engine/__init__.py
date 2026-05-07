@@ -12,8 +12,8 @@ Usage:
 Dependencies: numpy, soundfile
 """
 
-from vcmix.engine.renderer import Renderer
 from vcmix.engine.analyzer import Analyzer
 from vcmix.engine.autofix import AutoFix
+from vcmix.engine.renderer import Renderer
 
 __all__ = ["Renderer", "Analyzer", "AutoFix"]

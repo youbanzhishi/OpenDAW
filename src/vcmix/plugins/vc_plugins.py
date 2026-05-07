@@ -37,7 +37,6 @@ import soundfile as sf
 
 from vcmix.plugins.adapter import PluginAdapter
 
-
 # ── Default CLI paths ──────────────────────────────────────────────────────
 
 _VC_CLI_DEFAULTS: dict[str, str] = {

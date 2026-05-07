@@ -10,6 +10,6 @@ Usage:
 Dependencies: pathlib (stdlib)
 """
 
-from vcmix.utils.path import resolve_path, ensure_dir
+from vcmix.utils.path import ensure_dir, resolve_path
 
 __all__ = ["resolve_path", "ensure_dir"]

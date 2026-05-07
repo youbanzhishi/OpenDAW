@@ -14,11 +14,11 @@ Dependencies: pyyaml, pydantic
 """
 
 from vcmix.config.parser import (
-    parse_project,
-    ProjectConfig,
-    TrackConfig,
     EffectConfig,
     MasterConfig,
+    ProjectConfig,
+    TrackConfig,
+    parse_project,
 )
 
 __all__ = ["parse_project", "ProjectConfig", "TrackConfig", "EffectConfig", "MasterConfig"]

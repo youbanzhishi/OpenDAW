@@ -18,8 +18,6 @@ Dependencies: vcmix.plugins.adapter, vcmix.plugins.vc_plugins
 
 from __future__ import annotations
 
-from typing import Any
-
 from vcmix.plugins.adapter import PluginAdapter
 from vcmix.plugins.vc_plugins import VCPluginAdapter
 

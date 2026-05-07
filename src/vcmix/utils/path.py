@@ -20,7 +20,7 @@ Dependencies: pathlib (stdlib only)
 
 from __future__ import annotations
 
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 
 def resolve_path(relative_path: str | Path, project_root: str | Path | None = None) -> Path:

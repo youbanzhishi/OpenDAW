@@ -22,7 +22,6 @@ Dependencies: None (pure Python validation)
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 VALID_SAMPLE_RATES = {44100, 48000, 88200, 96000}

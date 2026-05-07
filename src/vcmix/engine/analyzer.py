@@ -23,8 +23,10 @@ Dependencies: numpy
 
 from __future__ import annotations
 
-import numpy as np
 from dataclasses import dataclass
+from typing import Any
+
+import numpy as np
 
 
 @dataclass
@@ -234,7 +236,6 @@ class Analyzer:
         Returns:
             Dict with before/after metrics and deltas.
         """
-        from typing import Any
 
         b_rms = self.compute_rms(before)
         a_rms = self.compute_rms(after)
@@ -244,7 +245,9 @@ class Analyzer:
         return {
             "rms_db_before": round(20 * np.log10(b_rms) if b_rms > 0 else -120.0, 2),
             "rms_db_after":  round(20 * np.log10(a_rms) if a_rms > 0 else -120.0, 2),
-            "rms_delta_db":  round(20 * np.log10(a_rms / b_rms) if b_rms > 0 and a_rms > 0 else 0.0, 2),
+            "rms_delta_db": round(
+                20 * np.log10(a_rms / b_rms) if b_rms > 0 and a_rms > 0 else 0.0, 2
+            ),
             "peak_db_before": round(20 * np.log10(b_peak) if b_peak > 0 else -120.0, 2),
             "peak_db_after":  round(20 * np.log10(a_peak) if a_peak > 0 else -120.0, 2),
         }
