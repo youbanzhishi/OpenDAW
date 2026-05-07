@@ -1704,3 +1704,197 @@ def serve(host: str, port: int, reload: bool) -> None:
         )
     else:
         uvicorn.run(app, host=host, port=port)
+
+
+# ── Phase 17: AI Transcription, Style Match, Style Transfer, Remix ──────
+
+
+@main.command("transcribe")
+@click.argument("reference", type=click.Path(exists=True, path_type=Path))
+@click.option("--output-dir", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output directory for transcribed project")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def transcribe_cmd(
+    reference: Path, output_dir: Path | None, as_json: bool,
+) -> None:
+    """AI transcription —扒带 reference track into editable VCMix project (Phase 17).
+
+    Analyzes a reference audio track and generates a complete VCMix project
+    with separated stems, reverse mixing analysis, BPM/key detection,
+    and arrangement structure.
+
+    Pipeline: separate → reverse analyze → detect BPM/key → generate project
+    """
+    import vcmix
+    from vcmix.ai.transcription import AITranscription
+
+    if output_dir is None:
+        output_dir = Path(f"./transcription_{reference.stem}")
+
+    try:
+        transcriber = AITranscription()
+        result = transcriber.transcribe(str(reference), str(output_dir))
+
+        if as_json:
+            click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
+        else:
+            status_color = "green" if result.status == "success" else "red"
+            click.secho(f"✔ Transcription: {result.status.upper()}", fg=status_color)
+            click.echo(f"  BPM: {result.bpm_info.bpm}")
+            click.echo(f"  Key: {result.key_info.root} {result.key_info.scale_type}")
+            click.echo(f"  Stems: {', '.join(result.stems.keys())}")
+            click.echo(f"  Sections: {len(result.arrangement.get('sections', []))}")
+            click.echo(f"  Project: {result.project_yaml}")
+            click.echo(f"  Time: {result.transcription_time_sec:.3f}s")
+
+    except Exception as e:
+        click.secho(f"✗ Transcription failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("match-style")
+@click.argument("reference", type=click.Path(exists=True, path_type=Path))
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def match_style_cmd(
+    reference: Path, as_json: bool,
+) -> None:
+    """Match reference track style — recommend template and preset (Phase 17).
+
+    Analyzes a reference track's style features and recommends a matching
+    arrangement template and mixing preset.
+    """
+    import vcmix
+    from vcmix.ai.reference_matcher_v2 import ReferenceMatcherV2
+
+    try:
+        matcher = ReferenceMatcherV2()
+        result = matcher.match_style(reference_path=str(reference))
+
+        if as_json:
+            click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
+        else:
+            click.secho("✔ Style Match Results", fg="green")
+            click.echo(f"  Genre: {result.features.genre}")
+            click.echo(f"  BPM: {result.features.bpm}")
+            click.echo(f"  Key: {result.features.key} {result.features.scale_type}")
+            click.echo(f"  Dynamic Range: {result.features.dynamic_range:.1f} dB")
+            click.echo(f"  Template: {result.recommended_template.template_name}")
+            click.echo(f"  Template Score: {result.recommended_template.match_score:.2f}")
+            click.echo(f"  Preset: {result.recommended_mix_preset.preset_name}")
+            click.echo(f"  Time: {result.match_time_sec:.3f}s")
+
+    except Exception as e:
+        click.secho(f"✗ Style match failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("style-transfer")
+@click.argument("reference", type=click.Path(exists=True, path_type=Path))
+@click.option("--project", "-p", type=click.Path(exists=True, path_type=Path), required=True,
+              help="Target project YAML to apply style to")
+@click.option("--output", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output YAML path")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def style_transfer_cmd(
+    reference: Path, project: Path, output: Path | None, as_json: bool,
+) -> None:
+    """Style transfer — apply reference mixing style to project (Phase 17).
+
+    Analyzes the reference track's mixing style (EQ, compression, reverb,
+    gain balance) and applies it to the target project.
+    """
+    import vcmix
+    from vcmix.ai.style_transfer import StyleTransfer
+
+    if output is None:
+        output = project.parent / f"{project.stem}_styled.yaml"
+
+    try:
+        st = StyleTransfer()
+        result = st.transfer(
+            reference_path=str(reference),
+            project_yaml=str(project),
+            output_yaml=str(output),
+        )
+
+        if as_json:
+            click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
+        else:
+            status_color = "green" if result.status == "success" else "red"
+            click.secho(f"✔ Style Transfer: {result.status.upper()}", fg=status_color)
+            click.echo(f"  EQ transfers: {len(result.eq_transfers)} tracks")
+            click.echo(f"  Comp transfers: {len(result.comp_transfers)} tracks")
+            click.echo(f"  Reverb transfers: {len(result.reverb_transfers)} tracks")
+            click.echo(f"  Gain adjustments: {len(result.gain_adjustments)} tracks")
+            click.echo(f"  Output: {result.output_yaml}")
+            click.echo(f"  Time: {result.transfer_time_sec:.3f}s")
+
+    except Exception as e:
+        click.secho(f"✗ Style transfer failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("remix")
+@click.argument("reference", type=click.Path(exists=True, path_type=Path))
+@click.option("--stems", "-s", type=click.Path(exists=True, path_type=Path), required=True,
+              help="Directory containing new stem audio files")
+@click.option("--genre", "-g", type=str, default=None,
+              help="Override genre for remix")
+@click.option("--bpm", type=float, default=None,
+              help="Override BPM for remix")
+@click.option("--output-dir", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output directory")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def remix_cmd(
+    reference: Path, stems: Path, genre: str | None, bpm: float | None,
+    output_dir: Path | None, as_json: bool,
+) -> None:
+    """One-click Remix — blend reference style with new stems (Phase 17).
+
+    Analyzes the reference track, replaces specified stems with new素材,
+    and auto-mixes everything in the reference's style.
+    """
+    import vcmix
+    from vcmix.ai.remix import RemixEngine
+
+    # Collect new stems from directory
+    new_stems: dict[str, str] = {}
+    if stems.is_dir():
+        for wav_file in stems.glob("*.wav"):
+            new_stems[wav_file.stem] = str(wav_file)
+        for wav_file in stems.glob("*.mp3"):
+            new_stems[wav_file.stem] = str(wav_file)
+    else:
+        click.secho("✗ --stems must be a directory", fg="red")
+        sys.exit(1)
+
+    if not new_stems:
+        click.secho("✗ No audio files found in stems directory", fg="red")
+        sys.exit(1)
+
+    if output_dir is None:
+        output_dir = Path(f"./remix_{reference.stem}")
+
+    try:
+        engine = RemixEngine()
+        result = engine.remix(
+            reference_path=str(reference),
+            new_stems=new_stems,
+            genre=genre,
+            bpm=bpm,
+            output_dir=str(output_dir),
+        )
+
+        if as_json:
+            click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
+        else:
+            status_color = "green" if result.status == "success" else "red"
+            click.secho(f"✔ Remix: {result.status.upper()}", fg=status_color)
+            click.echo(f"  Replaced stems: {', '.join(result.replaced_stems) or 'none'}")
+            click.echo(f"  Kept stems: {', '.join(result.kept_stems) or 'none'}")
+            click.echo(f"  Output: {result.output_yaml}")
+            click.echo(f"  Time: {result.remix_time_sec:.3f}s")
+
+    except Exception as e:
+        click.secho(f"✗ Remix failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)

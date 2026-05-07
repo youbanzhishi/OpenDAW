@@ -70,6 +70,7 @@ from vcmix.web.routes import arrangement, automation, automix, midi, plugins, pr
 from vcmix.web.routes.agent_api import router as agent_router
 from vcmix.web.routes.waveform import router as waveform_router
 from vcmix.web.routes.piano_roll import router as piano_roll_router
+from vcmix.web.routes.ai_transcription import router as ai_transcription_router
 from vcmix.web.websocket import router as ws_router
 
 # ── Application Factory ──────────────────────────────────────────────────
@@ -80,9 +81,9 @@ def create_app() -> FastAPI:
         title="VCMix Web API",
         description=(
             "AI-native open-source DAW — REST API + WebSocket. "
-            "Phase 13: Native GUI deepening with waveform, spectrum, and piano roll visualization."
+            "Phase 17: AI transcription, style matching, transfer, and remix."
         ),
-        version="0.13.0",
+        version="0.17.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
     )
@@ -99,6 +100,9 @@ def create_app() -> FastAPI:
 
     # ── Register Phase 11 AI Agent API ──
     app.include_router(agent_router, prefix="/api/v1", tags=["agent-api"])
+
+    # ── Register Phase 17 AI Transcription API ──
+    app.include_router(ai_transcription_router, prefix="/api/v1", tags=["ai-transcription"])
 
     # ── Register Phase 13 Visualization API ──
     app.include_router(waveform_router, prefix="/api/v1", tags=["visualization"])
@@ -120,7 +124,7 @@ def create_app() -> FastAPI:
     # ── Health check ──
     @app.get("/api/health", tags=["system"])
     async def health():
-        return {"status": "ok", "version": "0.13.0"}
+        return {"status": "ok", "version": "0.17.0"}
 
     return app
 

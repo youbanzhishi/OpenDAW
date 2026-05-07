@@ -80,7 +80,7 @@ class TestHealthCheck:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
-        assert data["version"] == "0.13.0"
+        assert data["version"] == "0.17.0"
 
 
 # ── Plugin Endpoints ────────────────────────────────────────────────────
