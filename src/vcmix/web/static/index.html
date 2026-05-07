@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VCMix — Web UI</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>🎛️ VCMix</h1>
+        <p class="subtitle">AI-native open-source DAW — Phase 8 Web UI</p>
+    </header>
+
+    <main>
+        <!-- Tab Navigation -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="editor">📝 YAML Editor</button>
+            <button class="tab-btn" data-tab="render">▶️ Render</button>
+            <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
+            <button class="tab-btn" data-tab="presets">🎵 Presets</button>
+            <button class="tab-btn" data-tab="stream">📡 Live Stream</button>
+        </nav>
+
+        <!-- YAML Editor Tab -->
+        <section id="tab-editor" class="tab-content active">
+            <div class="panel">
+                <h2>Project YAML</h2>
+                <div class="editor-toolbar">
+                    <button id="btn-validate" class="btn btn-secondary">✅ Validate</button>
+                    <button id="btn-render-editor" class="btn btn-primary">▶️ Render</button>
+                </div>
+                <textarea id="yaml-editor" spellcheck="false" placeholder="Paste your VCMix YAML project here..."></textarea>
+                <div id="validate-result" class="result-box hidden"></div>
+            </div>
+        </section>
+
+        <!-- Render Tab -->
+        <section id="tab-render" class="tab-content">
+            <div class="panel">
+                <h2>Render Control</h2>
+                <div class="form-group">
+                    <label>Project File Path (server):</label>
+                    <input type="text" id="render-path" placeholder="/path/to/project.yaml" class="input-field">
+                </div>
+                <div class="form-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="render-report"> Report
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="render-autofix"> Auto-fix
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="render-ab"> A/B Mode
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="render-arrangement"> Arrangement-aware
+                    </label>
+                </div>
+                <div class="editor-toolbar">
+                    <button id="btn-render-file" class="btn btn-primary">▶️ Render from File</button>
+                    <button id="btn-render-status" class="btn btn-secondary">🔄 Refresh Status</button>
+                </div>
+                <div id="render-result" class="result-box hidden"></div>
+                <div id="render-events" class="events-box hidden">
+                    <h3>DataStream Events</h3>
+                    <div id="events-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Plugins Tab -->
+        <section id="tab-plugins" class="tab-content">
+            <div class="panel">
+                <h2>Available Plugins</h2>
+                <div id="plugins-list" class="card-grid"></div>
+            </div>
+        </section>
+
+        <!-- Presets Tab -->
+        <section id="tab-presets" class="tab-content">
+            <div class="panel">
+                <h2>Effect Chain Presets</h2>
+                <div id="presets-list" class="card-grid"></div>
+                <div id="preset-detail" class="result-box hidden"></div>
+            </div>
+        </section>
+
+        <!-- Live Stream Tab -->
+        <section id="tab-stream" class="tab-content">
+            <div class="panel">
+                <h2>Live DataStream</h2>
+                <div class="form-row">
+                    <span id="ws-status" class="status-badge disconnected">Disconnected</span>
+                    <button id="btn-ws-connect" class="btn btn-secondary">Connect</button>
+                    <button id="btn-ws-clear" class="btn btn-secondary">Clear</button>
+                </div>
+                <div id="level-meters" class="meter-grid"></div>
+                <div id="stream-log" class="stream-log"></div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>VCMix v0.8.0 — Phase 8 Web UI | <a href="/api/docs">API Docs</a></p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

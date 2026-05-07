@@ -81,7 +81,8 @@ def main() -> None:
 )
 @click.option("--ab", is_flag=True, help="Render A/B comparison versions (Phase 2)")
 @click.option("--diff", is_flag=True, help="Include difference analysis in A/B mode")
-def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, diff: bool) -> None:
+@click.option("--arrangement-aware", is_flag=True, help="Apply arrangement-aware mixing (Phase 7)")
+def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, diff: bool, arrangement_aware: bool) -> None:
     """Render a mix project from YAML config."""
     import vcmix
 
@@ -97,6 +98,9 @@ def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, d
             cfg, report=report, auto_fix=auto_fix, stream=stream,
             ab_mode=ab, ab_diff=diff,
         )
+        if arrangement_aware:
+            engine.arrangement_aware = True
+            click.secho("  Arrangement-aware mixing enabled", fg="cyan")
         output_path = engine.run()
 
         if stream != "json":
@@ -688,3 +692,95 @@ def separate(
 
 if __name__ == "__main__":
     main()
+
+
+# ── Phase 7: arrangement command ──────────────────────────────────────────
+@main.command()
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--strategy", is_flag=True, help="Show mixing strategy per section")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
+    """Analyze song arrangement structure and mixing strategy.
+
+    \b
+    vcmix arrangement project.yaml           — Show section analysis
+    vcmix arrangement project.yaml --strategy — Show per-section mixing strategy
+    """
+    import json as json_mod
+    from vcmix.config.parser import parse_project
+    from vcmix.separation.arrangement import ArrangementExtractor
+    from vcmix.engine.arrangement_strategy import ArrangementStrategy, SectionMixParams
+
+    cfg = parse_project(project)
+
+    # Extract arrangement from audio if available
+    extractor = ArrangementExtractor(bpm=cfg.bpm)
+    sections = []
+    for track in cfg.tracks:
+        if track.file and track.file.exists():
+            try:
+                sections = extractor.extract(track.file)
+                break
+            except Exception:
+                continue
+
+    if not sections:
+        click.secho("⚠ No audio found for arrangement analysis", fg="yellow")
+        click.echo("  Provide audio files in project YAML for analysis.")
+        return
+
+    if not strategy:
+        # Show section analysis
+        if as_json:
+            data = [{"type": s.section_type, "start_beat": s.start_beat,
+                      "end_beat": s.end_beat, "confidence": s.confidence}
+                     for s in sections]
+            click.echo(json_mod.dumps(data, indent=2))
+        else:
+            click.secho("╔══════════════════════════════════════╗", fg="cyan")
+            click.secho("║     Arrangement Analysis            ║", fg="cyan")
+            click.secho("╚══════════════════════════════════════╝", fg="cyan")
+            for s in sections:
+                bar = "█" * int(s.confidence * 20)
+                click.echo(f"  {s.section_type:>8s}  beats {s.start_beat:5.1f}-{s.end_beat:5.1f}  [{bar}] {s.confidence:.0%}")
+        return
+
+    # Show mixing strategy
+    strat = ArrangementStrategy.from_sections(sections, bpm=cfg.bpm)
+
+    if as_json:
+        result = []
+        for s in sections:
+            params = strat.get_params_at_beat(s.start_beat)
+            result.append({
+                "section": s.section_type,
+                "start_beat": s.start_beat,
+                "end_beat": s.end_beat,
+                "strategy": {
+                    "reverb_mix": params.reverb_mix,
+                    "delay_mix": params.delay_mix,
+                    "compression_ratio": params.compression_ratio,
+                    "gain_offset_db": params.gain_offset_db,
+                    "crossfade_beats": params.crossfade_beats,
+                }
+            })
+        click.echo(json_mod.dumps(result, indent=2))
+    else:
+        click.secho("╔══════════════════════════════════════╗", fg="cyan")
+        click.secho("║   Arrangement Mixing Strategy       ║", fg="cyan")
+        click.secho("╚══════════════════════════════════════╝", fg="cyan")
+        click.echo(f"  {'Section':>8s}  {'Beats':>12s}  {'Reverb':>6s}  {'Delay':>5s}  {'Comp':>4s}  {'Gain':>5s}")
+        click.echo("  " + "─" * 52)
+        for s in sections:
+            params = strat.get_params_at_beat(s.start_beat)
+            click.echo(f"  {s.section_type:>8s}  {s.start_beat:5.1f}-{s.end_beat:<5.1f}  "
+                       f"{params.reverb_mix:5.1f}%  {params.delay_mix:4.1f}%  "
+                       f"{params.compression_ratio:3.1f}:1  {params.gain_offset_db:+4.1f}dB")
+
+        # YAML overrides
+        overrides = strat.to_yaml_overrides()
+        if overrides:
+            click.echo()
+            click.secho("YAML Overrides:", fg="yellow")
+            import yaml
+            click.echo(yaml.dump(overrides, default_flow_style=False))
