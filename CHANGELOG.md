@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.14.0] - 2026-05-15
+
+### Added
+#### Phase 12: 编曲智能模板
+- 8个编曲模板：Pop / EDM / Rock / Hip-Hop / R&B / Progressive / Lo-fi / Orchestral
+- 每个模板包含：段落结构、乐器配置、节奏模式、推荐BPM范围
+
+#### 混音预设系统
+- 6个混音预设：Clean Pop / Warm Vintage / Punchy EDM / Tight Hip-Hop / Airy Ballad / Lo-fi Chill
+- 每个预设包含：EQ曲线、压缩参数、混响设置、立体声宽度、母带链
+
+#### 编曲-混音一体化
+- 编曲模板自动匹配对应混音预设
+- 模板驱动效果参数自动配置（EQ/压缩/混响/立体声）
+- 一键从模板生成完整VCMix配置
+
+#### 新API端点
+- 6个新REST端点：模板列表/详情、预设列表/详情、一键生成配置
+
+#### 新CLI命令
+- `arrangement-templates`：查看/应用编曲模板
+- `mix-presets`：查看/应用混音预设
+- `arrangement-mix`：编曲-混音一体化生成
+
+### Tests
+- 141新测试
+- 总计864测试全绿
+
+
 ## [0.13.0] - 2026-05-14
 
 ### Added
