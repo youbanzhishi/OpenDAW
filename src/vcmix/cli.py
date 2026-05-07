@@ -18,6 +18,9 @@ Phase 4 additions:
     automix   — Intelligent auto-mixing from dry vocal analysis
     presets   — List/inspect built-in effect chain presets
     separate  — Demucs-based source separation
+    analyze-mix       — Reverse-engineer mixing parameters
+    analyze-arrangement — Analyze arrangement structure
+    generate-config   — One-click analysis + VCMix config generation
 
 Phase 6 additions:
     automix project.yaml        — DataStream closed-loop auto-mixing
@@ -63,6 +66,7 @@ from pathlib import Path
 from typing import Any
 
 import click
+import numpy as np
 
 
 @click.group()
@@ -1109,3 +1113,267 @@ def chain_presets_show(preset_name: str, as_json: bool) -> None:
             click.echo(f"  Output gain: {chain.output_gain_db:+.1f} dB")
         if chain.tags:
             click.echo(f"  Tags: {', '.join(chain.tags)}")
+
+
+# ── Demucs v2: analyze-mix command ───────────────────────────────────────
+
+@main.command("analyze-mix")
+@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--output-dir", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output directory for stems and analysis")
+@click.option("--device", type=str, default="cpu", help="Device: cpu or cuda")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def analyze_mix(
+    audio_file: Path,
+    output_dir: Path | None,
+    device: str,
+    as_json: bool,
+) -> None:
+    """Reverse-engineer mixing parameters from an audio file.
+
+    Separates the audio into stems using Demucs, then analyzes each
+    stem's EQ curve, compression, reverb, delay, and panning.
+    """
+    import vcmix
+    from vcmix.audio.io import read_audio
+    from vcmix.separation.demucs_engine import DemucsEngine
+    from vcmix.separation.reverse_analyzer import ReverseMixAnalyzer
+
+    try:
+        # Step 1: Separate
+        engine = DemucsEngine(device=device)
+        if output_dir is None:
+            output_dir = audio_file.parent / "analysis_output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        click.secho(f"Separating {audio_file.name}...", fg="cyan")
+        stem_paths = engine.separate(audio_file, output_dir=output_dir)
+        click.secho(f"  Found {len(stem_paths)} stems", fg="green")
+
+        # Step 2: Analyze each stem
+        analyzer = ReverseMixAnalyzer()
+        results = {}
+        for stem_name, stem_path in sorted(stem_paths.items()):
+            click.secho(f"  Analyzing {stem_name}...", fg="cyan")
+            try:
+                audio, sr = read_audio(stem_path)
+                analysis = analyzer.analyze_stem(audio, stem_name)
+                results[stem_name] = analysis.to_dict()
+            except Exception as e:
+                click.secho(f"    ✗ Failed: {e}", fg="yellow")
+                results[stem_name] = {"error": str(e)}
+
+        if as_json:
+            click.echo(json.dumps(results, ensure_ascii=False, indent=2))
+        else:
+            for name, data in results.items():
+                if "error" in data:
+                    click.secho(f"  {name}: ERROR - {data['error']}", fg="red")
+                    continue
+                click.secho(f"\n  {name.upper()}", fg="cyan", bold=True)
+                click.echo(f"    RMS: {data.get('rms_db', 'N/A')} dB")
+                click.echo(f"    Peak: {data.get('peak_db', 'N/A')} dB")
+                if data.get("eq_curve", {}).get("bands"):
+                    bands_str = ", ".join(
+                        f"{b['freq']}Hz/{b['gain_db']:+.1f}dB"
+                        for b in data["eq_curve"]["bands"]
+                    )
+                    click.echo(f"    EQ: {bands_str}")
+                comp = data.get("compression", {})
+                if comp.get("ratio", 1.0) > 1.0:
+                    click.echo(f"    Comp: {comp['threshold_db']}dB thresh, "
+                               f"{comp['ratio']}:1 ratio")
+                rev = data.get("reverb", {})
+                if rev.get("rt60_ms", 0) > 100:
+                    click.echo(f"    Reverb: RT60={rev['rt60_ms']:.0f}ms, "
+                               f"wet={rev['wet_ratio']:.2f}")
+                delay = data.get("delay", {})
+                if delay.get("delay_ms", 0) > 10:
+                    click.echo(f"    Delay: {delay['delay_ms']:.0f}ms, "
+                               f"fb={delay['feedback']:.2f}")
+                pan = data.get("pan", {})
+                if pan.get("stereo_width", 0) > 0:
+                    click.echo(f"    Pan: {pan['position']:.2f}, "
+                               f"width={pan['stereo_width']:.2f}")
+
+    except ImportError as e:
+        click.secho(f"✗ Missing dependency: {e}", fg="red")
+        sys.exit(vcmix.EXIT_MISSING_DEP)
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Analysis failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+# ── Demucs v2: analyze-arrangement command ──────────────────────────────
+
+@main.command("analyze-arrangement")
+@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--bpm", type=float, default=None, help="Override BPM (auto-detect if omitted)")
+@click.option("--device", type=str, default="cpu", help="Device for Demucs")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def analyze_arrangement_cmd(
+    audio_file: Path,
+    bpm: float | None,
+    device: str,
+    as_json: bool,
+) -> None:
+    """Analyze the arrangement structure of an audio file.
+
+    Separates audio into stems, then detects sections (Intro/Verse/Chorus/
+    Bridge/Outro) and instrument entry/exit patterns.
+    """
+    import vcmix
+    from vcmix.audio.io import read_audio
+    from vcmix.bpm.detector import detect_bpm
+    from vcmix.separation.arrangement_analyzer import ArrangementAnalyzer
+    from vcmix.separation.demucs_engine import DemucsEngine
+
+    try:
+        # Detect BPM
+        if bpm is None:
+            click.secho("Detecting BPM...", fg="cyan")
+            try:
+                bpm = detect_bpm(str(audio_file))
+            except Exception:
+                bpm = 120.0
+        click.echo(f"  BPM: {bpm}")
+
+        # Separate
+        engine = DemucsEngine(device=device)
+        import tempfile
+        output_dir = Path(tempfile.mkdtemp(prefix="vcmix_arr_"))
+        click.secho("Separating stems...", fg="cyan")
+        stem_paths = engine.separate(audio_file, output_dir=output_dir)
+
+        # Load stems
+        stems = {}
+        sr = 44100
+        for stem_name, stem_path in stem_paths.items():
+            audio, sr = read_audio(stem_path)
+            # Convert to mono for arrangement analysis
+            if audio.ndim == 2:
+                mono = np.mean(audio, axis=0)
+            else:
+                mono = audio
+            stems[stem_name] = mono
+
+        # Analyze arrangement
+        analyzer = ArrangementAnalyzer()
+        timeline = analyzer.analyze(stems, sr, bpm)
+
+        if as_json:
+            click.echo(json.dumps(timeline.to_dict(), ensure_ascii=False, indent=2))
+        else:
+            click.secho("\nArrangement:", fg="cyan", bold=True)
+            click.echo(f"  Duration: {timeline.duration_sec:.1f}s")
+            click.echo(f"  Sections: {len(timeline.sections)}")
+            click.echo()
+            for s in timeline.sections:
+                active = ", ".join(s.active_stems()) or "none"
+                click.echo(f"  {s.name:>8s}  {s.start_sec:6.1f}s - {s.end_sec:6.1f}s  "
+                           f"[{s.energy_level}]  active: {active}")
+
+    except ImportError as e:
+        click.secho(f"✗ Missing dependency: {e}", fg="red")
+        sys.exit(vcmix.EXIT_MISSING_DEP)
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Analysis failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+# ── Demucs v2: generate-config command ─────────────────────────────────
+
+@main.command("generate-config")
+@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--output", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output YAML file path")
+@click.option("--bpm", type=float, default=None, help="Override BPM")
+@click.option("--device", type=str, default="cpu", help="Device for Demucs")
+@click.option("--stem-dir", type=str, default="./stems/", help="Stem file directory")
+def generate_config_cmd(
+    audio_file: Path,
+    output: Path | None,
+    bpm: float | None,
+    device: str,
+    stem_dir: str,
+) -> None:
+    """One-click analysis + VCMix config generation.
+
+    Separates audio, analyzes mixing, detects arrangement, and generates
+    a complete VCMix YAML config that can be used with ``vcmix render``.
+    """
+    import vcmix
+    from vcmix.audio.io import read_audio
+    from vcmix.bpm.detector import detect_bpm
+    from vcmix.separation.arrangement_analyzer import ArrangementAnalyzer
+    from vcmix.separation.config_generator import VCMixConfigGenerator
+    from vcmix.separation.demucs_engine import DemucsEngine
+    from vcmix.separation.reverse_analyzer import ReverseMixAnalyzer
+
+    try:
+        # Detect BPM
+        if bpm is None:
+            click.secho("Detecting BPM...", fg="cyan")
+            try:
+                bpm = detect_bpm(str(audio_file))
+            except Exception:
+                bpm = 120.0
+        click.echo(f"  BPM: {bpm}")
+
+        # Separate
+        output_dir = audio_file.parent / "stems"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        engine = DemucsEngine(device=device)
+        click.secho("Separating stems...", fg="cyan")
+        stem_paths = engine.separate(audio_file, output_dir=output_dir)
+
+        # Analyze each stem
+        click.secho("Analyzing mixing parameters...", fg="cyan")
+        mix_analyzer = ReverseMixAnalyzer()
+        stem_analyses = {}
+        stems_audio = {}
+        sr = 44100
+        for stem_name, stem_path in sorted(stem_paths.items()):
+            audio, sr = read_audio(stem_path)
+            stems_audio[stem_name] = audio
+            stem_analyses[stem_name] = mix_analyzer.analyze_stem(audio, stem_name)
+            click.echo(f"  ✓ {stem_name}: RMS={stem_analyses[stem_name].rms_db:.1f}dB")
+
+        # Analyze arrangement
+        click.secho("Analyzing arrangement...", fg="cyan")
+        arr_analyzer = ArrangementAnalyzer()
+        # Convert to mono for arrangement
+        mono_stems = {}
+        for name, audio in stems_audio.items():
+            if audio.ndim == 2:
+                mono_stems[name] = np.mean(audio, axis=0)
+            else:
+                mono_stems[name] = audio
+        timeline = arr_analyzer.analyze(mono_stems, sr, bpm)
+        click.echo(f"  {len(timeline.sections)} sections detected")
+
+        # Generate config
+        click.secho("Generating VCMix config...", fg="cyan")
+        generator = VCMixConfigGenerator(stem_dir=stem_dir)
+        if output is None:
+            output = audio_file.with_suffix(".vcmix.yaml")
+        result_path = generator.generate_to_file(
+            stem_analyses, timeline, bpm, output,
+        )
+        click.secho(f"✔ Config saved → {result_path}", fg="green")
+
+    except ImportError as e:
+        click.secho(f"✗ Missing dependency: {e}", fg="red")
+        sys.exit(vcmix.EXIT_MISSING_DEP)
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Config generation failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
