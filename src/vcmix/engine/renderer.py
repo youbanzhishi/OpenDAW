@@ -73,6 +73,7 @@ from vcmix.midi.note_scheduler import NoteScheduler
 from vcmix.plugins.registry import PluginRegistry
 from vcmix.separation.arrangement import ArrangementExtractor, Section
 from vcmix.stream.emitter import DataStream
+from vcmix.vst3.vst3_track import VST3ParamOverride, VST3Track, VST3TrackConfig
 
 # ── Thresholds for warning detection ──────────────────────────────────────
 _CLIP_THRESHOLD_DB = -1.0       # Peak above this = clipping warning
@@ -433,10 +434,12 @@ class Renderer:
         Returns:
             Rendered audio array.
         """
-        # Phase 9: MIDI track rendering
+        # Phase 9: MIDI track rendering / VST3 track rendering
         track_type = getattr(track, 'type', 'audio')
         if track_type == 'midi' and track.midi_file:
             audio = self._render_midi_track(track, sr, project_dir)
+        elif track_type == 'vst3' and getattr(track, 'plugin_path', None):
+            audio = self._render_vst3_track(track, sr, project_dir)
         else:
             track_path = project_dir / track.file
             audio, audio_sr = read_audio(track_path)
@@ -546,6 +549,111 @@ class Renderer:
         return prev_audio
 
     # ── Phase 9: MIDI track rendering ──────────────────────────────────
+
+    def _render_vst3_track(
+        self,
+        track: Any,
+        sr: int,
+        project_dir: Path,
+    ) -> np.ndarray:
+        """
+        Render a VST3 plugin track.
+
+        Supports two modes:
+        - Instrument: generates audio from MIDI input
+        - Effect: processes input audio through VST3 effect
+
+        Args:
+            track: TrackConfig with type='vst3'.
+            sr: Sample rate.
+            project_dir: Project directory.
+
+        Returns:
+            Rendered audio array.
+        """
+        plugin_path = getattr(track, 'plugin_path', '')
+        if not plugin_path:
+            raise ValueError(f"VST3 track '{track.name}' missing plugin_path")
+
+        # Build VST3 track config from YAML track
+        param_overrides = []
+        raw_params = getattr(track, 'params', [])
+        if isinstance(raw_params, list):
+            for p in raw_params:
+                if isinstance(p, dict):
+                    param_overrides.append(VST3ParamOverride(
+                        index=int(p.get("index", 0)),
+                        value=float(p.get("value", 0.5)),
+                    ))
+
+        vst3_config = VST3TrackConfig(
+            name=track.name,
+            plugin_path=plugin_path,
+            file=track.file,
+            preset=getattr(track, 'preset', '') or '',
+            preset_file=getattr(track, 'preset_file', '') or '',
+            params=param_overrides,
+            midi_file=getattr(track, 'midi_file', '') or '',
+            bpm=self.config.bpm,
+            sample_rate=sr,
+            volume=track.volume,
+            mute=track.mute,
+        )
+
+        vst3_track = VST3Track(vst3_config)
+
+        # Determine render mode
+        if vst3_track.is_instrument:
+            # Instrument: render from MIDI
+            duration = 0.0
+            if vst3_track.config.midi_file:
+                midi_path = project_dir / vst3_track.config.midi_file
+                if midi_path.exists():
+                    # Estimate duration from MIDI file
+                    try:
+                        parser = MidiParser()
+                        midi_data = parser.parse(str(midi_path))
+                        if midi_data and midi_data.get('duration_sec', 0) > 0:
+                            duration = midi_data['duration_sec']
+                    except Exception:
+                        pass
+
+            if duration <= 0:
+                duration = 10.0  # default
+
+            self._emit("4_vst3_render", {
+                "track": track.name,
+                "mode": "instrument",
+                "plugin": plugin_path,
+                "duration": duration,
+            })
+
+            audio = vst3_track.render(duration=duration)
+        else:
+            # Effect: process input audio
+            if not track.file:
+                raise ValueError(
+                    f"VST3 effect track '{track.name}' requires 'file' for input audio"
+                )
+
+            input_path = project_dir / track.file
+            input_audio, _ = read_audio(input_path)
+
+            self._emit("4_vst3_render", {
+                "track": track.name,
+                "mode": "effect",
+                "plugin": plugin_path,
+                "input": str(input_path),
+            })
+
+            audio = vst3_track.render(input_audio=input_audio)
+
+        self._emit("4_vst3_done", {
+            "track": track.name,
+            "samples": len(audio.flatten()),
+        })
+
+        return audio
 
     def _render_midi_track(
         self,

@@ -131,7 +131,7 @@ class VST3Scanner:
                         name=current.get("name", ""),
                         path=current.get("path", ""),
                         manufacturer=current.get("mfr", ""),
-                        isInstrument=current.get("type") == "Instrument",
+                        is_instrument=current.get("type") == "Instrument",
                         source="cli",
                     ))
                 current = {"name": line[5:].strip()}
@@ -148,7 +148,7 @@ class VST3Scanner:
                 name=current.get("name", ""),
                 path=current.get("path", ""),
                 manufacturer=current.get("mfr", ""),
-                isInstrument=current.get("type") == "Instrument",
+                is_instrument=current.get("type") == "Instrument",
                 source="cli",
             ))
 

@@ -9,7 +9,7 @@
 <body>
     <header>
         <h1>🎛️ VCMix</h1>
-        <p class="subtitle">AI-native open-source DAW — Phase 8 Web UI</p>
+        <p class="subtitle">AI-native open-source DAW — Phase 9 Web UI</p>
     </header>
 
     <main>
@@ -19,6 +19,8 @@
             <button class="tab-btn" data-tab="render">▶️ Render</button>
             <button class="tab-btn" data-tab="plugins">🔌 Plugins</button>
             <button class="tab-btn" data-tab="presets">🎵 Presets</button>
+            <button class="tab-btn" data-tab="midi">🎹 MIDI</button>
+            <button class="tab-btn" data-tab="chains">🔗 Chains</button>
             <button class="tab-btn" data-tab="stream">📡 Live Stream</button>
         </nav>
 
@@ -86,6 +88,70 @@
             </div>
         </section>
 
+        <!-- MIDI Tab (Phase 9) -->
+        <section id="tab-midi" class="tab-content">
+            <div class="panel">
+                <h2>🎹 MIDI Track</h2>
+
+                <!-- Scan Section -->
+                <div class="form-group">
+                    <label>Scan Directory for MIDI Files:</label>
+                    <div class="form-row">
+                        <input type="text" id="midi-scan-dir" placeholder="." value="." class="input-field">
+                        <button id="btn-midi-scan" class="btn btn-secondary">📂 Scan</button>
+                    </div>
+                </div>
+                <div id="midi-files-list" class="midi-files-grid"></div>
+
+                <!-- Parse Section -->
+                <div class="form-group" style="margin-top:1rem">
+                    <label>MIDI File Path (server):</label>
+                    <div class="form-row">
+                        <input type="text" id="midi-file-path" placeholder="/path/to/song.mid" class="input-field">
+                        <button id="btn-midi-parse" class="btn btn-primary">🎼 Parse</button>
+                    </div>
+                </div>
+
+                <!-- Synth Selection -->
+                <div class="form-group">
+                    <label>Synthesizer:</label>
+                    <select id="midi-synth-select" class="input-field"></select>
+                </div>
+
+                <!-- MIDI Info Result -->
+                <div id="midi-info" class="result-box hidden"></div>
+
+                <!-- MIDI Note Preview -->
+                <div id="midi-notes-preview" class="notes-preview hidden">
+                    <h3>Note Events</h3>
+                    <div id="midi-notes-list" class="notes-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chains Tab (Phase 9) -->
+        <section id="tab-chains" class="tab-content">
+            <div class="panel">
+                <h2>🔗 Plugin Chain Presets</h2>
+                <p class="section-desc">Complete signal processing chains with routing and gain staging.</p>
+                <div id="chains-list" class="card-grid"></div>
+                <div id="chain-detail" class="result-box hidden"></div>
+
+                <!-- Apply Section -->
+                <div class="form-group" style="margin-top:1rem">
+                    <label>Apply Chain to Track:</label>
+                    <div class="form-row">
+                        <input type="text" id="chain-apply-track" placeholder="Track name (e.g. vocal)" class="input-field">
+                        <input type="text" id="chain-apply-file" placeholder="Track file (e.g. vocal.wav)" class="input-field">
+                    </div>
+                    <div class="editor-toolbar" style="margin-top:0.5rem">
+                        <button id="btn-chain-apply" class="btn btn-primary" disabled>🔗 Apply Chain</button>
+                    </div>
+                </div>
+                <div id="chain-apply-result" class="result-box hidden"></div>
+            </div>
+        </section>
+
         <!-- Live Stream Tab -->
         <section id="tab-stream" class="tab-content">
             <div class="panel">
@@ -99,10 +165,54 @@
                 <div id="stream-log" class="stream-log"></div>
             </div>
         </section>
+
+        <!-- Automation Tab (Phase 9) -->
+        <section id="tab-automation" class="tab-content">
+            <div class="panel">
+                <h2>🎚️ Automation Curves</h2>
+
+                <!-- Curve Builder -->
+                <div class="form-group">
+                    <label>Parameter:</label>
+                    <select id="auto-param-select" class="input-field">
+                        <option value="gain">Track Gain (dB)</option>
+                        <option value="vc-reverb.mix">Reverb Mix</option>
+                        <option value="vc-comp.threshold">Comp Threshold</option>
+                        <option value="vc-eq.peak_gain">EQ Peak Gain</option>
+                        <option value="vc-delay.mix">Delay Mix</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Target Track:</label>
+                    <input type="text" id="auto-track-name" placeholder="vocal" class="input-field">
+                </div>
+
+                <!-- Control Points -->
+                <div class="form-group">
+                    <label>Control Points (beat, value, curve_type per line):</label>
+                    <textarea id="auto-points-editor" class="automation-editor" spellcheck="false"
+                        placeholder="0, -6, linear&#10;8, 0, linear&#10;32, 0, step&#10;40, -12, smooth"></textarea>
+                </div>
+
+                <div class="editor-toolbar">
+                    <button id="btn-auto-preview" class="btn btn-secondary">👁️ Preview</button>
+                    <button id="btn-auto-apply" class="btn btn-primary">🎚️ Apply</button>
+                </div>
+
+                <!-- Preview Result -->
+                <div id="auto-preview-result" class="result-box hidden"></div>
+
+                <!-- Curve Visualization -->
+                <div id="auto-curve-viz" class="curve-viz hidden">
+                    <canvas id="auto-curve-canvas" width="700" height="200"></canvas>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer>
-        <p>VCMix v0.8.0 — Phase 8 Web UI | <a href="/api/docs">API Docs</a></p>
+        <p>VCMix v0.9.0 — Phase 9 Web UI | <a href="/api/docs">API Docs</a></p>
     </footer>
 
     <script src="/static/app.js"></script>

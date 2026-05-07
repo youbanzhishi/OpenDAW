@@ -155,7 +155,10 @@ class TrackConfig(BaseModel):
     """
     name: str = Field(..., description="Track name, e.g. 'vocal', 'accomp'")
     file: str = Field(default="", description="Path to audio file (relative to project dir)")
-    type: str = Field(default="audio", description="Track type: 'audio', 'midi', or 'vst3' (Phase 9)")
+    type: str = Field(
+        default="audio",
+        description="Track type: 'audio', 'midi', or 'vst3' (Phase 9)",
+    )
     midi_file: str | None = Field(
         default=None,
         description="Path to .mid file for MIDI tracks (Phase 9)"

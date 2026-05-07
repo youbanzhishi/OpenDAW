@@ -7,13 +7,10 @@ Uses the same AutomationCurve and AutomationEngine as the CLI.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from vcmix.automation.automation_curve import AutomationCurve, AutomationPoint, CurveType
-from vcmix.automation.automation_engine import AutomationEngine
 
 router = APIRouter()
 
