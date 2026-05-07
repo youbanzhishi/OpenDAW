@@ -40,6 +40,7 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
 import click
 
 
@@ -300,6 +301,100 @@ def analyze(audio_file: Path, as_json: bool) -> None:
         click.secho(f"✗ Analysis failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
+
+
+@main.command()
+def presets() -> None:
+    """List all available mixing presets."""
+    from vcmix.presets.manager import list_presets, get_preset
+    for name in list_presets():
+        chain = get_preset(name)
+        effects = ', '.join(e["name"] for e in chain)
+        click.echo(f"  {name}: {effects}")
+
+
+@main.command()
+@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--output-dir", "-o", type=click.Path(), default=None,
+              help="Output directory for stems")
+@click.option("--model", default="htdemucs", help="Demucs model name")
+@click.option("--two-stems", default=None,
+              help="Only separate this stem (e.g. vocals)")
+def separate(audio_file: Path, output_dir, model: str, two_stems: str) -> None:
+    """Separate a mixed audio file into stems using Demucs."""
+    try:
+        from vcmix.separation.demucs_wrapper import separate_stems
+        stems = separate_stems(audio_file, output_dir=output_dir,
+                               model=model, two_stems=two_stems)
+        for name, path in stems.items():
+            click.echo(f"  {name}: {path}")
+    except ImportError:
+        click.secho("Demucs not installed. Install with: pip install demucs", fg="yellow")
+    except Exception as e:
+        click.secho(f"Separation failed: {e}", fg="red")
+
+
+@main.command("automix")
+@click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--preset", "-p", default=None,
+              help="Apply a preset instead of auto-analysis")
+@click.option("--output", "-o", type=click.Path(), default=None,
+              help="Output YAML config path")
+def automix_cmd(audio_file: Path, preset: str, output: str) -> None:
+    """Auto-generate a VCMix config for a dry vocal."""
+    try:
+        from vcmix.audio.io import read_audio
+        from vcmix.presets.manager import get_preset
+        import yaml
+
+        audio, sr = read_audio(audio_file)
+
+        if preset:
+            chain = get_preset(preset)
+            if chain is None:
+                click.secho(f"Unknown preset: {preset}", fg="red")
+                return
+        else:
+            # Auto-analyze
+            from vcmix.engine.analyzer import Analyzer
+            analyzer = Analyzer(sample_rate=sr)
+            rms = analyzer.compute_rms(audio)
+            rms_db = 20 * np.log10(rms) if rms > 0 else -120.0
+
+            # Simple auto-chain based on analysis
+            chain = [
+                {"name": "vc-deesser", "params": {"threshold": -40, "reduction": -6}},
+                {"name": "vc-eq", "params": {"low_cut": 80, "high_shelf": 8000}},
+                {"name": "vc-comp", "params": {"threshold": -24, "ratio": 3, "attack": 5, "release": 50}},
+                {"name": "vc-reverb", "params": {"room": 30, "decay": 35, "damping": 50, "mix": 10, "predelay": 50, "wetlpf": 5000}},
+                {"name": "vc-limiter", "params": {"ceiling": -1}},
+            ]
+
+        config = {
+            "name": f"automix_{audio_file.stem}",
+            "bpm": 120,
+            "sample_rate": sr,
+            "tracks": [
+                {"name": "vocal", "file": str(audio_file), "effects": chain}
+            ],
+            "master": {
+                "levels": {"vocal": 1.0},
+                "effects": [],
+                "output": f"{audio_file.stem}_mix.wav",
+            },
+        }
+
+        yaml_str = yaml.dump(config, default_flow_style=False, allow_unicode=True)
+
+        if output:
+            with open(output, "w") as f:
+                f.write(yaml_str)
+            click.secho(f"Config saved to {output}", fg="green")
+        else:
+            click.echo(yaml_str)
+
+    except Exception as e:
+        click.secho(f"AutoMix failed: {e}", fg="red")
 
 if __name__ == "__main__":
     main()
