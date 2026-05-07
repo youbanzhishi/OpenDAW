@@ -1,11 +1,12 @@
 /*
- * PluginWrapper.cpp — VST3 plugin wrapper implementation.
+ * PluginWrapper.cpp — VST3 plugin wrapper implementation (Phase 14 enhanced).
  */
 #include "PluginWrapper.h"
 
 #include <juce_core/juce_core.h>
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 PluginWrapper::PluginWrapper(
     std::unique_ptr<juce::AudioPluginInstance> instance,
@@ -37,7 +38,6 @@ void PluginWrapper::setParamByIndex(int index, float value) {
         return;
     }
 
-    // Clamp to [0,1]
     value = std::max(0.0f, std::min(1.0f, value));
     params[index]->setValue(value);
 }
@@ -111,7 +111,7 @@ AudioData PluginWrapper::renderFromInput(
     int numChannels = static_cast<int>(
         std::max(plugin->getTotalNumInputChannels(),
                  plugin->getTotalNumOutputChannels()));
-    if (numChannels == 0) numChannels = 2;  // fallback
+    if (numChannels == 0) numChannels = 2;
 
     uint64_t totalFrames = input.totalFrames;
     output.channels = static_cast<unsigned int>(numChannels);
@@ -119,27 +119,24 @@ AudioData PluginWrapper::renderFromInput(
     output.totalFrames = totalFrames;
     output.samples.resize(static_cast<size_t>(totalFrames) * numChannels, 0.0f);
 
-    // Build MIDI buffer
     double durationSeconds = static_cast<double>(totalFrames) / sampleRate;
     juce::MidiBuffer midiBuffer = buildMidiBuffer(midiEvents, durationSeconds);
 
-    // Process in blocks
     juce::AudioBuffer<float> audioBuffer(numChannels, blockSize);
 
     uint64_t framesProcessed = 0;
-    int midiSampleOffset = 0;
+    auto midiIt = midiBuffer.begin();
 
     while (framesProcessed < totalFrames) {
         int framesThisBlock = std::min(
             static_cast<int>(totalFrames - framesProcessed), blockSize);
 
-        // Clear buffer
         audioBuffer.clear();
 
-        // Copy input to buffer (de-interleave)
+        // Copy input (de-interleave)
         int inputChannels = static_cast<int>(input.channels);
         for (int ch = 0; ch < numChannels; ++ch) {
-            int srcCh = ch < inputChannels ? ch : 0;  // channel fold
+            int srcCh = ch < inputChannels ? ch : 0;
             for (int s = 0; s < framesThisBlock; ++s) {
                 uint64_t srcIdx = (framesProcessed + s) * input.channels + srcCh;
                 if (srcIdx < input.samples.size()) {
@@ -148,30 +145,40 @@ AudioData PluginWrapper::renderFromInput(
             }
         }
 
-        // Trim buffer to actual frame count for last block
-        if (framesThisBlock < blockSize) {
-            audioBuffer = juce::AudioBuffer<float>(
-                audioBuffer.getArrayOfWritePointers(),
-                numChannels,
-                framesThisBlock);
-        }
-
-        // Process
+        // Build block MIDI
         juce::MidiBuffer blockMidi;
-        // TODO: Extract MIDI events for this block's time range
-        // For now, pass all MIDI on first block
-        if (framesProcessed == 0) {
-            blockMidi = midiBuffer;
+        while (midiIt != midiBuffer.end()) {
+            auto metadata = *midiIt;
+            if (metadata.samplePosition >= static_cast<int>(framesProcessed) &&
+                metadata.samplePosition < static_cast<int>(framesProcessed + framesThisBlock)) {
+                blockMidi.addEvent(metadata.getMessage(),
+                                   metadata.samplePosition -
+                                   static_cast<int>(framesProcessed));
+                ++midiIt;
+            } else if (metadata.samplePosition < static_cast<int>(framesProcessed)) {
+                ++midiIt;
+            } else {
+                break;
+            }
         }
 
-        plugin->processBlock(audioBuffer, blockMidi);
+        // Apply automation
+        applyAutomation(static_cast<int>(framesProcessed), framesThisBlock);
+
+        // Trim buffer for last block
+        juce::AudioBuffer<float> processBuffer(
+            audioBuffer.getArrayOfWritePointers(),
+            numChannels,
+            framesThisBlock);
+
+        plugin->processBlock(processBuffer, blockMidi);
 
         // Copy output (interleave)
         for (int s = 0; s < framesThisBlock; ++s) {
             for (int ch = 0; ch < numChannels; ++ch) {
                 uint64_t dstIdx = (framesProcessed + s) * numChannels + ch;
                 if (dstIdx < output.samples.size()) {
-                    output.samples[dstIdx] = audioBuffer.getSample(ch, s);
+                    output.samples[dstIdx] = processBuffer.getSample(ch, s);
                 }
             }
         }
@@ -204,7 +211,6 @@ AudioData PluginWrapper::renderInstrument(
 
     juce::MidiBuffer midiBuffer = buildMidiBuffer(midiEvents, durationSeconds);
 
-    // Process in blocks
     juce::AudioBuffer<float> audioBuffer(numChannels, blockSize);
 
     uint64_t framesProcessed = 0;
@@ -227,27 +233,28 @@ AudioData PluginWrapper::renderInstrument(
                                    static_cast<int>(framesProcessed));
                 ++midiIt;
             } else if (metadata.samplePosition < static_cast<int>(framesProcessed)) {
-                ++midiIt;  // skip past events
+                ++midiIt;
             } else {
-                break;  // future event
+                break;
             }
         }
 
-        if (framesThisBlock < blockSize) {
-            audioBuffer = juce::AudioBuffer<float>(
-                audioBuffer.getArrayOfWritePointers(),
-                numChannels,
-                framesThisBlock);
-        }
+        // Apply automation
+        applyAutomation(static_cast<int>(framesProcessed), framesThisBlock);
 
-        plugin->processBlock(audioBuffer, blockMidi);
+        juce::AudioBuffer<float> processBuffer(
+            audioBuffer.getArrayOfWritePointers(),
+            numChannels,
+            framesThisBlock);
+
+        plugin->processBlock(processBuffer, blockMidi);
 
         // Interleave output
         for (int s = 0; s < framesThisBlock; ++s) {
             for (int ch = 0; ch < numChannels; ++ch) {
                 uint64_t dstIdx = (framesProcessed + s) * numChannels + ch;
                 if (dstIdx < output.samples.size()) {
-                    output.samples[dstIdx] = audioBuffer.getSample(ch, s);
+                    output.samples[dstIdx] = processBuffer.getSample(ch, s);
                 }
             }
         }
@@ -268,6 +275,88 @@ std::string PluginWrapper::getName() const {
     return plugin->getName().toStdString();
 }
 
+// ── Phase 14 additions ────────────────────────────────────────────────────
+
+void PluginWrapper::setAutomation(int paramIndex,
+                                   const std::vector<AutomationPoint>& points) {
+    automationData[paramIndex] = points;
+    std::sort(automationData[paramIndex].begin(),
+              automationData[paramIndex].end(),
+              [](const AutomationPoint& a, const AutomationPoint& b) {
+                  return a.timeSeconds < b.timeSeconds;
+              });
+}
+
+void PluginWrapper::clearAutomation(int paramIndex) {
+    automationData.erase(paramIndex);
+}
+
+void PluginWrapper::clearAllAutomation() {
+    automationData.clear();
+}
+
+std::vector<uint8_t> PluginWrapper::getState() const {
+    std::vector<uint8_t> state;
+    if (plugin == nullptr) return state;
+
+    juce::MemoryBlock block;
+    plugin->getStateInformation(block);
+    state.resize(block.getSize());
+    std::memcpy(state.data(), block.getData(), block.getSize());
+    return state;
+}
+
+bool PluginWrapper::setState(const uint8_t* data, size_t size) {
+    if (plugin == nullptr || data == nullptr || size == 0) return false;
+    plugin->setStateInformation(data, static_cast<int>(size));
+    return true;
+}
+
+int PluginWrapper::getNumParameters() const {
+    if (plugin == nullptr) return 0;
+    return static_cast<int>(plugin->getParameters().size());
+}
+
+std::string PluginWrapper::getParamName(int index) const {
+    if (plugin == nullptr) return "";
+    auto& params = plugin->getParameters();
+    if (index < 0 || index >= static_cast<int>(params.size())) return "";
+    return params[index]->getName(64).toStdString();
+}
+
+void PluginWrapper::processBlock(juce::AudioBuffer<float>& buffer,
+                                  const juce::MidiBuffer& midiBuffer) {
+    if (plugin == nullptr || !prepared) return;
+    plugin->processBlock(buffer, midiBuffer);
+}
+
+void PluginWrapper::applyAutomation(int startSample, int numSamples) {
+    if (automationData.empty() || plugin == nullptr) return;
+
+    double startTime = startSample / sampleRate;
+    double endTime = (startSample + numSamples) / sampleRate;
+
+    for (auto& [paramIndex, points] : automationData) {
+        if (points.empty()) continue;
+
+        // Find the automation value at the start of this block
+        float value = 0.0f;
+        bool found = false;
+        for (const auto& point : points) {
+            if (point.timeSeconds <= startTime) {
+                value = point.value;
+                found = true;
+            } else {
+                break;
+            }
+        }
+
+        if (found) {
+            setParamByIndex(paramIndex, value);
+        }
+    }
+}
+
 juce::MidiBuffer PluginWrapper::buildMidiBuffer(
     const std::vector<MidiEvent>& events,
     double durationSeconds) const {
@@ -279,7 +368,7 @@ juce::MidiBuffer PluginWrapper::buildMidiBuffer(
 
         if (ev.type == "note_on") {
             msg = juce::MidiMessage::noteOn(
-                ev.channel + 1,   // JUCE uses 1-based channels
+                ev.channel + 1,
                 ev.note,
                 static_cast<uint8>(ev.velocity));
         } else if (ev.type == "note_off") {

@@ -1,10 +1,11 @@
 /*
- * VST3Host.cpp — JUCE-based VST3 plugin host implementation.
+ * VST3Host.cpp — VST3 plugin host implementation (Phase 14 enhanced).
  */
 #include "VST3Host.h"
 
 #include <juce_core/juce_core.h>
 #include <iostream>
+#include <cstring>
 
 VST3Host::VST3Host() {
     formatManager.addDefaultFormats();
@@ -46,12 +47,14 @@ std::vector<PluginInfo> VST3Host::scanPlugins() {
             desc, 44100.0, 512, errorMessage);
 
         if (instance != nullptr) {
-            info.manufacturer = instance->getPluginDescription()
-                                    .manufacturerName.toStdString();
-            info.category = instance->getPluginDescription()
-                                .category.toStdString();
-            info.isInstrument = instance->getPluginDescription()
-                                    .isInstrument;
+            auto& plugDesc = instance->getPluginDescription();
+            info.manufacturer = plugDesc.manufacturerName.toStdString();
+            info.category = plugDesc.category.toStdString();
+            info.version = plugDesc.version.toStdString();
+            info.isInstrument = plugDesc.isInstrument;
+            info.numParams = instance->getParameters().size();
+            info.numInputChannels = instance->getTotalNumInputChannels();
+            info.numOutputChannels = instance->getTotalNumOutputChannels();
         }
 
         results.push_back(std::move(info));
@@ -86,19 +89,16 @@ std::unique_ptr<juce::AudioPluginInstance> VST3Host::loadPlugin(
     const std::string& pluginPath,
     double sampleRate,
     int blockSize) {
-    // First, check if the file exists
     if (!juce::File(pluginPath).exists()) {
         std::cerr << "VST3Host: Plugin file not found: " << pluginPath << "\n";
         return nullptr;
     }
 
-    // Build plugin description
     juce::PluginDescription desc;
     desc.fileOrIdentifier = juce::String(pluginPath);
     desc.pluginFormatName = "VST3";
     desc.uniqueId = 0;
 
-    // Attempt to create the instance
     juce::String errorMessage;
     auto instance = formatManager.createPluginInstance(
         desc, sampleRate, blockSize, errorMessage);
@@ -117,4 +117,100 @@ std::unique_ptr<juce::AudioPluginInstance> VST3Host::loadPlugin(
               << "  Parameters: " << instance->getParameters().size() << "\n";
 
     return instance;
+}
+
+juce::AudioProcessor* VST3Host::createProcessor(
+    const std::string& pluginPath,
+    double sampleRate,
+    int blockSize) {
+    auto instance = loadPlugin(pluginPath, sampleRate, blockSize);
+    if (instance == nullptr) return nullptr;
+
+    setupProcessing(*instance, sampleRate, blockSize);
+    loadedPlugins.push_back(std::move(instance));
+    return loadedPlugins.back().get();
+}
+
+void VST3Host::setupProcessing(
+    juce::AudioPluginInstance& plugin,
+    double sampleRate,
+    int blockSize) {
+    plugin.prepareToPlay(sampleRate, blockSize);
+}
+
+void VST3Host::processAudio(
+    juce::AudioPluginInstance& plugin,
+    const float* input,
+    float* output,
+    int numSamples,
+    int numInputChannels,
+    int numOutputChannels) {
+    int numChannels = std::max(numInputChannels, numOutputChannels);
+    if (numChannels == 0) numChannels = 2;
+
+    juce::AudioBuffer<float> buffer(numChannels, numSamples);
+
+    // Copy input (de-interleave)
+    buffer.clear();
+    for (int s = 0; s < numSamples; ++s) {
+        for (int ch = 0; ch < numInputChannels && ch < numChannels; ++ch) {
+            buffer.setSample(ch, s, input[s * numInputChannels + ch]);
+        }
+    }
+
+    // Process
+    juce::MidiBuffer midiBuffer;
+    plugin.processBlock(buffer, midiBuffer);
+
+    // Copy output (interleave)
+    for (int s = 0; s < numSamples; ++s) {
+        for (int ch = 0; ch < numOutputChannels && ch < numChannels; ++ch) {
+            output[s * numOutputChannels + ch] = buffer.getSample(ch, s);
+        }
+    }
+}
+
+void VST3Host::setParameter(
+    juce::AudioPluginInstance& plugin,
+    int index,
+    float value) {
+    auto& params = plugin.getParameters();
+    if (index < 0 || index >= static_cast<int>(params.size())) return;
+    value = std::max(0.0f, std::min(1.0f, value));
+    params[index]->setValue(value);
+}
+
+float VST3Host::getParameter(
+    juce::AudioPluginInstance& plugin,
+    int index) {
+    auto& params = plugin.getParameters();
+    if (index < 0 || index >= static_cast<int>(params.size())) return 0.0f;
+    return params[index]->getValue();
+}
+
+std::string VST3Host::getParameterName(
+    juce::AudioPluginInstance& plugin,
+    int index) {
+    auto& params = plugin.getParameters();
+    if (index < 0 || index >= static_cast<int>(params.size())) return "";
+    return params[index]->getName(64).toStdString();
+}
+
+std::vector<uint8_t> VST3Host::getState(
+    juce::AudioPluginInstance& plugin) {
+    std::vector<uint8_t> state;
+    juce::MemoryBlock block;
+    plugin.getStateInformation(block);
+    state.resize(block.getSize());
+    std::memcpy(state.data(), block.getData(), block.getSize());
+    return state;
+}
+
+bool VST3Host::setState(
+    juce::AudioPluginInstance& plugin,
+    const uint8_t* data,
+    size_t size) {
+    if (data == nullptr || size == 0) return false;
+    plugin.setStateInformation(data, static_cast<int>(size));
+    return true;
 }
