@@ -42,7 +42,52 @@
         "path": "../python-dist/**",
         "target": ""
       }
-    ]
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "wix": null,
+      "nsis": {
+        "languages": ["English", "SimpChinese"],
+        "displayLanguageSelector": true,
+        "installMode": "currentUser",
+        "headerImage": "",
+        "sidebarImage": "",
+        "installerIcon": "",
+        "allowDowngrades": true
+      }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": null,
+      "dmg": {
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        },
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        }
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libappindicator3-1"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "externalBin": []
   },
   "plugins": {
     "shell": {
@@ -58,6 +103,12 @@
           "args": true
         }
       ]
+    },
+    "updater": {
+      "active": false,
+      "endpoints": [],
+      "dialog": true,
+      "pubkey": ""
     }
   }
 }

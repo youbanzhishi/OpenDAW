@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vcmix"
-version = "0.12.0"
+version = "0.13.0"
 description = "AI-native open-source DAW — YAML-driven, cross-platform, AI Agent friendly"
 readme = "README.md"
 license = {text = "MIT"}
@@ -29,6 +29,7 @@ classifiers = [
 dependencies = [
     "numpy>=1.24.0",
     "soundfile>=0.12.0",
+    "scipy>=1.10.0",
     "pyyaml>=6.0",
     "pydantic>=2.0",
     "rich>=13.0",
@@ -42,15 +43,27 @@ web = [
     "uvicorn>=0.20.0",
     "websockets>=11.0",
 ]
+ai = [
+    "demucs>=4.0",
+]
+audio = [
+    "sounddevice>=0.4.0",
+    "mido>=1.3.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.1.0",
     "mypy>=1.0",
+    "build>=1.0",
+    "twine>=4.0",
     "fastapi>=0.100.0",
     "uvicorn>=0.20.0",
     "websockets>=11.0",
     "httpx>=0.24.0",
+]
+all = [
+    "vcmix[web,ai,audio]",
 ]
 
 [project.scripts]
@@ -58,6 +71,12 @@ vcmix = "vcmix.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+vcmix = [
+    "web/static/**/*",
+    "presets/**/*.yaml",
+]
 
 [tool.ruff]
 line-length = 100

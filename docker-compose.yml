@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  vcmix:
+    build: .
+    container_name: vcmix-server
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./projects:/app/projects
+      - ./output:/app/output
+      - ./presets:/app/presets:ro
+    environment:
+      - VCMIx_LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/plugins')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -1660,3 +1660,47 @@ def compose_and_mix_cmd(
     except Exception as e:
         click.secho(f"✗ Compose & Mix failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+# ── Phase 16: Serve command ──────────────────────────────────────────────
+
+
+@main.command()
+@click.option("--host", default="127.0.0.1", help="Bind host address")
+@click.option("--port", default=8000, type=int, help="Bind port number")
+@click.option("--reload", is_flag=True, help="Enable auto-reload (development)")
+def serve(host: str, port: int, reload: bool) -> None:
+    """Start VCMix web UI server.
+
+    Launches the FastAPI-based web interface, providing both REST API
+    and WebSocket endpoints for AI Agent and human interaction.
+
+    Examples:
+
+        vcmix serve
+        vcmix serve --host 0.0.0.0 --port 8080
+        vcmix serve --reload
+    """
+    try:
+        import uvicorn
+        from vcmix.web.app import create_app
+    except ImportError:
+        click.secho(
+            "✗ Web UI dependencies not installed. Install with: pip install vcmix[web]",
+            fg="red",
+        )
+        sys.exit(6)
+
+    app = create_app()
+    click.secho(f"♫ VCMix web UI → http://{host}:{port}", fg="cyan", bold=True)
+
+    if reload:
+        uvicorn.run(
+            "vcmix.web.app:create_app",
+            host=host,
+            port=port,
+            reload=True,
+            factory=True,
+        )
+    else:
+        uvicorn.run(app, host=host, port=port)

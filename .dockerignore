@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+*.egg-info
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backups
+.backups/
+*.backup
+
+# Desktop (Tauri) - not needed in Docker
+desktop/
+
+# VST3 host (C++ - not needed in Docker)
+vst3_host/
+
+# Test & temp
+tests/
+*.tmp
+*.bak
+output/
+projects/
+.github/
+docs/
+examples/
+demo_project/

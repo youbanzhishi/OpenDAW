@@ -432,7 +432,7 @@ class TestCLIBasic:
         """vcmix --version — should print version string."""
         result = run_cli("--version")
         assert result.returncode == 0
-        assert "0.8.0" in result.stdout
+        assert "0.13.0" in result.stdout
 
     def test_help(self):
         """vcmix --help — should list available subcommands."""
