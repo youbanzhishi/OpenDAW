@@ -281,13 +281,13 @@ def _graph_mermaid(cfg) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def analyze(audio_file: Path, as_json: bool) -> None:
     """Analyze an audio file for RMS/Peak/spectrum/sibilance."""
+
     import vcmix
-    import numpy as np
 
     try:
         from vcmix.audio.io import read_audio
-        from vcmix.engine.analyzer import Analyzer
         from vcmix.audio.meter import Meter
+        from vcmix.engine.analyzer import Analyzer
 
         audio, sr = read_audio(audio_file)
         analyzer = Analyzer(sample_rate=sr)
@@ -333,8 +333,8 @@ def analyze(audio_file: Path, as_json: bool) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output analysis as JSON instead of YAML")
 def automix(vocal_file: Path, bpm: float, output: Path | None, as_json: bool) -> None:
     """Auto-analyze dry vocal and generate VCMix YAML config."""
+
     import vcmix
-    import numpy as np
 
     try:
         from vcmix.audio.io import read_audio
@@ -369,7 +369,7 @@ def automix(vocal_file: Path, bpm: float, output: Path | None, as_json: bool) ->
             with open(output, "w", encoding="utf-8") as f:
                 yaml.dump(yaml_config, f, default_flow_style=False, allow_unicode=True)
 
-            click.secho(f"✔ AutoMix analysis complete", fg="green")
+            click.secho("✔ AutoMix analysis complete", fg="green")
             click.echo(f"  RMS:       {analysis['rms_db']:.1f} dBFS")
             click.echo(f"  Peak:      {analysis['peak_db']:.1f} dBFS")
             click.echo(f"  DR:        {analysis['dynamic_range_db']:.1f} dB")
@@ -393,7 +393,7 @@ def automix(vocal_file: Path, bpm: float, output: Path | None, as_json: bool) ->
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def presets_cmd(name: str | None, as_json: bool) -> None:
     """List all built-in effect chain presets."""
-    from vcmix.presets.manager import list_presets, get_preset
+    from vcmix.presets.manager import get_preset, list_presets
 
     if name:
         chain = get_preset(name)
@@ -499,6 +499,7 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
         else:
             # Build from audio files
             import numpy as np
+
             from vcmix.audio.io import read_audio
 
             stems = {}

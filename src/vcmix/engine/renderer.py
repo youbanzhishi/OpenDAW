@@ -23,6 +23,12 @@ Phase 4 additions:
     - Warning detection (clipping, low SNR, sibilance)
     - Decision events (auto-fix applied)
 
+Phase 7 additions:
+    - Arrangement-aware rendering mode (--arrangement-aware)
+    - Dynamic effect parameter adjustment per song section
+    - Crossfade interpolation between sections
+    - Integration with ArrangementStrategy for section-level mixing
+
 Features:
     - --report mode: emit RMS/Peak/spectrum after each effect
     - --stream log|json: real-time structured progress output
@@ -41,7 +47,6 @@ Dependencies: numpy, soundfile, vcmix.config, vcmix.audio, vcmix.plugins
 from __future__ import annotations
 
 import json
-import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,15 +57,60 @@ import numpy as np
 from vcmix.audio.io import read_audio, write_audio
 from vcmix.audio.mixer import Mixer
 from vcmix.engine.analyzer import Analyzer
-from vcmix.engine.autofix import AutoFix, ChainAnalysis
+from vcmix.engine.arrangement_strategy import ArrangementStrategy
+from vcmix.engine.autofix import AutoFix
 from vcmix.engine.bus import BusManager
 from vcmix.plugins.registry import PluginRegistry
-from vcmix.stream.emitter import DataStream, EventLevel
+from vcmix.separation.arrangement import ArrangementExtractor, Section
+from vcmix.stream.emitter import DataStream
 
 # ── Thresholds for warning detection ──────────────────────────────────────
 _CLIP_THRESHOLD_DB = -1.0       # Peak above this = clipping warning
 _LOW_SNR_THRESHOLD_DB = -36.0   # RMS below this = low SNR warning
 _SIBILANCE_THRESHOLD = 0.15     # Sibilance ratio above this = de-ess needed
+
+
+# ── Helper functions for arrangement-aware rendering ──────────────────────
+
+def _simulate_reverb(audio: np.ndarray, mix: float, sr: int, beat_samples: int) -> np.ndarray:
+    """Simple exponential decay reverb simulation."""
+    decay = np.exp(-np.arange(beat_samples) / (sr * 0.3))
+    impulse = np.zeros(beat_samples, dtype=np.float64)
+    impulse[0] = 1.0
+    # Simple multi-tap reverb
+    for tap in [0.02, 0.04, 0.06]:
+        idx = int(tap * sr)
+        if idx < beat_samples:
+            impulse[idx] = 0.3
+    tail = np.convolve(
+        audio.astype(np.float64),
+        impulse * decay[:len(impulse)],
+        mode="full",
+    )[:beat_samples]
+    return tail.astype(np.float32)
+
+
+def _simulate_delay(audio: np.ndarray, mix: float, beat_samples: int) -> np.ndarray:
+    """Simple delay simulation."""
+    output = np.zeros(beat_samples, dtype=np.float64)
+    src = audio.astype(np.float64)
+    output[:len(src)] = src
+    delay_samples = beat_samples // 2
+    if delay_samples < len(src):
+        end = delay_samples + len(src) - delay_samples
+        output[delay_samples:end] += (
+            src[:-delay_samples] * mix * 0.5
+        )
+    return output.astype(np.float32)
+
+
+def _simulate_compression(audio: np.ndarray, ratio: float) -> np.ndarray:
+    """Simple compression simulation."""
+    threshold = 0.5
+    output = audio.astype(np.float64).copy()
+    mask = np.abs(output) > threshold
+    output[mask] = np.sign(output[mask]) * (threshold + (np.abs(output[mask]) - threshold) / ratio)
+    return output.astype(np.float32)
 
 
 @dataclass
@@ -75,6 +125,7 @@ class Renderer:
         stream: Output format — 'log' (human), 'json' (structured), 'none'.
         ab_mode: Enable A/B comparison rendering (Phase 2).
         ab_diff: Include difference analysis in A/B mode (Phase 2).
+        arrangement_aware: Enable arrangement-aware rendering (Phase 7).
     """
 
     config: Any  # ProjectConfig
@@ -83,15 +134,135 @@ class Renderer:
     stream: str = "log"
     ab_mode: bool = False
     ab_diff: bool = False
+    # Phase 7: Arrangement-aware rendering
+    arrangement_aware: bool = False
     # Phase 4: DataStream instance for real-time closed-loop data
     data_stream: DataStream = field(default=None, init=False, repr=False)  # type: ignore[assignment]
+    # Phase 7: Arrangement strategy (populated in __post_init__ if arrangement_aware)
+    _arrangement_strategy: Any = field(default=None, init=False, repr=False)
+    _arrangement_sections: list = field(default_factory=list, init=False, repr=False)
 
     def __post_init__(self) -> None:
-        """Initialize DataStream based on stream format."""
+        """Initialize DataStream based on stream format and arrangement strategy."""
         if self.stream == "json":
             self.data_stream = DataStream(format="json")
         else:
             self.data_stream = DataStream(format="dict")
+        # Phase 7: Initialize arrangement strategy if arrangement_aware mode
+        if self.arrangement_aware:
+            self._init_arrangement_strategy()
+
+    # ── Arrangement-aware rendering methods (Phase 7) ────────────────────
+
+    def _init_arrangement_strategy(self) -> None:
+        """Initialize the arrangement strategy from project stems."""
+        project = self.config
+        bpm = getattr(project, "bpm", 120)
+        sr = getattr(project, "sample_rate", 44100)
+
+        stems = getattr(project, "_stems", None)
+        if stems and len(stems) > 0:
+            extractor = ArrangementExtractor()
+            self._arrangement_sections = extractor.extract(stems, sr, bpm)
+        else:
+            self._arrangement_sections = self._create_default_sections(bpm, sr)
+
+        if self._arrangement_sections:
+            self._arrangement_strategy = ArrangementStrategy.from_sections(
+                self._arrangement_sections
+            )
+            self._emit("arrangement_init", {
+                "sections": len(self._arrangement_sections),
+                "total_beats": self._arrangement_strategy.total_beats,
+            })
+
+    def _create_default_sections(self, bpm: float, sr: int) -> list:
+        """Create a default arrangement when no stems are available."""
+        project = self.config
+        project_dir = getattr(project, "_project_dir", Path("."))
+        total_duration = 0.0
+
+        for track in project.tracks:
+            track_path = project_dir / track.file
+            try:
+                info = __import__("soundfile").info(str(track_path))
+                total_duration = max(total_duration, info.duration)
+            except Exception:
+                pass
+
+        if total_duration <= 0:
+            total_duration = 180.0
+
+        beat_sec = 60.0 / bpm if bpm > 0 else 0.5
+        total_beats = int(total_duration / beat_sec)
+
+        sections_def = [
+            ("intro", 0, min(8, total_beats // 6)),
+            ("verse", min(8, total_beats // 6), min(24, total_beats // 2)),
+            ("chorus", min(24, total_beats // 2), min(40, total_beats * 2 // 3)),
+            ("bridge", min(40, total_beats * 2 // 3), min(48, total_beats * 5 // 6)),
+            ("outro", min(48, total_beats * 5 // 6), total_beats),
+        ]
+
+        result = []
+        for name, start, end in sections_def:
+            if end > start:
+                result.append(Section(
+                    name=name,
+                    start_beat=start,
+                    end_beat=end,
+                    start_sec=start * beat_sec,
+                    end_sec=end * beat_sec,
+                    active_stems=[],
+                    energy_level="medium",
+                ))
+        return result
+
+    def _apply_arrangement_params(
+        self,
+        audio: np.ndarray,
+        sr: int,
+        bpm: float,
+    ) -> np.ndarray:
+        """Apply arrangement-aware effect parameters to audio."""
+        if self._arrangement_strategy is None:
+            return audio
+
+        beat_samples = int(sr * 60.0 / bpm) if bpm > 0 else int(sr * 0.5)
+        audio_flat = audio.flatten().astype(np.float64)
+        total_samples = len(audio_flat)
+        total_beats = (total_samples + beat_samples - 1) // beat_samples
+
+        output = np.zeros_like(audio_flat)
+
+        for beat in range(total_beats):
+            start_sample = beat * beat_samples
+            end_sample = min(start_sample + beat_samples, total_samples)
+            beat_audio = audio_flat[start_sample:end_sample]
+
+            params = self._arrangement_strategy.get_params_at_beat(beat)
+
+            gain_linear = 10.0 ** (params.gain_db / 20.0)
+            processed = beat_audio * gain_linear
+
+            if params.reverb_mix > 0:
+                reverb_tail = _simulate_reverb(processed, params.reverb_mix, sr, beat_samples)
+                processed = processed * (1.0 - params.reverb_mix) + reverb_tail * params.reverb_mix
+
+            if params.delay_mix > 0:
+                delay_signal = _simulate_delay(processed, params.delay_mix, beat_samples)
+                processed = processed * (1.0 - params.delay_mix) + delay_signal * params.delay_mix
+
+            if params.compression_ratio > 1.0:
+                processed = _simulate_compression(processed, params.compression_ratio)
+
+            output[start_sample:end_sample] = processed[:end_sample - start_sample]
+
+        if audio.ndim == 2:
+            return output.reshape(audio.shape)
+        return output.astype(np.float32)
+
+    # ── Progress emission ────────────────────────────────────────────────
 
     def _emit(self, step: str, data: dict[str, Any]) -> None:
         """Emit progress data in the configured stream format."""
@@ -199,7 +370,8 @@ class Renderer:
             self.data_stream.emit_warning(
                 track_name,
                 "sibilance",
-                f"Sibilance ratio {sibilance:.3f} exceeds {_SIBILANCE_THRESHOLD:.2f} — de-ess needed",
+                f"Sibilance ratio {sibilance:.3f} "
+                f"exceeds {_SIBILANCE_THRESHOLD:.2f} — de-ess needed",
             )
 
     # ── Legacy analysis method ────────────────────────────────────────────
@@ -255,6 +427,10 @@ class Renderer:
 
         # Phase 4: Emit initial track level
         self._emit_track_level(track.name, audio, sr)
+
+        # Phase 7: Apply arrangement-aware processing if enabled
+        if self.arrangement_aware:
+            audio = self._apply_arrangement_params(audio, sr, self.config.bpm)
 
         # Get the effect chain
         effects = getattr(track, chain_key, None) or track.effects
@@ -318,7 +494,10 @@ class Renderer:
                     track.name,
                     action="auto_fix_gain",
                     params={"gain_db": adjustments["gain_db"]},
-                    reason=f"Auto-fix applied {adjustments['gain_db']:.1f} dB gain to hit target RMS",
+                    reason=(
+                        f"Auto-fix applied {adjustments['gain_db']:.1f} "
+                        f"dB gain to hit target RMS"
+                    ),
                 )
 
         return prev_audio
@@ -370,7 +549,8 @@ class Renderer:
         for track_name in render_order:
             track = next((t for t in project.tracks if t.name == track_name), None)
             if track is None or track.mute:
-                self._emit("4_render", {"track": track_name, "status": "muted" if track else "missing"})
+                status = "muted" if track else "missing"
+                self._emit("4_render", {"track": track_name, "status": status})
                 continue
 
             prev_audio = self._render_track(track, registry, sr, project_dir, rendered_tracks)
@@ -403,13 +583,11 @@ class Renderer:
                 })
 
             if all_returns:
-                # Determine max length
                 max_len = max(
                     max(len(a.flatten()) for a in returns.values())
                     for returns in all_returns
                     if returns
                 )
-                # Also consider rendered track lengths
                 for audio in rendered_tracks.values():
                     max_len = max(max_len, len(audio.flatten()))
 
@@ -487,12 +665,7 @@ class Renderer:
         project_dir: Path,
         original_output: Path,
     ) -> None:
-        """
-        Render A/B comparison versions.
-
-        For each track with effects_a/effects_b, renders both chains
-        and outputs separate files + optional diff analysis.
-        """
+        """Render A/B comparison versions."""
         self._emit("7ab_start", {"mode": "A/B comparison"})
 
         # Render A version
@@ -515,14 +688,12 @@ class Renderer:
         track_levels_a = [project.master.levels.get(n, 1.0) for n in track_names_a]
         mixed_a = mixer.mix(track_audios_a, levels=track_levels_a)
 
-        # Apply master chain to A
         for effect in project.master.effects:
             plugin = registry.get(effect.name)
             if plugin is None:
                 continue
             mixed_a = plugin.process(mixed_a, effect.params, sr)
 
-        # Write A output
         output_a = project_dir / original_output.with_name(
             original_output.stem + "_a" + original_output.suffix
         )
@@ -542,20 +713,17 @@ class Renderer:
                 )
             rendered_b[track.name] = audio
 
-        # Mix B
         track_names_b = list(rendered_b.keys())
         track_audios_b = [rendered_b[n] for n in track_names_b]
         track_levels_b = [project.master.levels.get(n, 1.0) for n in track_names_b]
         mixed_b = mixer.mix(track_audios_b, levels=track_levels_b)
 
-        # Apply master chain to B
         for effect in project.master.effects:
             plugin = registry.get(effect.name)
             if plugin is None:
                 continue
             mixed_b = plugin.process(mixed_b, effect.params, sr)
 
-        # Write B output
         output_b = project_dir / original_output.with_name(
             original_output.stem + "_b" + original_output.suffix
         )
@@ -567,7 +735,6 @@ class Renderer:
             analyzer = Analyzer(sample_rate=sr)
             diff_report = analyzer.compare(mixed_a, mixed_b)
 
-            # Compute sample-level difference
             min_len = min(len(mixed_a.flatten()), len(mixed_b.flatten()))
             a_flat = mixed_a.flatten()[:min_len].astype(np.float64)
             b_flat = mixed_b.flatten()[:min_len].astype(np.float64)
@@ -575,35 +742,27 @@ class Renderer:
 
             diff_rms = float(np.sqrt(np.mean(diff_audio ** 2)))
             diff_peak = float(np.max(np.abs(diff_audio)))
-            diff_report["diff_rms_db"] = round(20 * np.log10(diff_rms) if diff_rms > 0 else -120.0, 2)
-            diff_report["diff_peak_db"] = round(20 * np.log10(diff_peak) if diff_peak > 0 else -120.0, 2)
+            diff_rms_db = round(
+                20 * np.log10(diff_rms) if diff_rms > 0 else -120.0, 2
+            )
+            diff_report["diff_rms_db"] = diff_rms_db
+            diff_peak_db = round(
+                20 * np.log10(diff_peak) if diff_peak > 0 else -120.0, 2
+            )
+            diff_report["diff_peak_db"] = diff_peak_db
 
             self._emit("7ab_diff", diff_report)
 
     def _resolve_render_order(self, project: Any) -> list[str]:
-        """
-        Resolve track rendering order based on sidechain dependencies.
-
-        If track B sidechains from track A, A must be rendered first.
-        Uses topological sort on the dependency graph.
-        """
+        """Resolve track rendering order based on sidechain dependencies."""
         track_names = [t.name for t in project.tracks]
-        # Build dependency graph: sidechain_source -> sidechain_consumer
         deps: dict[str, set[str]] = {name: set() for name in track_names}
 
         for track in project.tracks:
             for effect in track.effects:
                 if effect.sidechain is not None and effect.sidechain in track_names:
-                    # track depends on effect.sidechain being rendered first
                     deps[track.name].add(effect.sidechain)
 
-        # Topological sort (Kahn's algorithm)
-        in_degree = {name: 0 for name in track_names}
-        for name, dep_set in deps.items():
-            for dep in dep_set:
-                in_degree[name] = in_degree.get(name, 0)  # ensure exists
-
-        # Compute in-degrees properly
         in_degree = {name: 0 for name in track_names}
         for name, dep_set in deps.items():
             in_degree[name] = len(dep_set)
@@ -614,7 +773,6 @@ class Renderer:
         while queue:
             current = queue.pop(0)
             order.append(current)
-            # Find all tracks that depend on current
             for name in track_names:
                 if current in deps.get(name, set()):
                     deps[name].discard(current)
@@ -622,7 +780,6 @@ class Renderer:
                     if in_degree[name] == 0:
                         queue.append(name)
 
-        # If there's a cycle, just append remaining tracks
         remaining = [name for name in track_names if name not in order]
         order.extend(remaining)
 
