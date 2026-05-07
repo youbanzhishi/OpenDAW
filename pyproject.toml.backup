@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vcmix"
-version = "0.8.0"
+version = "0.6.0"
 description = "AI-native open-source DAW — YAML-driven, cross-platform, AI Agent friendly"
 readme = "README.md"
 license = {text = "MIT"}
@@ -37,20 +37,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-web = [
-    "fastapi>=0.100.0",
-    "uvicorn>=0.20.0",
-    "websockets>=11.0",
-]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.1.0",
     "mypy>=1.0",
-    "fastapi>=0.100.0",
-    "uvicorn>=0.20.0",
-    "websockets>=11.0",
-    "httpx>=0.24.0",
 ]
 
 [project.scripts]

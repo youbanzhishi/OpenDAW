@@ -1,0 +1,8 @@
+effects:
+- name: vc-gain
+  params:
+    gain: 3
+- name: vc-limiter
+  params:
+    ceiling: -1
+name: test_preset

@@ -85,11 +85,11 @@ vcmix presets
 | AutoMix engine | 6 | ✅ |
 | Reference matching | 6 | ✅ |
 | Arrangement-aware mixing | 7 | ✅ |
-| Web UI | 8 | 📋 Planned |
+| Web UI (FastAPI) | 8 | 🏃 In Progress |
 | Native GUI | 9 | 🔮 Future |
 | Full DAW | 10 | 🔮 Ultimate Goal |
 
-## Supported VC Plugins (18)
+## Supported VC Plugins (20)
 
 ### Gen 1 (16 plugins)
 | Plugin | Key Parameters |
@@ -111,17 +111,15 @@ vcmix presets
 | VC-Gate | threshold, ratio, attack, hold, release, range |
 | VC-Chorus | rate, depth, voices, mix, width |
 
-### Gen 2 (2 plugins, new)
-| Plugin | Key Parameters |
-|--------|---------------|
-| VC-Stereo | width, pan, mono_bass, bass_freq |
-| VC-PitchShift | semitones, cents, formant |
+### Gen 2 (4 plugins)
+| Plugin | Type | Key Parameters |
+|--------|------|---------------|
+| VC-Stereo | 🆕 New | width, pan, mono_bass, bass_freq |
+| VC-PitchShift | 🆕 New | semitones, cents, formant |
+| VC-Reverb | ⬆️ FDN升级 | room, decay, damping, mix, predelay, wetlpf (8-delay FDN) |
+| VC-Comp | ⬆️ 多段升级 | threshold, ratio, --multiband, --band-threshold, --band-ratio |
 
-### Gen 2 Upgrades
-| Plugin | Upgrade |
-|--------|---------|
-| VC-Reverb | Schroeder → 8-delay-line FDN + Householder + early reflections |
-| VC-Comp | Single-band → 4-band multiband (LR4 crossover) |
+
 
 ## DataStream Events (AI Agent API)
 
