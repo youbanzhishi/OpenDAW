@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.20.0] - 2026-05-14
+
+### Added
+#### Phase 18: 多用户协作编辑
+- WebSocket实时同步+LWW冲突解决+5种变更类型
+
+#### 多格式导出
+- WAV/MP3/FLAC/OGG/MIDI
+
+#### Stem导出
+- 逐轨+按总线
+
+#### 项目版本管理
+- 快照CRUD+差异比较+恢复+回滚
+
+#### 新CLI命令
+- export/export-stems/snapshot/snapshots/restore
+
+#### 新API端点
+- 6个新API端点+1个协作WebSocket
+
+### Tests
+- 114新测试
+- 总计1552测试全绿
+
+# Changelog
+
 ## [0.19.0] - 2026-05-08
 
 ### Added
