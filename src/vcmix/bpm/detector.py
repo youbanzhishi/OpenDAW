@@ -67,11 +67,11 @@ def detect_bpm(
 
     # Detect tempo
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-    bpm = float(tempo)
-
-    # Handle librosa returning array
-    if isinstance(bpm, np.ndarray):
-        bpm = float(bpm.flat[0])
+    # Handle librosa returning ndarray (newer versions)
+    if isinstance(tempo, np.ndarray):
+        bpm = float(tempo.flat[0])
+    else:
+        bpm = float(tempo)
 
     # Normalize: slow songs get doubled, fast songs get halved
     if bpm < 80:

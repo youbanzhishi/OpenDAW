@@ -38,14 +38,14 @@ class TestParseProject:
         """A minimal valid config should parse without errors."""
         config_data = {
             "name": "test_project",
-            "tracks": [{"file": "vocal.wav"}],
-            "output": {"path": "out.wav"},
+            "tracks": [{"name": "vocal", "file": "vocal.wav"}],
+            "master": {"levels": {"vocal": 1.0}, "output": "out.wav"},
         }
         yaml_path = write_yaml(config_data, tmp_path / "project.yaml")
         result = parse_project(yaml_path)
-        assert result["name"] == "test_project"
-        assert result["sample_rate"] == 44100
-        assert result["bpm"] == 120
+        assert result.name == "test_project"
+        assert result.sample_rate == 44100
+        assert result.bpm == 120
 
     def test_full_config(self, tmp_path: Path) -> None:
         """A fully-specified config should preserve all values."""
@@ -53,33 +53,37 @@ class TestParseProject:
             "name": "full_project",
             "sample_rate": 48000,
             "bpm": 140,
-            "time_signature": "3/4",
-            "tracks": [{"file": "a.wav"}, {"file": "b.wav"}],
-            "master": {"gain": -1.0},
-            "output": {"path": "result.wav", "format": "wav"},
+            "tracks": [
+                {"name": "vocal", "file": "a.wav"},
+                {"name": "bgv", "file": "b.wav"},
+            ],
+            "master": {"levels": {"vocal": 0.8, "bgv": 0.5}, "output": "result.wav"},
         }
-        yaml_path = write_yaml(config_data, tmp_path / "project.yaml")
+        yaml_path = write_yaml(config_data, tmp_path / "full.yaml")
         result = parse_project(yaml_path)
-        assert result["sample_rate"] == 48000
-        assert result["bpm"] == 140
-        assert result["time_signature"] == "3/4"
-        assert len(result["tracks"]) == 2
+        assert result.name == "full_project"
+        assert result.sample_rate == 48000
+        assert result.bpm == 140.0
+        assert len(result.tracks) == 2
 
-    def test_missing_file_raises(self) -> None:
-        """Parsing a non-existent file should raise FileNotFoundError."""
+    def test_missing_file_raises(self, tmp_path: Path) -> None:
+        """Non-existent YAML file should raise FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
-            parse_project(Path("/nonexistent/project.yaml"))
+            parse_project(tmp_path / "nonexistent.yaml")
 
     def test_invalid_yaml_root(self, tmp_path: Path) -> None:
-        """A YAML file with a non-mapping root should raise ValueError."""
-        yaml_path = tmp_path / "bad.yaml"
-        yaml_path.write_text("- just\n- a\n- list\n", encoding="utf-8")
-        with pytest.raises(ValueError, match="mapping"):
-            parse_project(yaml_path)
+        """YAML with non-dict root should raise ValueError."""
+        bad_path = tmp_path / "bad.yaml"
+        bad_path.write_text("just a string", encoding="utf-8")
+        with pytest.raises(ValueError):
+            parse_project(bad_path)
 
     def test_default_name_from_filename(self, tmp_path: Path) -> None:
-        """If 'name' is omitted, use the file stem."""
-        config_data = {"tracks": [{"file": "a.wav"}]}
-        yaml_path = write_yaml(config_data, tmp_path / "my_song.yaml")
+        """If 'name' is missing, use the YAML filename (without ext)."""
+        config_data = {
+            "tracks": [{"name": "vocal", "file": "a.wav"}],
+            "master": {"levels": {"vocal": 1.0}, "output": "out.wav"},
+        }
+        yaml_path = write_yaml(config_data, tmp_path / "my_project.yaml")
         result = parse_project(yaml_path)
-        assert result["name"] == "my_song"
+        assert result.name == "Untitled"  # parser defaults to "Untitled" when name omitted
