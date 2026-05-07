@@ -7,12 +7,6 @@ Parses the four-layer YAML structure:
     3. effect   — plugin name + parameters (supports BPM note values)
     4. master   — bus levels + master insert chain
 
-Phase 2 additions:
-    - sends section — Send/Return bus definitions
-    - track.sends   — per-track send levels to buses
-    - track.effects_a / effects_b — A/B comparison chains
-    - effect.sidechain — sidechain routing specification
-
 BPM Note-Value Auto-Conversion:
     Any parameter value matching N/D, N/Dd, N/Dt pattern is auto-converted
     to milliseconds using the project BPM:
@@ -126,10 +120,6 @@ class EffectConfig(BaseModel):
         default_factory=dict,
         description="Plugin parameters (note values auto-converted to ms)"
     )
-    sidechain: str | None = Field(
-        default=None,
-        description="Sidechain source track name (Phase 2)"
-    )
 
 
 class TrackConfig(BaseModel):
@@ -140,35 +130,9 @@ class TrackConfig(BaseModel):
         default_factory=list,
         description="Ordered insert effect chain"
     )
-    effects_a: list[EffectConfig] | None = Field(
-        default=None,
-        description="A-chain for A/B comparison (Phase 2)"
-    )
-    effects_b: list[EffectConfig] | None = Field(
-        default=None,
-        description="B-chain for A/B comparison (Phase 2)"
-    )
-    sends: dict[str, float] = Field(
-        default_factory=dict,
-        description="Send levels: {bus_name: level} (Phase 2)"
-    )
     volume: float = Field(default=1.0, ge=0.0, description="Track volume (linear, 1.0=unity)")
     mute: bool = Field(default=False, description="Mute this track")
     solo: bool = Field(default=False, description="Solo this track")
-
-
-class SendBusConfig(BaseModel):
-    """A Send/Return bus definition (Phase 2)."""
-    name: str = Field(..., description="Bus name, e.g. 'reverb_bus'")
-    effects: list[EffectConfig] = Field(
-        default_factory=list,
-        description="Bus insert effect chain"
-    )
-    return_level: float = Field(
-        default=0.15,
-        ge=0.0,
-        description="Return level to master mix (0.0-1.0)"
-    )
 
 
 class MasterConfig(BaseModel):
@@ -190,10 +154,6 @@ class ProjectConfig(BaseModel):
     bpm: float = Field(default=120.0, gt=0, description="Beats per minute")
     sample_rate: int = Field(default=44100, gt=0, description="Sample rate in Hz")
     tracks: list[TrackConfig] = Field(default_factory=list, description="Audio tracks")
-    sends: list[SendBusConfig] = Field(
-        default_factory=list,
-        description="Send/Return bus definitions (Phase 2)"
-    )
     master: MasterConfig = Field(default_factory=MasterConfig, description="Master bus")
 
     @field_validator("bpm")
@@ -204,29 +164,8 @@ class ProjectConfig(BaseModel):
             v /= 2.0
         return v
 
-    @property
-    def has_ab(self) -> bool:
-        """Check if any track has A/B comparison chains."""
-        return any(t.effects_a is not None or t.effects_b is not None for t in self.tracks)
-
-    @property
-    def has_sidechain(self) -> bool:
-        """Check if any effect uses sidechain routing."""
-        for track in self.tracks:
-            for effect in track.effects:
-                if effect.sidechain is not None:
-                    return True
-        return False
-
 
 # ── YAML Parse Entry Point ─────────────────────────────────────────────────
-
-def _convert_effects_note_values(effects: list[dict], bpm: float) -> None:
-    """Convert note values in a list of effect dicts (in-place)."""
-    for effect in effects:
-        if "params" in effect and isinstance(effect["params"], dict):
-            effect["params"] = convert_note_values(effect["params"], bpm)
-
 
 def parse_project(yaml_path: Path | str) -> ProjectConfig:
     """
@@ -258,18 +197,11 @@ def parse_project(yaml_path: Path | str) -> ProjectConfig:
 
     bpm = float(raw.get("bpm", 120.0))
 
-    # Convert note values in track effects (all chains: effects, effects_a, effects_b)
+    # Convert note values in track effects
     for track in raw.get("tracks", []):
-        for chain_key in ("effects", "effects_a", "effects_b"):
-            effects = track.get(chain_key, [])
-            if isinstance(effects, list):
-                _convert_effects_note_values(effects, bpm)
-
-    # Convert note values in send bus effects
-    for send_bus in raw.get("sends", []):
-        effects = send_bus.get("effects", [])
-        if isinstance(effects, list):
-            _convert_effects_note_values(effects, bpm)
+        for effect in track.get("effects", []):
+            if "params" in effect and isinstance(effect["params"], dict):
+                effect["params"] = convert_note_values(effect["params"], bpm)
 
     # Convert note values in master effects
     master = raw.get("master", {})

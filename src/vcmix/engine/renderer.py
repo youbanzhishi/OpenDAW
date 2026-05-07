@@ -1,20 +1,28 @@
 """
 renderer.py — Main audio rendering engine for VCMix.
 
-Orchestrates the 7-step rendering pipeline:
+Orchestrates the rendering pipeline:
     1. Parse YAML project config
     2. Validate config & check audio files exist
-    3. Build signal routing DAG (tracks -> insert chains -> master)
+    3. Build signal routing DAG (tracks -> insert chains -> sends -> master)
     4. Render each track through its effect chain (via PluginAdapter)
-    5. Mix rendered tracks with master level balancing
-    6. Apply master insert chain
-    7. Write output file + optional analysis report
+    5. Process Send/Return buses (Phase 2)
+    6. Mix rendered tracks with master level balancing
+    7. Apply master insert chain
+    8. Write output file + optional analysis report
+
+Phase 2 additions:
+    - Send/Return bus processing
+    - Sidechain routing
+    - A/B comparison rendering
+    - Gain staging chain analysis (AutoFix v2)
 
 Features:
     - --report mode: emit RMS/Peak/spectrum after each effect
     - --stream log|json: real-time structured progress output
     - --auto-fix: automatic gain staging correction
-    - Incremental rendering via SHA-256 cache fingerprints (Phase 2)
+    - --ab: render both A and B effect chains
+    - --ab --diff: include difference analysis
 
 Usage:
     from vcmix.engine.renderer import Renderer
@@ -27,8 +35,9 @@ Dependencies: numpy, soundfile, vcmix.config, vcmix.audio, vcmix.plugins
 from __future__ import annotations
 
 import json
+import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +46,8 @@ import numpy as np
 from vcmix.audio.io import read_audio, write_audio
 from vcmix.audio.mixer import Mixer
 from vcmix.engine.analyzer import Analyzer
-from vcmix.engine.autofix import AutoFix
+from vcmix.engine.autofix import AutoFix, ChainAnalysis
+from vcmix.engine.bus import BusManager
 from vcmix.plugins.registry import PluginRegistry
 
 
@@ -51,12 +61,16 @@ class Renderer:
         report: Emit analysis data after each effect.
         auto_fix: Enable gain staging auto-correction.
         stream: Output format — 'log' (human), 'json' (structured), 'none'.
+        ab_mode: Enable A/B comparison rendering (Phase 2).
+        ab_diff: Include difference analysis in A/B mode (Phase 2).
     """
 
     config: Any  # ProjectConfig
     report: bool = False
     auto_fix: bool = False
     stream: str = "log"
+    ab_mode: bool = False
+    ab_diff: bool = False
 
     def _emit(self, step: str, data: dict[str, Any]) -> None:
         """Emit progress data in the configured stream format."""
@@ -86,9 +100,89 @@ class Renderer:
             "spectrum_bands": len(spectrum),
         }
 
+    def _render_track(
+        self,
+        track: Any,
+        registry: PluginRegistry,
+        sr: int,
+        project_dir: Path,
+        rendered_tracks: dict[str, np.ndarray],
+        chain_key: str = "effects",
+    ) -> np.ndarray:
+        """
+        Render a single track through its effect chain.
+
+        Args:
+            track: TrackConfig instance.
+            registry: Plugin registry.
+            sr: Project sample rate.
+            project_dir: Project directory for resolving file paths.
+            rendered_tracks: Dict of already-rendered tracks (for sidechain lookup).
+            chain_key: Which effect chain to use ("effects", "effects_a", "effects_b").
+
+        Returns:
+            Rendered audio array.
+        """
+        track_path = project_dir / track.file
+        audio, audio_sr = read_audio(track_path)
+
+        # Apply track volume
+        audio = audio * track.volume
+
+        # Get the effect chain
+        effects = getattr(track, chain_key, None) or track.effects
+
+        # Process insert chain
+        prev_audio = audio
+        for effect in effects:
+            plugin = registry.get(effect.name)
+            if plugin is None:
+                self._emit("4_render", {
+                    "track": track.name,
+                    "effect": effect.name,
+                    "status": "SKIPPED (not found)"
+                })
+                continue
+
+            # Handle sidechain routing
+            if effect.sidechain is not None and effect.sidechain in rendered_tracks:
+                sc_audio = rendered_tracks[effect.sidechain]
+                processed = plugin.process_with_sidechain(
+                    prev_audio, effect.params, sr,
+                    sidechain_audio=sc_audio,
+                )
+                self._emit("4_render", {
+                    "track": track.name,
+                    "effect": effect.name,
+                    "sidechain": effect.sidechain,
+                })
+            else:
+                processed = plugin.process(prev_audio, effect.params, sr)
+
+            if self.report:
+                label = f"{track.name}/before_{effect.name}"
+                before = self._analyze_step(prev_audio, sr, label)
+                after = self._analyze_step(processed, sr, f"{track.name}/after_{effect.name}")
+                self._emit("4_report", {"before": before, "after": after})
+
+            prev_audio = processed
+
+        # Auto-fix gain staging if requested
+        if self.auto_fix:
+            fixer = AutoFix(sample_rate=sr)
+            adjustments = fixer.analyze(prev_audio)
+            if adjustments["gain_db"] != 0.0:
+                prev_audio = fixer.apply_gain(prev_audio, adjustments["gain_db"])
+                self._emit("4_autofix", {
+                    "track": track.name,
+                    "gain_db": adjustments["gain_db"]
+                })
+
+        return prev_audio
+
     def run(self) -> Path:
         """
-        Execute the full 7-step rendering pipeline.
+        Execute the full rendering pipeline.
 
         Returns:
             Path to the rendered output file.
@@ -113,65 +207,68 @@ class Renderer:
         self._emit("2_validate", {"tracks": len(project.tracks), "ok": True})
 
         # ── Step 3: Build DAG ──
-        # Phase 1: simple linear chain, no DAG complexity
-        self._emit("3_dag", {"topology": "linear_insert_chain"})
+        has_sends = len(project.sends) > 0 or any(t.sends for t in project.tracks)
+        self._emit("3_dag", {
+            "topology": "send_return" if has_sends else "linear_insert_chain",
+            "sends": len(project.sends),
+        })
 
         # ── Step 4: Render tracks ──
         registry = PluginRegistry()
+
+        # Determine render order: sidechain sources must be rendered first
+        render_order = self._resolve_render_order(project)
+
         rendered_tracks: dict[str, np.ndarray] = {}
 
-        for track in project.tracks:
-            if track.mute:
-                self._emit("4_render", {"track": track.name, "status": "muted"})
+        for track_name in render_order:
+            track = next((t for t in project.tracks if t.name == track_name), None)
+            if track is None or track.mute:
+                self._emit("4_render", {"track": track_name, "status": "muted" if track else "missing"})
                 continue
 
-            track_path = project_dir / track.file
-            audio, audio_sr = read_audio(track_path)
-
-            # Resample if needed
-            if audio_sr != sr:
-                self._emit("4_render", {
-                    "track": track.name, "resample": f"{audio_sr}->{sr}"
-                })
-
-            # Apply track volume
-            audio = audio * track.volume
-
-            # Process insert chain
-            prev_audio = audio
-            for effect in track.effects:
-                plugin = registry.get(effect.name)
-                if plugin is None:
-                    self._emit("4_render", {
-                        "track": track.name,
-                        "effect": effect.name,
-                        "status": "SKIPPED (not found)"
-                    })
-                    continue
-
-                processed = plugin.process(prev_audio, effect.params, sr)
-
-                if self.report:
-                    label = f"{track.name}/before_{effect.name}"
-                    before = self._analyze_step(prev_audio, sr, label)
-                    after = self._analyze_step(processed, sr, f"{track.name}/after_{effect.name}")
-                    self._emit("4_report", {"before": before, "after": after})
-
-                prev_audio = processed
-
-            # Auto-fix gain staging if requested
-            if self.auto_fix:
-                fixer = AutoFix(sample_rate=sr)
-                adjustments = fixer.analyze(prev_audio)
-                if adjustments["gain_db"] != 0.0:
-                    prev_audio = fixer.apply_gain(prev_audio, adjustments["gain_db"])
-                    self._emit("4_autofix", {
-                        "track": track.name,
-                        "gain_db": adjustments["gain_db"]
-                    })
-
+            prev_audio = self._render_track(track, registry, sr, project_dir, rendered_tracks)
             rendered_tracks[track.name] = prev_audio
             self._emit("4_render", {"track": track.name, "status": "done"})
+
+        # ── Step 4.5: Process Send/Return buses ──
+        bus_return_audio = np.zeros(1, dtype=np.float32)
+        if has_sends and project.sends:
+            bus_manager = BusManager.from_config(
+                [s.model_dump() for s in project.sends],
+                bpm=project.bpm,
+            )
+
+            all_returns: list[dict[str, np.ndarray]] = []
+            for track in project.tracks:
+                if track.name not in rendered_tracks or not track.sends:
+                    continue
+                track_returns = bus_manager.process_sends(
+                    track.name,
+                    rendered_tracks[track.name],
+                    track.sends,
+                    registry,
+                    sr,
+                )
+                all_returns.append(track_returns)
+                self._emit("4.5_sends", {
+                    "track": track.name,
+                    "buses": list(track.sends.keys()),
+                })
+
+            if all_returns:
+                # Determine max length
+                max_len = max(
+                    max(len(a.flatten()) for a in returns.values())
+                    for returns in all_returns
+                    if returns
+                )
+                # Also consider rendered track lengths
+                for audio in rendered_tracks.values():
+                    max_len = max(max_len, len(audio.flatten()))
+
+                bus_return_audio = bus_manager.mix_returns(all_returns, max_len)
+                self._emit("4.5_returns", {"total_buses": len(bus_manager.buses)})
 
         # ── Step 5: Mix tracks ──
         mixer = Mixer(sample_rate=sr)
@@ -181,7 +278,17 @@ class Renderer:
             project.master.levels.get(n, 1.0) for n in track_names
         ]
         mixed = mixer.mix(track_audios, levels=track_levels)
-        self._emit("5_mix", {"tracks": len(track_audios)})
+
+        # Add bus returns to mix
+        if has_sends and len(bus_return_audio) > 1:
+            mixed_flat = mixed.flatten().astype(np.float64)
+            bus_flat = bus_return_audio.flatten().astype(np.float64)
+            min_len = min(len(mixed_flat), len(bus_flat))
+            mixed_flat[:min_len] += bus_flat[:min_len]
+            mixed = mixed_flat.astype(np.float32)
+            self._emit("5_mix", {"tracks": len(track_audios), "bus_returns": True})
+        else:
+            self._emit("5_mix", {"tracks": len(track_audios)})
 
         # ── Step 6: Master insert chain ──
         prev_audio = mixed
@@ -209,4 +316,157 @@ class Renderer:
             **final_analysis,
         })
 
+        # ── A/B comparison mode ──
+        if self.ab_mode and project.has_ab:
+            self._render_ab(project, registry, sr, project_dir, output_path)
+
         return output_path
+
+    def _render_ab(
+        self,
+        project: Any,
+        registry: PluginRegistry,
+        sr: int,
+        project_dir: Path,
+        original_output: Path,
+    ) -> None:
+        """
+        Render A/B comparison versions.
+
+        For each track with effects_a/effects_b, renders both chains
+        and outputs separate files + optional diff analysis.
+        """
+        self._emit("7ab_start", {"mode": "A/B comparison"})
+
+        # Render A version
+        rendered_a: dict[str, np.ndarray] = {}
+        for track in project.tracks:
+            if track.effects_a is not None:
+                audio = self._render_track(
+                    track, registry, sr, project_dir, rendered_a, chain_key="effects_a"
+                )
+            else:
+                audio = self._render_track(
+                    track, registry, sr, project_dir, rendered_a, chain_key="effects"
+                )
+            rendered_a[track.name] = audio
+
+        # Mix A
+        mixer = Mixer(sample_rate=sr)
+        track_names_a = list(rendered_a.keys())
+        track_audios_a = [rendered_a[n] for n in track_names_a]
+        track_levels_a = [project.master.levels.get(n, 1.0) for n in track_names_a]
+        mixed_a = mixer.mix(track_audios_a, levels=track_levels_a)
+
+        # Apply master chain to A
+        for effect in project.master.effects:
+            plugin = registry.get(effect.name)
+            if plugin is None:
+                continue
+            mixed_a = plugin.process(mixed_a, effect.params, sr)
+
+        # Write A output
+        output_a = project_dir / original_output.with_name(
+            original_output.stem + "_a" + original_output.suffix
+        )
+        write_audio(mixed_a, output_a, sr)
+        self._emit("7ab_output_a", {"path": str(output_a)})
+
+        # Render B version
+        rendered_b: dict[str, np.ndarray] = {}
+        for track in project.tracks:
+            if track.effects_b is not None:
+                audio = self._render_track(
+                    track, registry, sr, project_dir, rendered_b, chain_key="effects_b"
+                )
+            else:
+                audio = self._render_track(
+                    track, registry, sr, project_dir, rendered_b, chain_key="effects"
+                )
+            rendered_b[track.name] = audio
+
+        # Mix B
+        track_names_b = list(rendered_b.keys())
+        track_audios_b = [rendered_b[n] for n in track_names_b]
+        track_levels_b = [project.master.levels.get(n, 1.0) for n in track_names_b]
+        mixed_b = mixer.mix(track_audios_b, levels=track_levels_b)
+
+        # Apply master chain to B
+        for effect in project.master.effects:
+            plugin = registry.get(effect.name)
+            if plugin is None:
+                continue
+            mixed_b = plugin.process(mixed_b, effect.params, sr)
+
+        # Write B output
+        output_b = project_dir / original_output.with_name(
+            original_output.stem + "_b" + original_output.suffix
+        )
+        write_audio(mixed_b, output_b, sr)
+        self._emit("7ab_output_b", {"path": str(output_b)})
+
+        # Diff analysis
+        if self.ab_diff:
+            analyzer = Analyzer(sample_rate=sr)
+            diff_report = analyzer.compare(mixed_a, mixed_b)
+
+            # Compute sample-level difference
+            min_len = min(len(mixed_a.flatten()), len(mixed_b.flatten()))
+            a_flat = mixed_a.flatten()[:min_len].astype(np.float64)
+            b_flat = mixed_b.flatten()[:min_len].astype(np.float64)
+            diff_audio = a_flat - b_flat
+
+            diff_rms = float(np.sqrt(np.mean(diff_audio ** 2)))
+            diff_peak = float(np.max(np.abs(diff_audio)))
+            diff_report["diff_rms_db"] = round(20 * np.log10(diff_rms) if diff_rms > 0 else -120.0, 2)
+            diff_report["diff_peak_db"] = round(20 * np.log10(diff_peak) if diff_peak > 0 else -120.0, 2)
+
+            self._emit("7ab_diff", diff_report)
+
+    def _resolve_render_order(self, project: Any) -> list[str]:
+        """
+        Resolve track rendering order based on sidechain dependencies.
+
+        If track B sidechains from track A, A must be rendered first.
+        Uses topological sort on the dependency graph.
+        """
+        track_names = [t.name for t in project.tracks]
+        # Build dependency graph: sidechain_source -> sidechain_consumer
+        deps: dict[str, set[str]] = {name: set() for name in track_names}
+
+        for track in project.tracks:
+            for effect in track.effects:
+                if effect.sidechain is not None and effect.sidechain in track_names:
+                    # track depends on effect.sidechain being rendered first
+                    deps[track.name].add(effect.sidechain)
+
+        # Topological sort (Kahn's algorithm)
+        in_degree = {name: 0 for name in track_names}
+        for name, dep_set in deps.items():
+            for dep in dep_set:
+                in_degree[name] = in_degree.get(name, 0)  # ensure exists
+
+        # Compute in-degrees properly
+        in_degree = {name: 0 for name in track_names}
+        for name, dep_set in deps.items():
+            in_degree[name] = len(dep_set)
+
+        queue = [name for name in track_names if in_degree[name] == 0]
+        order: list[str] = []
+
+        while queue:
+            current = queue.pop(0)
+            order.append(current)
+            # Find all tracks that depend on current
+            for name in track_names:
+                if current in deps.get(name, set()):
+                    deps[name].discard(current)
+                    in_degree[name] -= 1
+                    if in_degree[name] == 0:
+                        queue.append(name)
+
+        # If there's a cycle, just append remaining tracks
+        remaining = [name for name in track_names if name not in order]
+        order.extend(remaining)
+
+        return order
