@@ -1,0 +1,147 @@
+# ═══════════════════════════════════════════════════════════════════════
+# VCMix Demo Project — "Neon Lights"
+# 端到端Demo：MIDI合成器 + 采样器 + 自动化曲线 + 插件链 + AutoMix
+# BPM=120, 4/4拍, 8小节 (32 beats)
+# ═══════════════════════════════════════════════════════════════════════
+
+name: "VCMix Demo - Neon Lights"
+bpm: 120
+sample_rate: 44100
+
+tracks:
+  # ── 鼓组（Sampler Track + VC-Drum生成采样）──
+  - name: drums
+    type: sampler
+    zones:
+      - file: samples/kick.wav
+        root_key: 36
+        key_low: 0
+        key_high: 127
+    midi_file: midi/drums.mid
+    effects:
+      - name: vc-comp
+        params:
+          threshold: -15
+          ratio: 4
+          attack: 5
+          release: 50
+
+  # ── 贝斯（MIDI Track + Sawtooth合成器 + 自动化增益）──
+  - name: bass
+    type: midi
+    synth: sawtooth
+    midi_file: midi/bass.mid
+    automation:
+      gain:
+        - [0, -3, linear]
+        - [16, 0, linear]
+        - [32, 0, linear]
+        - [40, -6, smooth]
+    effects:
+      - name: vc-eq
+        params:
+          low_shelf: 80
+          peak_freq: 250
+          peak_gain: -2
+      - name: vc-comp
+        params:
+          threshold: -12
+          ratio: 4
+
+  # ── 主旋律（MIDI Track + Square合成器）──
+  - name: lead
+    type: midi
+    synth: square
+    midi_file: midi/lead.mid
+    effects:
+      - name: vc-delay
+        params:
+          time: 500
+          feedback: 15
+          mix: 8
+      - name: vc-reverb
+        params:
+          room: 40
+          decay: 35
+          damping: 50
+          mix: 10
+          predelay: 30
+
+  # ── Pad音色（MIDI Track + Sine合成器）──
+  - name: pad
+    type: midi
+    synth: sine
+    midi_file: midi/pad.mid
+    effects:
+      - name: vc-reverb
+        params:
+          room: 80
+          decay: 60
+          damping: 40
+          mix: 15
+          predelay: 50
+
+  # ── 人声模拟轨道（Audio Track + 自动化）──
+  - name: vocal
+    file: samples/vocal.wav
+    automation:
+      gain:
+        - [0, -12, linear]
+        - [4, 0, linear]
+        - [28, 0, step]
+        - [32, -12, smooth]
+    effects:
+      - name: vc-deesser
+        params:
+          threshold: -40
+          reduction: -6
+      - name: vc-comp
+        params:
+          threshold: -24
+          ratio: 3
+          attack: 5
+          release: 50
+      - name: vc-eq
+        params:
+          low_cut: 80
+          high_shelf: 8000
+          peak_freq: 2500
+          peak_gain: -2
+          peak_q: 1.5
+      - name: vc-reverb
+        params:
+          room: 30
+          decay: 35
+          damping: 50
+          mix: 10
+          predelay: 50
+          wetlpf: 5000
+      - name: vc-limiter
+        params:
+          ceiling: -1
+
+master:
+  levels:
+    drums: 0.85
+    bass: 0.7
+    lead: 0.65
+    pad: 0.5
+    vocal: 0.8
+  effects:
+    - name: vc-eq
+      params:
+        low_shelf: 80
+        peak_freq: 200
+        peak_gain: -1
+        peak_q: 0.7
+        high_shelf: 12000
+    - name: vc-comp
+      params:
+        threshold: -6
+        ratio: 2
+        attack: 10
+        release: 100
+    - name: vc-limiter
+      params:
+        ceiling: -1
+  output: "neon_lights_output.wav"

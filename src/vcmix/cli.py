@@ -182,6 +182,12 @@ def _validate_config(cfg) -> list[str]:
             # Sampler tracks don't need a file field, they use zones
             if not getattr(track, 'zones', []):
                 issues.append(f"Sampler track '{track.name}' has no zones defined")
+            if not getattr(track, 'midi_file', None):
+                issues.append(f"Sampler track '{track.name}' has no MIDI file")
+        elif track_type == 'midi':
+            # MIDI tracks need midi_file, not file
+            if not track.midi_file:
+                issues.append(f"MIDI track '{track.name}' has no midi_file")
         elif not track.file:
             issues.append(f"Track '{track.name}' has no file path")
         for effect in track.effects:
@@ -861,7 +867,7 @@ def sampler_info(project: Path, track: str, as_json: bool) -> None:
         click.echo(f"  Zones:       {info['zone_count']}")
         for z in info['zones']:
             loaded = "✔" if z['sample_loaded'] else "✗"
-            loop_info = f"{z['loop_mode']} loop {z['loop_start']}-{z['loop_end']}"
+            loop_info = f"{z['loop_mode']} loop {z.get('loop_start', 'N/A')}-{z.get('loop_end', 'N/A')}"
             loop_str = f" [{loop_info}]" if z['has_loop'] else ""
             click.echo(f"    {loaded} {z['file']}")
             click.echo(f"      key={z['key_range']} vel={z['velocity_range']} "
