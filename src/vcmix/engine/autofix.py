@@ -79,7 +79,8 @@ class AutoFix:
         if projected_peak_db > self.headroom_db:
             adjustments["limiter"] = True
             adjustments["warnings"].append(
-                f"Peak would exceed headroom ({projected_peak_db:.1f} dBFS > {self.headroom_db:.1f} dBFS)"
+                f"Peak would exceed headroom "
+                f"({projected_peak_db:.1f} dBFS > {self.headroom_db:.1f} dBFS)"
             )
 
         # Warn on over-compression (very low dynamic range)

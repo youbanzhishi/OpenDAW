@@ -153,7 +153,8 @@ class Renderer:
                 processed = plugin.process(prev_audio, effect.params, sr)
 
                 if self.report:
-                    before = self._analyze_step(prev_audio, sr, f"{track.name}/before_{effect.name}")
+                    label = f"{track.name}/before_{effect.name}"
+                    before = self._analyze_step(prev_audio, sr, label)
                     after = self._analyze_step(processed, sr, f"{track.name}/after_{effect.name}")
                     self._emit("4_report", {"before": before, "after": after})
 
