@@ -1,0 +1,15 @@
+bpm: 128
+master:
+  effects: []
+  levels:
+    drums: 0.7
+  output: output.wav
+name: JsonProject
+sample_rate: 44100
+tracks:
+- effects:
+  - name: vc-eq
+    params:
+      low_cut_hz: 80
+  file: drums.wav
+  name: drums

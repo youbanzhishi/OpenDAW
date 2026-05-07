@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.13.0] - 2026-05-14
+
+### Added
+#### Phase 11: AI Agent API
+- 16 REST端点 + 2 WebSocket端点
+- 项目管理：创建/打开/保存/关闭DAW项目
+- 渲染控制：启动/停止/查询渲染任务
+- AI混音决策：自动分析+建议+应用混音参数
+- WebSocket实时通知：渲染进度+AI决策流
+
+#### Demucs音源分离集成
+- 逆向混音分析：Demucs模型分离音源→分析各轨处理参数
+- 编曲结构分析：基于分离音源的段落检测+能量/频谱特征提取
+- VCMix配置生成：从Demucs分析结果自动生成VCMix YAML配置
+
+#### CLI新命令
+- `analyze-mix`：Demucs逆向混音分析
+- `analyze-arrangement`：Demucs编曲结构分析
+- `generate-config`：从分析结果生成VCMix配置
+
+### Tests
+- 167新测试（97 Agent API + 70 Demucs）
+- 总计723测试全绿
+
 ## [0.12.0] - 2026-05-08
 
 ### Added
@@ -14,10 +38,6 @@
 
 ### Tests
 - 556 tests passed (from 528)
-
-## [0.11.1] - 2026-05-09
-
-### Added
 - E2E demo project "Neon Lights" for showcase and integration testing
 
 ### Fixed
