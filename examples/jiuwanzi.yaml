@@ -1,0 +1,68 @@
+# 九万字混音示例 — VCMix Phase 1 Demo
+# 展示多轨Insert链 + Master + BPM同步的YAML配置
+
+name: "九万字"
+bpm: 128
+time_signature: "4/4"
+sample_rate: 44100
+
+tracks:
+  - name: "主唱"
+    file: "audio/vocal_main.wav"
+    gain: -3.0
+    pan: 0.0
+    inserts:
+      - plugin: "vc-eq"
+        parameters:
+          high_shelf_db: -2.0
+          high_shelf_hz: 8000
+      - plugin: "vc-comp"
+        parameters:
+          threshold_db: -18.0
+          ratio: 3.0
+          attack_ms: 10
+          release_ms: 100
+      - plugin: "vc-smooth"
+        parameters:
+          mix: 0.3
+
+  - name: "和声"
+    file: "audio/vocal_harmony.wav"
+    gain: -6.0
+    pan: -0.3
+    inserts:
+      - plugin: "vc-eq"
+        parameters:
+          high_pass_hz: 200
+      - plugin: "vc-comp"
+        parameters:
+          threshold_db: -20.0
+          ratio: 2.0
+
+  - name: "BGM"
+    file: "audio/bgm.wav"
+    gain: -8.0
+    pan: 0.0
+    inserts:
+      - plugin: "vc-eq"
+        parameters:
+          low_pass_hz: 12000
+          high_pass_hz: 80
+
+master:
+  inserts:
+    - plugin: "vc-comp"
+      parameters:
+        threshold_db: -6.0
+        ratio: 2.0
+        attack_ms: 5
+        release_ms: 50
+    - plugin: "vc-eq"
+      parameters:
+        high_shelf_db: -1.0
+        high_shelf_hz: 10000
+  gain: 0.0
+
+output:
+  path: "output/jiuwanzi_mix.wav"
+  format: "wav"
