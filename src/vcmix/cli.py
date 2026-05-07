@@ -1486,3 +1486,177 @@ def list_mix_presets_cmd(genre: str | None, as_json: bool) -> None:
             click.echo(f"    Tracks: {track_types_str}")
             click.echo(f"    Master target: {preset.master.target_lufs} LUFS")
             click.echo()
+
+
+# ── Phase 15: AI Composition & Smart Mixing Commands ────────────────────
+
+@main.command("compose")
+@click.option("--genre", type=str, required=True, help="Genre: pop/rock/edm/hiphop/rnb/ballad/lofi")
+@click.option("--bpm", type=float, default=120.0, help="Tempo in BPM")
+@click.option("--key", "musical_key", type=str, default="C", help="Musical key (e.g. C, Am, D Major)")
+@click.option("--mood", type=str, default="happy", help="Mood: happy/sad/energetic/calm/dark/bright")
+@click.option("--duration", type=float, default=180.0, help="Target duration in seconds")
+@click.option("--reference", type=click.Path(exists=True, path_type=Path), default=None, help="Reference track path")
+@click.option("--output", "-o", type=click.Path(path_type=Path), default=None, help="Output YAML path")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def compose_cmd(
+    genre: str, bpm: float, musical_key: str, mood: str,
+    duration: float, reference: Path | None, output: Path | None, as_json: bool,
+) -> None:
+    """AI composition engine — generate a complete arrangement (Phase 15).
+
+    Creates a VCMix project configuration with chord progression, melody,
+    drum patterns, bass lines, and instrument assignments based on the
+    specified genre, key, BPM, and mood.
+    """
+    import vcmix
+    from vcmix.ai.composer import AIComposer
+
+    try:
+        composer = AIComposer()
+        result = composer.compose(
+            genre=genre,
+            duration=duration,
+            bpm=bpm,
+            key=musical_key,
+            mood=mood,
+            reference=str(reference) if reference else None,
+        )
+
+        if as_json:
+            output_dict = result.to_dict()
+            click.echo(json.dumps(output_dict, ensure_ascii=False, indent=2, default=str))
+        else:
+            click.secho(f"✔ Composition generated: {genre.title()} in {musical_key}", fg="green")
+            click.echo(f"  BPM: {bpm}, Duration: {duration}s, Mood: {mood}")
+            click.echo(f"  Scale: {result.scale}")
+            click.echo(f"  Sections: {result.sections}, Total bars: {result.total_bars}")
+            if result.chord_progression:
+                cp_str = " - ".join(c.name for c in result.chord_progression.chords)
+                click.echo(f"  Chord progression: {cp_str}")
+            click.echo(f"  Instruments: {', '.join(result.instruments.keys())}")
+            click.echo(f"  Composition time: {result.composition_time_sec:.3f}s")
+
+        # Save output if requested
+        if output is not None:
+            import yaml
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(
+                yaml.dump(result.project_config, allow_unicode=True, default_flow_style=False),
+                encoding="utf-8",
+            )
+            if not as_json:
+                click.secho(f"  Saved → {output}", fg="cyan")
+
+    except Exception as e:
+        click.secho(f"✗ Composition failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("auto-mix")
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--max-iterations", type=int, default=3, help="Maximum mixing iterations")
+@click.option("--target-lufs", type=float, default=-14.0, help="Target LUFS")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def auto_mix_cmd(
+    project: Path, max_iterations: int, target_lufs: float, as_json: bool,
+) -> None:
+    """Smart mixing closed-loop — auto-iterate to optimize mix (Phase 15).
+
+    Runs an iterative render→analyze→diagnose→adjust→verify pipeline
+    to optimize the mix toward target loudness, spectral balance, and
+    dynamic range.
+    """
+    import vcmix
+    from vcmix.ai.smart_mixer import SmartMixer
+
+    try:
+        mixer = SmartMixer(target_lufs=target_lufs)
+        result = mixer.auto_mix(
+            project_config=str(project),
+            max_iterations=max_iterations,
+        )
+
+        if as_json:
+            click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
+        else:
+            click.secho(f"✔ Smart mixing complete ({result.total_iterations} iterations)", fg="green")
+            click.echo(f"  Converged: {'Yes' if result.converged else 'No'}")
+            click.echo(f"  Initial LUFS: {result.initial_analysis.lufs:.1f}")
+            click.echo(f"  Final LUFS: {result.final_analysis.lufs:.1f}")
+            click.echo(f"  Total time: {result.total_time_sec:.3f}s")
+
+            for itr in result.iterations:
+                click.echo(f"\n  Iteration {itr.iteration}:")
+                click.echo(f"    Diagnoses: {len(itr.diagnoses)}")
+                for diag in itr.diagnoses:
+                    click.echo(f"      [{diag.severity}] {diag.target}: {diag.problem}")
+                click.echo(f"    Improved: {'Yes' if itr.improved else 'No'}")
+
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Auto-mix failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("compose-and-mix")
+@click.option("--genre", type=str, required=True, help="Genre: pop/rock/edm/hiphop/rnb/ballad")
+@click.option("--bpm", type=float, default=120.0, help="Tempo in BPM")
+@click.option("--key", "musical_key", type=str, default="C", help="Musical key")
+@click.option("--mood", type=str, default="happy", help="Mood: happy/sad/energetic/calm/dark/bright")
+@click.option("--duration", type=float, default=180.0, help="Target duration in seconds")
+@click.option("--max-iterations", type=int, default=3, help="Maximum mixing iterations")
+@click.option("--output", "-o", type=click.Path(path_type=Path), default=None, help="Output YAML path")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def compose_and_mix_cmd(
+    genre: str, bpm: float, musical_key: str, mood: str,
+    duration: float, max_iterations: int, output: Path | None, as_json: bool,
+) -> None:
+    """One-click compose + mix — AI composition with smart mixing (Phase 15).
+
+    Generates a complete arrangement and automatically optimizes the mix
+    in a single pipeline.
+    """
+    import vcmix
+    from vcmix.ai.arrangement_mixer import ArrangementMixer
+
+    try:
+        am = ArrangementMixer()
+        result = am.compose_and_mix(
+            genre=genre,
+            duration=duration,
+            bpm=bpm,
+            key=musical_key,
+            mood=mood,
+            max_mix_iterations=max_iterations,
+        )
+
+        if as_json:
+            click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
+        else:
+            status_color = {"success": "green", "partial": "yellow", "failed": "red"}
+            click.secho(f"✔ Compose & Mix: {result.status.upper()}", fg=status_color.get(result.status, "white"))
+            if result.composition:
+                click.echo(f"  Genre: {genre}, Key: {musical_key}, BPM: {bpm}")
+                click.echo(f"  Sections: {result.composition.sections}")
+            if result.mix_result:
+                click.echo(f"  Mixing iterations: {result.mix_result.total_iterations}")
+                click.echo(f"  Converged: {'Yes' if result.mix_result.converged else 'No'}")
+            click.echo(f"  Total time: {result.total_time_sec:.3f}s")
+
+        # Save output if requested
+        if output is not None and result.final_config:
+            import yaml
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(
+                yaml.dump(result.final_config, allow_unicode=True, default_flow_style=False),
+                encoding="utf-8",
+            )
+            if not as_json:
+                click.secho(f"  Saved → {output}", fg="cyan")
+
+    except Exception as e:
+        click.secho(f"✗ Compose & Mix failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)

@@ -863,3 +863,117 @@ async def ai_mix_preset_suggestion(request: MixPresetSuggestRequest):
         track_types=request.track_types,
     )
     return result
+
+
+# ── Phase 15: AI Composition & Smart Mixing Endpoints ──────────────────────
+
+class ComposeRequest(BaseModel):
+    """Request body for AI composition."""
+    genre: str = Field(default="pop", description="Genre: pop/rock/edm/hiphop/rnb/ballad")
+    duration: float = Field(default=180.0, ge=10.0, le=600.0, description="Target duration in seconds")
+    bpm: float = Field(default=120.0, ge=40.0, le=300.0, description="Tempo in BPM")
+    key: str = Field(default="C", description="Musical key (e.g. C, Am, D Major)")
+    mood: str = Field(default="happy", description="Mood: happy/sad/energetic/calm/dark/bright")
+    reference: str | None = Field(default=None, description="Reference track path")
+
+
+class AutoMixRequest(BaseModel):
+    """Request body for smart mixing closed-loop."""
+    max_iterations: int = Field(default=3, ge=1, le=10, description="Maximum mixing iterations")
+    target_lufs: float = Field(default=-14.0, description="Target LUFS")
+
+
+class ComposeAndMixRequest(BaseModel):
+    """Request body for one-click compose + mix."""
+    genre: str = Field(default="pop", description="Genre")
+    duration: float = Field(default=180.0, ge=10.0, le=600.0, description="Target duration in seconds")
+    bpm: float = Field(default=120.0, ge=40.0, le=300.0, description="Tempo in BPM")
+    key: str = Field(default="C", description="Musical key")
+    mood: str = Field(default="happy", description="Mood")
+    max_mix_iterations: int = Field(default=3, ge=1, le=10, description="Maximum mixing iterations")
+
+
+@router.post("/ai/compose")
+async def ai_compose(request: ComposeRequest):
+    """
+    AI composition engine — generate a complete arrangement.
+
+    Creates a VCMix project configuration with chord progression, melody,
+    drum patterns, bass lines, and instrument assignments based on the
+    specified genre, key, BPM, and mood.
+    """
+    from vcmix.ai.composer import AIComposer
+
+    try:
+        composer = AIComposer()
+        result = composer.compose(
+            genre=request.genre,
+            duration=request.duration,
+            bpm=request.bpm,
+            key=request.key,
+            mood=request.mood,
+            reference=request.reference,
+        )
+        return {
+            "status": "success",
+            "composition": result.to_dict(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/auto-mix/{project_id}")
+async def ai_auto_mix(project_id: str, request: AutoMixRequest):
+    """
+    Smart mixing closed-loop — auto-iterate to optimize a project's mix.
+
+    Runs render→analyze→diagnose→adjust→verify iterations to optimize
+    the mix toward target loudness, spectral balance, and dynamic range.
+    """
+    from vcmix.ai.smart_mixer import SmartMixer
+
+    filepath = _pm.get_filepath(project_id)
+    if filepath is None:
+        raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+
+    try:
+        mixer = SmartMixer(target_lufs=request.target_lufs)
+        result = mixer.auto_mix(
+            project_config=str(filepath),
+            max_iterations=request.max_iterations,
+        )
+        return {
+            "status": "success",
+            "project_id": project_id,
+            "mix_result": result.to_dict(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/ai/compose-and-mix")
+async def ai_compose_and_mix(request: ComposeAndMixRequest):
+    """
+    One-click compose + mix — AI composition with smart mixing.
+
+    Generates a complete arrangement and automatically optimizes the mix
+    in a single pipeline.
+    """
+    from vcmix.ai.arrangement_mixer import ArrangementMixer
+
+    try:
+        am = ArrangementMixer()
+        result = am.compose_and_mix(
+            genre=request.genre,
+            duration=request.duration,
+            bpm=request.bpm,
+            key=request.key,
+            mood=request.mood,
+            max_mix_iterations=request.max_mix_iterations,
+        )
+        return {
+            "status": result.status,
+            "result": result.to_dict(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
