@@ -6,7 +6,7 @@ Provides the `vcmix` CLI with subcommands:
     validate  — Validate a YAML config without rendering
     graph     — Visualize the signal routing graph
     analyze   — Analyze audio file(s) for RMS/Peak/spectrum
-    automix   — Auto-analyze dry vocal and generate YAML config (Phase 4)
+    automix   — Auto-analyze and intelligently mix a project (Phase 4 + Phase 6)
     presets   — List all built-in presets (Phase 4)
     separate  — Source separation via Demucs (Phase 4)
 
@@ -14,15 +14,15 @@ Phase 2 additions:
     --ab      — Render A/B comparison versions
     --diff    — Include difference analysis in A/B mode
 
-Phase 7 additions:
-    --arrangement-aware — Enable arrangement-aware rendering
-    arrangement         — Display arrangement analysis results
-    arrangement --strategy — Display mixing strategy
-
 Phase 4 additions:
     automix   — Intelligent auto-mixing from dry vocal analysis
     presets   — List/inspect built-in effect chain presets
     separate  — Demucs-based source separation
+
+Phase 6 additions:
+    automix project.yaml        — DataStream closed-loop auto-mixing
+    automix project.yaml --dry-run — Show suggestions without writing
+    automix project.yaml --reference ref.wav — Reference track matching
 
 Usage:
     vcmix render project.yaml
@@ -36,6 +36,8 @@ Usage:
     vcmix analyze track.wav
     vcmix automix vocal.wav
     vcmix automix vocal.wav --bpm 120 --output mix.yaml
+    vcmix automix project.yaml --dry-run
+    vcmix automix project.yaml --reference ref.wav
     vcmix presets
     vcmix presets --name pop_vocal
     vcmix separate song.wav
@@ -79,10 +81,7 @@ def main() -> None:
 )
 @click.option("--ab", is_flag=True, help="Render A/B comparison versions (Phase 2)")
 @click.option("--diff", is_flag=True, help="Include difference analysis in A/B mode")
-@click.option("--arrangement-aware", is_flag=True,
-              help="Enable arrangement-aware rendering (Phase 7)")
-def render(project: Path, report: bool, auto_fix: bool, stream: str,
-           ab: bool, diff: bool, arrangement_aware: bool) -> None:
+def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, diff: bool) -> None:
     """Render a mix project from YAML config."""
     import vcmix
 
@@ -96,7 +95,7 @@ def render(project: Path, report: bool, auto_fix: bool, stream: str,
 
         engine = Renderer(
             cfg, report=report, auto_fix=auto_fix, stream=stream,
-            ab_mode=ab, ab_diff=diff, arrangement_aware=arrangement_aware,
+            ab_mode=ab, ab_diff=diff,
         )
         output_path = engine.run()
 
@@ -281,13 +280,13 @@ def _graph_mermaid(cfg) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def analyze(audio_file: Path, as_json: bool) -> None:
     """Analyze an audio file for RMS/Peak/spectrum/sibilance."""
-
     import vcmix
+    import numpy as np
 
     try:
         from vcmix.audio.io import read_audio
-        from vcmix.audio.meter import Meter
         from vcmix.engine.analyzer import Analyzer
+        from vcmix.audio.meter import Meter
 
         audio, sr = read_audio(audio_file)
         analyzer = Analyzer(sample_rate=sr)
@@ -323,60 +322,48 @@ def analyze(audio_file: Path, as_json: bool) -> None:
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Phase 4: automix command ──────────────────────────────────────────────
+# ── Phase 4+6: automix command ────────────────────────────────────────────
 
 @main.command()
-@click.argument("vocal_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("input_path", type=click.Path(exists=True, path_type=Path))
 @click.option("--bpm", type=float, default=120.0, help="Project BPM (default: 120)")
 @click.option("--output", "-o", type=click.Path(path_type=Path), default=None,
-              help="Output YAML file path (default: <vocal>_automix.yaml)")
+              help="Output YAML file path")
 @click.option("--json", "as_json", is_flag=True, help="Output analysis as JSON instead of YAML")
-def automix(vocal_file: Path, bpm: float, output: Path | None, as_json: bool) -> None:
-    """Auto-analyze dry vocal and generate VCMix YAML config."""
+@click.option("--dry-run", is_flag=False, flag_value="phase6", default=None,
+              help="Show suggestions without generating files (Phase 6)")
+@click.option("--reference", type=click.Path(exists=True, path_type=Path), default=None,
+              help="Reference audio track for matching (Phase 6)")
+def automix(
+    input_path: Path,
+    bpm: float,
+    output: Path | None,
+    as_json: bool,
+    dry_run: str | None,
+    reference: Path | None,
+) -> None:
+    """
+    Auto-analyze and intelligently mix audio.
 
+    Phase 4 mode: vcmix automix vocal.wav
+        Analyzes a dry vocal file and generates a VCMix YAML config.
+
+    Phase 6 mode: vcmix automix project.yaml
+        Runs DataStream closed-loop auto-mixing on an existing project.
+        Use --dry-run to see suggestions without writing files.
+        Use --reference ref.wav to match a reference track's sound.
+    """
     import vcmix
+    import numpy as np
 
     try:
-        from vcmix.audio.io import read_audio
-        from vcmix.engine.automix import AutoMixer
+        # Detect mode: YAML file → Phase 6, audio file → Phase 4
+        is_yaml = input_path.suffix.lower() in (".yaml", ".yml")
 
-        audio, sr = read_audio(vocal_file)
-        mixer = AutoMixer(sample_rate=sr, bpm=bpm)
-        analysis = mixer.analyze_dry_vocal(audio, sr)
-
-        if as_json:
-            # Output analysis as JSON
-            result = {
-                "file": str(vocal_file),
-                "sample_rate": sr,
-                "bpm": bpm,
-                "analysis": analysis,
-                "effects_chain": mixer.generate_chain(analysis),
-            }
-            click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        if is_yaml:
+            _automix_phase6(input_path, bpm, output, as_json, dry_run, reference)
         else:
-            # Generate and output YAML config
-            yaml_config = mixer.generate_yaml(
-                track_name=vocal_file.stem,
-                audio_path=str(vocal_file),
-                analysis=analysis,
-            )
-
-            if output is None:
-                output = vocal_file.with_name(vocal_file.stem + "_automix.yaml")
-
-            import yaml
-            with open(output, "w", encoding="utf-8") as f:
-                yaml.dump(yaml_config, f, default_flow_style=False, allow_unicode=True)
-
-            click.secho("✔ AutoMix analysis complete", fg="green")
-            click.echo(f"  RMS:       {analysis['rms_db']:.1f} dBFS")
-            click.echo(f"  Peak:      {analysis['peak_db']:.1f} dBFS")
-            click.echo(f"  DR:        {analysis['dynamic_range_db']:.1f} dB")
-            click.echo(f"  Sibilance: {analysis['sibilance_ratio']:.4f}"
-                        f" {'⚠ needs de-ess' if analysis['needs_deesser'] else '✓ OK'}")
-            click.echo(f"  Gain:      {analysis['gain_needed_db']:+.1f} dB")
-            click.echo(f"  Config:    {output}")
+            _automix_phase4(input_path, bpm, output, as_json)
 
     except FileNotFoundError as e:
         click.secho(f"✗ File not found: {e}", fg="red")
@@ -386,6 +373,238 @@ def automix(vocal_file: Path, bpm: float, output: Path | None, as_json: bool) ->
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
+def _automix_phase4(
+    vocal_file: Path,
+    bpm: float,
+    output: Path | None,
+    as_json: bool,
+) -> None:
+    """Phase 4: Analyze dry vocal and generate YAML config."""
+    import numpy as np
+
+    from vcmix.audio.io import read_audio
+    from vcmix.engine.automix import AutoMixer
+
+    audio, sr = read_audio(vocal_file)
+    mixer = AutoMixer(sample_rate=sr, bpm=bpm)
+    analysis = mixer.analyze_dry_vocal(audio, sr)
+
+    if as_json:
+        import json
+        result = {
+            "file": str(vocal_file),
+            "sample_rate": sr,
+            "bpm": bpm,
+            "analysis": analysis,
+            "effects_chain": mixer.generate_chain(analysis),
+        }
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        yaml_config = mixer.generate_yaml(
+            track_name=vocal_file.stem,
+            audio_path=str(vocal_file),
+            analysis=analysis,
+        )
+
+        if output is None:
+            output = vocal_file.with_name(vocal_file.stem + "_automix.yaml")
+
+        import yaml
+        with open(output, "w", encoding="utf-8") as f:
+            yaml.dump(yaml_config, f, default_flow_style=False, allow_unicode=True)
+
+        click.secho("✔ AutoMix analysis complete", fg="green")
+        click.echo(f"  RMS:       {analysis['rms_db']:.1f} dBFS")
+        click.echo(f"  Peak:      {analysis['peak_db']:.1f} dBFS")
+        click.echo(f"  DR:        {analysis['dynamic_range_db']:.1f} dB")
+        click.echo(f"  Sibilance: {analysis['sibilance_ratio']:.4f}"
+                    f" {'⚠ needs de-ess' if analysis['needs_deesser'] else '✓ OK'}")
+        click.echo(f"  Gain:      {analysis['gain_needed_db']:+.1f} dB")
+        click.echo(f"  Config:    {output}")
+
+
+def _automix_phase6(
+    project_file: Path,
+    bpm: float,
+    output: Path | None,
+    as_json: bool,
+    dry_run: str | None,
+    reference: Path | None,
+) -> None:
+    """
+    Phase 6: DataStream closed-loop auto-mixing on an existing project.
+
+    Steps:
+        1. Parse the YAML project config
+        2. Render with DataStream enabled to capture events
+        3. Analyze events → MixingState
+        4. Optionally match against a reference track
+        5. Generate suggestions
+        6. Apply suggestions to produce new config (or show dry-run)
+    """
+    import numpy as np
+    import yaml
+
+    from vcmix.config.parser import parse_project
+    from vcmix.engine.renderer import Renderer
+    from vcmix.engine.automix import AutoMixer
+    from vcmix.engine.reference_matcher import ReferenceMatcher
+    from vcmix.audio.io import read_audio
+
+    # Step 1: Parse project
+    cfg = parse_project(project_file)
+    cfg.__dict__["_project_dir"] = project_file.parent.resolve()
+
+    # Step 2: Render with DataStream to capture events
+    click.secho(f"▸ Rendering {cfg.name} with DataStream...", fg="cyan")
+    engine = Renderer(cfg, stream="none")
+    try:
+        engine.run()
+    except (ValueError, RuntimeError):
+        # May fail with no tracks or other issues — still collect events
+        pass
+    events = engine.get_stream_events()
+
+    click.secho(f"  Captured {len(events)} DataStream events", fg="cyan")
+
+    # Step 3: Analyze events
+    mixer = AutoMixer(sample_rate=cfg.sample_rate, bpm=cfg.bpm)
+    state = mixer.analyze(events)
+
+    click.secho(f"  Tracks analyzed: {len(state.tracks)}", fg="cyan")
+    if state.has_clipping:
+        click.secho("  ⚠ Clipping detected", fg="yellow")
+    if state.has_low_snr:
+        click.secho("  ⚠ Low SNR detected", fg="yellow")
+    if state.has_sibilance:
+        click.secho("  ⚠ Sibilance detected", fg="yellow")
+
+    # Step 4: Optional reference matching
+    ref_adjustments = []
+    if reference is not None:
+        click.secho(f"▸ Analyzing reference: {reference.name}", fg="cyan")
+        ref_audio, ref_sr = read_audio(reference)
+        ref_matcher = ReferenceMatcher(sample_rate=ref_sr)
+        ref_features = ref_matcher.analyze_reference(ref_audio, ref_sr)
+
+        # Build current mix features from master state
+        from vcmix.engine.reference_matcher import SpectralFeatures
+        current_features = SpectralFeatures(
+            rms_db=state.master.rms_db,
+            peak_db=state.master.peak_db,
+            dynamic_range_db=state.master.dynamic_range_db,
+        )
+
+        diff = ref_matcher.compute_match(current_features, ref_features)
+        click.secho(f"  Reference match: {diff.summary}", fg="cyan")
+
+        ref_adjustments = ref_matcher.generate_adjustments(diff, target="master")
+
+    # Step 5: Generate suggestions
+    suggestions = mixer.suggest(state)
+
+    # Add reference-based suggestions
+    all_suggestions_raw = suggestions + [
+        _ref_adj_to_suggestion(adj) for adj in ref_adjustments
+    ]
+
+    # Sort by priority
+    all_suggestions_raw.sort(key=lambda s: s.priority)
+
+    # Display suggestions
+    if all_suggestions_raw:
+        click.secho(f"\n▸ AutoMix Suggestions ({len(all_suggestions_raw)}):", fg="green")
+        for i, s in enumerate(all_suggestions_raw, 1):
+            priority_marker = "❗" if s.priority == 1 else "⚠" if s.priority == 2 else "💡"
+            click.echo(f"  {i}. {priority_marker} [{s.target}] {s.action}: {s.reason}")
+    else:
+        click.secho("\n✔ Mix looks good — no suggestions needed", fg="green")
+
+    # Dry-run: stop here
+    if dry_run is not None:
+        click.secho("\n--dry-run: no files written", fg="yellow")
+        if as_json:
+            import json
+            click.echo(json.dumps({
+                "project": str(project_file),
+                "events_captured": len(events),
+                "tracks_analyzed": len(state.tracks),
+                "has_clipping": state.has_clipping,
+                "has_low_snr": state.has_low_snr,
+                "has_sibilance": state.has_sibilance,
+                "suggestions": [
+                    {
+                        "target": s.target,
+                        "action": s.action,
+                        "params": s.params,
+                        "reason": s.reason,
+                        "priority": s.priority,
+                    }
+                    for s in all_suggestions_raw
+                ],
+            }, ensure_ascii=False, indent=2))
+        return
+
+    # Step 6: Apply suggestions and write new config
+    # Convert ProjectConfig to dict for modification
+    from vcmix.config.parser import parse_project
+    import yaml as _yaml
+
+    # Read the raw YAML to preserve structure
+    raw_config = _yaml.safe_load(project_file.read_text(encoding="utf-8"))
+
+    new_config = mixer.apply(raw_config, all_suggestions_raw)
+
+    # Also apply reference-based level adjustments
+    for adj in ref_adjustments:
+        if adj.category == "level":
+            gain_db = adj.params.get("gain_db", 0.0)
+            master = new_config.get("master", {})
+            levels = master.get("levels", {})
+            for name in levels:
+                levels[name] = round(levels[name] * (10.0 ** (gain_db / 20.0)), 4)
+            master["levels"] = levels
+
+    # Determine output path
+    if output is None:
+        output = project_file.with_name(
+            project_file.stem + "_automix" + project_file.suffix
+        )
+
+    with open(output, "w", encoding="utf-8") as f:
+        _yaml.dump(new_config, f, default_flow_style=False, allow_unicode=True)
+
+    click.secho(f"\n✔ AutoMix config written → {output}", fg="green")
+
+    if as_json:
+        import json
+        click.echo(json.dumps({
+            "project": str(project_file),
+            "output": str(output),
+            "events_captured": len(events),
+            "suggestions_applied": len(all_suggestions_raw),
+        }, ensure_ascii=False, indent=2))
+
+
+def _ref_adj_to_suggestion(adj) -> Any:
+    """Convert a ReferenceAdjustment to an AdjustmentSuggestion."""
+    from vcmix.engine.automix import AdjustmentSuggestion
+
+    # Map category to action
+    action_map = {
+        "eq": "eq",
+        "comp": "compressor",
+        "level": "gain",
+    }
+    return AdjustmentSuggestion(
+        target=adj.target,
+        action=action_map.get(adj.category, adj.category),
+        params=adj.params,
+        reason=adj.reason,
+        priority=2,
+    )
+
+
 # ── Phase 4: presets command ──────────────────────────────────────────────
 
 @main.command("presets")
@@ -393,7 +612,7 @@ def automix(vocal_file: Path, bpm: float, output: Path | None, as_json: bool) ->
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def presets_cmd(name: str | None, as_json: bool) -> None:
     """List all built-in effect chain presets."""
-    from vcmix.presets.manager import get_preset, list_presets
+    from vcmix.presets.manager import list_presets, get_preset
 
     if name:
         chain = get_preset(name)
@@ -464,128 +683,6 @@ def separate(
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
         click.secho(f"✗ Separation failed: {e}", fg="red")
-        sys.exit(vcmix.EXIT_RENDER_ERROR)
-
-
-@main.command()
-@click.argument("project", type=click.Path(exists=True, path_type=Path))
-@click.option("--strategy", is_flag=True,
-              help="Display the arrangement mixing strategy")
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
-    """Display arrangement analysis and mixing strategy.
-
-    Analyzes the song structure (intro/verse/chorus/bridge/outro) from
-    the project's audio tracks and displays the detected sections.
-    With --strategy, also shows the per-section mixing parameters.
-
-    Phase 7 feature.
-    """
-    try:
-        from vcmix.config.parser import parse_project
-        from vcmix.engine.arrangement_strategy import ArrangementStrategy
-        from vcmix.separation.arrangement import ArrangementExtractor
-
-        cfg = parse_project(project)
-        project_dir = project.parent.resolve()
-        sr = cfg.sample_rate
-        bpm = cfg.bpm
-
-        # Try to extract arrangement from audio
-        stems = getattr(cfg, "_stems", None)
-        if stems and len(stems) > 0:
-            extractor = ArrangementExtractor()
-            sections = extractor.extract(stems, sr, bpm)
-        else:
-            # Build from audio files
-            import numpy as np
-
-            from vcmix.audio.io import read_audio
-
-            stems = {}
-            for track in cfg.tracks:
-                track_path = project_dir / track.file
-                try:
-                    audio, track_sr = read_audio(track_path)
-                    # Convert to mono if stereo
-                    if audio.ndim == 2:
-                        audio = np.mean(audio, axis=0)
-                    stems[track.name] = audio.flatten().astype(np.float64)
-                except Exception:
-                    continue
-
-            if stems:
-                extractor = ArrangementExtractor()
-                sections = extractor.extract(stems, sr, bpm)
-            else:
-                sections = []
-
-        if not sections:
-            click.secho("No arrangement sections detected", fg="yellow")
-            return
-
-        if as_json:
-            result = {
-                "project": cfg.name,
-                "bpm": bpm,
-                "sections": [
-                    {
-                        "name": s.name,
-                        "start_beat": s.start_beat,
-                        "end_beat": s.end_beat,
-                        "start_sec": round(s.start_sec, 2),
-                        "end_sec": round(s.end_sec, 2),
-                        "energy_level": s.energy_level,
-                        "active_stems": s.active_stems,
-                    }
-                    for s in sections
-                ],
-            }
-            if strategy:
-                strat = ArrangementStrategy.from_sections(sections)
-                result["strategy"] = {}
-                for idx, sec_params in enumerate(strat.sections):
-                    start_beat = strat._find_start_beat(idx)
-                    result["strategy"][f"section_{idx}_{sec_params.section_name}"] = {
-                        "start_beat": start_beat,
-                        "reverb_mix": sec_params.reverb_mix,
-                        "delay_mix": sec_params.delay_mix,
-                        "compression_ratio": sec_params.compression_ratio,
-                        "gain_db": sec_params.gain_db,
-                        "crossfade_beats": sec_params.crossfade_beats,
-                    }
-            click.echo(json.dumps(result, ensure_ascii=False, indent=2))
-        else:
-            click.secho(f"Arrangement Analysis: {cfg.name}", fg="cyan", bold=True)
-            click.echo(f"BPM: {bpm} | Sections: {len(sections)}")
-            click.echo()
-            for s in sections:
-                bar = "█" * ((s.end_beat - s.start_beat) // 2)
-                click.echo(
-                    f"  {s.name:<8} beats {s.start_beat:>3}-{s.end_beat:<3} "
-                    f"({s.start_sec:.1f}s-{s.end_sec:.1f}s) "
-                    f"energy={s.energy_level:<6} "
-                    f"stems={s.active_stems} {bar}"
-                )
-
-            if strategy:
-                click.echo()
-                click.secho("Mixing Strategy:", fg="cyan", bold=True)
-                strat = ArrangementStrategy.from_sections(sections)
-                for idx, sec_params in enumerate(strat.sections):
-                    start_beat = strat._find_start_beat(idx)
-                    click.echo(
-                        f"  [{sec_params.section_name}] @beat {start_beat}: "
-                        f"reverb={sec_params.reverb_mix:.0%} "
-                        f"delay={sec_params.delay_mix:.0%} "
-                        f"comp={sec_params.compression_ratio:.1f}:1 "
-                        f"gain={sec_params.gain_db:+.1f}dB "
-                        f"fade={sec_params.crossfade_beats}beats"
-                    )
-
-    except Exception as e:
-        click.secho(f"✗ Arrangement analysis failed: {e}", fg="red")
-        import vcmix
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 

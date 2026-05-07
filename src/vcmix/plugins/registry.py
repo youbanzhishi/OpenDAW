@@ -37,6 +37,7 @@ class PluginRegistry:
         "vc-limiter", "vc-delay", "vc-reverb",
         "vc-dynamiceq", "vc-smooth", "vc-distortion",
         "vc-noise", "vc-tune", "vc-gate", "vc-chorus",
+        "vc-stereo", "vc-pitchshift",
     ]
 
     def __init__(self) -> None:
