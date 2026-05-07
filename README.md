@@ -27,7 +27,6 @@ vcmix validate examples/jiuwanzi.yaml
 
 # View signal routing graph
 vcmix graph examples/jiuwanzi.yaml
-vcmix graph examples/jiuwanzi.yaml -f mermaid
 
 # Render with real-time analysis report
 vcmix render examples/jiuwanzi.yaml --report
@@ -37,116 +36,22 @@ vcmix render examples/jiuwanzi.yaml --auto-fix --stream log
 
 # JSON structured output (AI Agent friendly)
 vcmix render examples/jiuwanzi.yaml --stream json
-vcmix validate examples/jiuwanzi.yaml --json
 
-# Analyze audio file
-vcmix analyze vocal.wav
-vcmix analyze vocal.wav --json
-
-# A/B comparison rendering (Phase 2)
+# A/B comparison rendering
 vcmix render project.yaml --ab
 vcmix render project.yaml --ab --diff
+
+# Auto-mix: analyze + suggest + apply
+vcmix automix project.yaml
+vcmix automix project.yaml --dry-run
+vcmix automix project.yaml --reference ref.wav
+
+# View arrangement analysis
+vcmix arrangement project.yaml --strategy
+
+# List built-in presets
+vcmix presets
 ```
-
-### Example YAML
-
-```yaml
-name: "九万字"
-bpm: 62
-sample_rate: 44100
-
-sends:
-  - name: reverb_bus
-    effects:
-      - name: vc-reverb
-        params: { room: 30, decay: 35, damping: 50, mix: 100, predelay: 50, wetlpf: 5000 }
-    return_level: 0.15
-
-  - name: delay_bus
-    effects:
-      - name: vc-delay
-        params: { time: "1/8d", feedback: 12, mix: 100 }
-    return_level: 0.08
-
-tracks:
-  - name: vocal
-    file: "vocal_dry.wav"
-    effects:
-      - name: vc-deesser
-        params: { threshold: -40, reduction: -6 }
-      - name: vc-gain
-        params: { gain: 6 }
-      - name: vc-eq
-        params: { low_cut: 80, high_shelf: 8000, peak_gain: -3 }
-      - name: vc-comp
-        params: { threshold: -30, ratio: 2.5 }
-      - name: vc-reverb
-        params: { room: 30, decay: 35, damping: 50, mix: 10, predelay: 50, wetlpf: 5000 }
-      - name: vc-delay
-        params: { time: "1/8d", feedback: 12, mix: 5 }  # "1/8d" → 725.8ms @BPM62
-      - name: vc-limiter
-        params: { ceiling: -1 }
-    sends:
-      reverb_bus: 0.12
-      delay_bus: 0.05
-
-  - name: kick
-    file: "kick.wav"
-    effects: []
-
-  - name: bass
-    file: "bass.wav"
-    effects:
-      - name: vc-comp
-        params: { threshold: -20, ratio: 4 }
-        sidechain: kick    # Sidechain: kick drives bass compression
-
-  - name: accomp
-    file: "accomp.wav"
-    effects: []
-
-master:
-  levels: { vocal: 0.8, kick: 0.9, bass: 0.7, accomp: 0.35 }
-  output: "jiuwanzi_mix.wav"
-```
-
-### A/B Comparison YAML
-
-```yaml
-name: "Vocal A/B Test"
-bpm: 120
-sample_rate: 44100
-
-tracks:
-  - name: vocal
-    file: "vocal.wav"
-    effects_a:
-      - name: vc-reverb
-        params: { room: 30, decay: 35, mix: 10 }
-    effects_b:
-      - name: vc-reverb
-        params: { room: 50, decay: 60, mix: 20 }
-
-master:
-  levels: { vocal: 1.0 }
-  output: "output.wav"
-```
-
-Render both versions:
-```bash
-vcmix render project.yaml --ab          # → output_a.wav + output_b.wav
-vcmix render project.yaml --ab --diff   # + diff analysis report
-```
-
-### BPM Note Value Auto-Conversion
-
-| Note Value | Meaning | @BPM62 | @BPM120 |
-|-----------|---------|--------|---------|
-| `"1/4"` | Quarter note | 967.7ms | 500.0ms |
-| `"1/8"` | Eighth note | 483.9ms | 250.0ms |
-| `"1/8d"` | Dotted eighth | 725.8ms | 375.0ms |
-| `"1/8t"` | Eighth triplet | 322.6ms | 166.7ms |
-| `"1/16"` | Sixteenth | 241.9ms | 125.0ms |
 
 ### Rendering Pipeline
 
@@ -157,36 +62,78 @@ vcmix render project.yaml --ab --diff   # + diff analysis report
 4. Render each track through insert chain (sidechain routing)
 5. Process Send/Return buses
 6. Mix tracks with master level balancing + bus returns
-7. Apply master insert chain
+7. Apply master insert chain + DataStream events
 8. Write output + optional A/B versions + analysis report
 ```
 
-### Phase 2 Features
+## Feature Overview
 
-#### Send/Return Buses
-- Define shared effect buses (reverb, delay) in the `sends` section
-- Each track can send to multiple buses at different levels
-- Bus returns are mixed back into the master output
-- Supports BPM note-value auto-conversion in bus effects
+| Feature | Phase | Status |
+|---------|-------|--------|
+| YAML-driven rendering | 1 | ✅ |
+| Insert chain processing | 1 | ✅ |
+| Multi-track mixing | 1 | ✅ |
+| BPM note value sync | 1 | ✅ |
+| Send/Return buses | 2 | ✅ |
+| Sidechain routing | 2 | ✅ |
+| A/B comparison | 2 | ✅ |
+| AutoFix gain staging v2 | 2 | ✅ |
+| Built-in presets (7) | 3 | ✅ |
+| DataStream closed-loop | 4 | ✅ |
+| Source separation | 5 | ✅ |
+| Arrangement extraction | 5 | ✅ |
+| AutoMix engine | 6 | ✅ |
+| Reference matching | 6 | ✅ |
+| Arrangement-aware mixing | 7 | ✅ |
+| Web UI | 8 | 📋 Planned |
+| Native GUI | 9 | 🔮 Future |
+| Full DAW | 10 | 🔮 Ultimate Goal |
 
-#### Sidechain Routing
-- Any effect can specify a `sidechain` source track
-- The sidechain track is rendered first, then its output drives the effect
-- Currently simulated via gain envelope analysis (full CLI --sidechain support pending)
-- Render order is automatically resolved via topological sort
+## Supported VC Plugins (18)
 
-#### A/B Comparison
-- Define `effects_a` and `effects_b` on any track
-- `--ab` flag renders both versions to `output_a.wav` and `output_b.wav`
-- `--ab --diff` adds difference analysis (RMS delta, peak delta, diff spectrum)
+### Gen 1 (16 plugins)
+| Plugin | Key Parameters |
+|--------|---------------|
+| VC-EQ | low_cut, high_shelf, peak_freq, peak_gain |
+| VC-Comp | threshold, ratio, attack, release, makeup |
+| VC-Smooth | amount |
+| VC-DeEsser | threshold, reduction, frequency |
+| VC-Gain | gain |
+| VC-Saturator | drive, mix |
+| VC-Limiter | ceiling, release |
+| VC-Delay | time, feedback, mix |
+| VC-Reverb | room, decay, damping, mix, predelay, wetlpf |
+| VC-DynamicEQ | frequency, threshold, q, attack, release |
+| VC-Distortion | drive, tone, mix |
+| VC-Noise | threshold, reduction |
+| VC-SurgicalDeEsser | threshold, frequency, reduction |
+| VC-Tune | speed, scale, transpose, autokey |
+| VC-Gate | threshold, ratio, attack, hold, release, range |
+| VC-Chorus | rate, depth, voices, mix, width |
 
-#### AutoFix Gain Staging (v2)
-- Per-effect input/output level analysis
-- Gain accumulation detection (consecutive boost → clip risk, consecutive cut → SNR risk)
-- Automatic gain node insertion at problematic points
-- Rules: input ≤ -6dBFS, output ≥ -24dBFS, final output ≤ -1dBFS
+### Gen 2 (2 plugins, new)
+| Plugin | Key Parameters |
+|--------|---------------|
+| VC-Stereo | width, pan, mono_bass, bass_freq |
+| VC-PitchShift | semitones, cents, formant |
 
-### Standardized Exit Codes
+### Gen 2 Upgrades
+| Plugin | Upgrade |
+|--------|---------|
+| VC-Reverb | Schroeder → 8-delay-line FDN + Householder + early reflections |
+| VC-Comp | Single-band → 4-band multiband (LR4 crossover) |
+
+## DataStream Events (AI Agent API)
+
+| Event | Data | Use Case |
+|-------|------|----------|
+| track_level | rms_db, peak_db, true_peak_db | Monitor per-track levels |
+| effect_delta | before_rms, after_rms, delta_db | Track effect impact |
+| master_level | rms_db, peak_db, true_peak_db | Master bus monitoring |
+| warning | type (clipping/low_snr/sibilance), message | Problem detection |
+| decision | action, params, reason | Auto-fix logging |
+
+## Standardized Exit Codes
 
 | Code | Meaning |
 |------|---------|
@@ -197,59 +144,6 @@ vcmix render project.yaml --ab --diff   # + diff analysis report
 | 4 | Render error |
 | 5 | Cache error |
 | 6 | Missing dependency |
-
-## Project Structure
-
-```
-OpenDAW/
-├── src/vcmix/              # VCMix source code
-│   ├── cli.py              # CLI entry point
-│   ├── config/parser.py    # YAML parsing + Pydantic validation
-│   ├── engine/
-│   │   ├── renderer.py     # Rendering pipeline (insert+sends+sidechain+AB)
-│   │   ├── analyzer.py     # RMS/Peak/spectrum/sibilance/RT60
-│   │   ├── autofix.py      # Gain staging auto-correction (v2: chain analysis)
-│   │   └── bus.py          # Send/Return bus system
-│   ├── plugins/
-│   │   ├── adapter.py      # PluginAdapter base + sidechain support
-│   │   ├── vc_plugins.py   # VC CLI subprocess adapter
-│   │   └── registry.py     # Plugin registry
-│   ├── audio/
-│   │   ├── io.py           # WAV/FLAC/MP3 read/write
-│   │   ├── mixer.py        # Multi-track mixing
-│   │   └── meter.py        # Level metering
-│   └── bpm/
-│       ├── detector.py     # BPM detection (librosa)
-│       └── sync.py         # Note-value → ms conversion
-├── examples/               # Example YAML projects
-├── tests/                  # Test suite
-└── pyproject.toml          # Package config
-```
-
-## Supported VC Plugins (10)
-
-| Plugin | CLI Binary | Key Parameters |
-|--------|-----------|---------------|
-| VC-EQ | `VC-EQ-CLI-Standalone` | low_cut, high_shelf, peak_freq, peak_gain |
-| VC-Comp | `VC-Comp-CLI-Standalone` | threshold, ratio, attack, release, makeup |
-| VC-Gain | `VC-Gain-CLI-Standalone` | gain |
-| VC-DeEsser | `VC-DeEsser-CLI-Standalone` | threshold, reduction, frequency |
-| VC-Saturator | `VC-Saturator-CLI-Standalone` | drive, mix |
-| VC-Limiter | `VC-Limiter-CLI-Standalone` | ceiling, release |
-| VC-Delay | `VC-Delay-CLI-Standalone` | time, feedback, mix |
-| VC-Reverb | `VC-Reverb-CLI-Standalone` | room, decay, damping, mix, predelay, wetlpf |
-| VC-DynamicEQ | `VC-DynamicEQ-CLI-Standalone` | frequency, threshold, q, attack, release |
-| VC-Smooth | `VC-Smooth-CLI-Standalone` | amount |
-
-## Roadmap
-
-| Phase | Feature | Status |
-|-------|---------|--------|
-| Phase 1 | Insert chain + Master + Multi-track + BPM sync | ✅ Complete |
-| Phase 2 | Send/Return + Sidechain + A/B Compare + AutoFix v2 | ✅ Complete |
-| Phase 3 | AI Reference Analysis (stem separation + reverse engineering) | 📋 Planned |
-| Phase 4 | Smart Arrangement + Arrange-Mix Integration | 📋 Planned |
-| Phase 5 | Full DAW (GUI + VST3 Hosting + MIDI + AI Agent API) | 🔮 Future |
 
 ## Related Projects
 
