@@ -32,12 +32,16 @@ class PluginRegistry:
 
     # All known VC plugin names
     VC_PLUGIN_NAMES = [
+        # Gen1 (16)
         "vc-eq", "vc-comp", "vc-gain", "vc-deesser",
         "vc-saturator", "vc-surgicaldeesser",
         "vc-limiter", "vc-delay", "vc-reverb",
         "vc-dynamiceq", "vc-smooth", "vc-distortion",
         "vc-noise", "vc-tune", "vc-gate", "vc-chorus",
+        # Gen2 new (2)
         "vc-stereo", "vc-pitchshift",
+        # Gen2 upgrades registered as separate (3)
+        "vc-multiband", "vc-harmonizer",
     ]
 
     def __init__(self) -> None:

@@ -43,25 +43,25 @@ def generate_sine_wav(path: Path, freq: float = 440.0, sr: int = 44100,
     """Generate a sine wave WAV file and return its path."""
     t = np.linspace(0, duration, int(sr * duration), endpoint=False, dtype=np.float32)
     audio = (amplitude * np.sin(2 * np.pi * freq * t)).astype(np.float32)
-    if audio.ndim == 1:
-        audio_2d = audio.reshape(1, -1)
-    else:
-        audio_2d = audio
+    audio_2d = audio.reshape(1, -1)
     sf.write(str(path), audio_2d.T, sr)
     return path
 
 
-def make_project_yaml(tmp_path: Path, vocal_name: str = "vocal.wav",
-                      accomp_name: str = "accomp.wav",
-                      extra_tracks: str = "",
-                      extra_master: str = "",
-                      output_name: str = "mix_output.wav",
-                      with_ab: bool = False,
-                      with_sends: bool = False) -> Path:
+def make_project_yaml(
+    tmp_path: Path,
+    vocal_name: str = "vocal.wav",
+    accomp_name: str = "accomp.wav",
+    extra_tracks: str = "",
+    extra_master: str = "",
+    output_name: str = "mix_output.wav",
+    with_ab: bool = False,
+    with_sends: bool = False,
+) -> Path:
     """Create a 2-track project YAML and return its path."""
     ab_section = ""
     if with_ab:
-        ab_section = f"""
+        ab_section = """
     effects_a:
       - name: vc-gain
         params:
@@ -116,14 +116,14 @@ master:
     return yaml_path
 
 
-# ── Fixture ────────────────────────────────────────────────────────────────
+# ── Fixtures ───────────────────────────────────────────────────────────────
 
 @pytest.fixture
 def project_dir(tmp_path):
     """Create a temp project directory with 2 sine-wave audio files and a project.yaml."""
     generate_sine_wav(tmp_path / "vocal.wav", freq=440.0)
     generate_sine_wav(tmp_path / "accomp.wav", freq=261.6)
-    yaml_path = make_project_yaml(tmp_path)
+    make_project_yaml(tmp_path)
     return tmp_path
 
 
@@ -132,7 +132,7 @@ def project_dir_ab(tmp_path):
     """Project directory with A/B comparison effect chains."""
     generate_sine_wav(tmp_path / "vocal.wav", freq=440.0)
     generate_sine_wav(tmp_path / "accomp.wav", freq=261.6)
-    yaml_path = make_project_yaml(tmp_path, with_ab=True, output_name="mix_output.wav")
+    make_project_yaml(tmp_path, with_ab=True, output_name="mix_output.wav")
     return tmp_path
 
 
@@ -141,7 +141,7 @@ def project_dir_sends(tmp_path):
     """Project directory with send/return buses."""
     generate_sine_wav(tmp_path / "vocal.wav", freq=440.0)
     generate_sine_wav(tmp_path / "accomp.wav", freq=261.6)
-    yaml_path = make_project_yaml(tmp_path, with_sends=True, output_name="mix_output.wav")
+    make_project_yaml(tmp_path, with_sends=True, output_name="mix_output.wav")
     return tmp_path
 
 
@@ -190,11 +190,12 @@ class TestRenderCommand:
         # Verify JSON lines are present
         json_lines = [line for line in result.stdout.strip().split("\n") if line.startswith("{")]
         assert len(json_lines) > 0, "No JSON output lines found"
-        # Each line should be valid JSON
+        # Each line should be valid JSON with 'step' or 'type' key
         for line in json_lines:
             parsed = json.loads(line)
-            # DataStream events have "type" key, render progress has "step" key
-            assert "step" in parsed or "type" in parsed, f"JSON line missing 'step' or 'type' key: {line}"
+            assert "step" in parsed or "type" in parsed, (
+                f"JSON line missing 'step' or 'type' key: {line}"
+            )
 
     def test_render_with_arrangement_aware(self, project_dir):
         """vcmix render project.yaml --arrangement-aware — should succeed (Phase 7)."""
@@ -202,14 +203,12 @@ class TestRenderCommand:
                          cwd=str(project_dir))
         assert result.returncode == 0, f"render --arrangement-aware failed: {result.stderr}"
         assert (project_dir / "mix_output.wav").exists()
-        assert "Arrangement-aware mixing enabled" in result.stdout or "arrangement" in result.stdout.lower() or result.returncode == 0
 
     def test_render_ab_mode(self, project_dir_ab):
         """vcmix render project.yaml --ab — should produce A and B versions (Phase 2)."""
         result = run_cli("render", str(project_dir_ab / "project.yaml"), "--ab",
                          cwd=str(project_dir_ab))
         assert result.returncode == 0, f"render --ab failed: {result.stderr}"
-        # Check A and B versions exist
         output_a = project_dir_ab / "mix_output_a.wav"
         output_b = project_dir_ab / "mix_output_b.wav"
         assert output_a.exists(), f"A version not found: {output_a}"
@@ -226,7 +225,7 @@ class TestRenderCommand:
         assert output_b.exists()
 
     def test_render_nonexistent_project(self, tmp_path):
-        """Render with non-existent YAML should fail with exit code 2 (click error) or 1."""
+        """Render with non-existent YAML should fail with non-zero exit code."""
         result = run_cli("render", str(tmp_path / "nonexistent.yaml"))
         assert result.returncode != 0, "Should fail for non-existent project file"
 
@@ -329,7 +328,6 @@ class TestAutomixCommand:
         vocal_path = project_dir / "vocal.wav"
         result = run_cli("automix", str(vocal_path), cwd=str(project_dir))
         assert result.returncode == 0, f"automix audio failed: {result.stderr}"
-        # Should produce an automix YAML config
         automix_yaml = project_dir / "vocal_automix.yaml"
         assert automix_yaml.exists(), f"AutoMix YAML not created: {result.stderr}"
 
@@ -352,12 +350,11 @@ class TestAutomixCommand:
         yaml_path = project_dir / "project.yaml"
         result = run_cli("automix", str(yaml_path), cwd=str(project_dir))
         assert result.returncode == 0, f"automix project failed: {result.stderr}"
-        # Should produce an _automix.yaml output
         automix_output = project_dir / "project_automix.yaml"
         assert automix_output.exists(), f"AutoMix output not created: {result.stderr}"
 
     def test_automix_project_dry_run(self, project_dir):
-        """vcmix automix project.yaml --dry-run — should analyze without writing files."""
+        """vcmix automix project.yaml --dry-run=phase6 — should analyze without writing files."""
         yaml_path = project_dir / "project.yaml"
         result = run_cli("automix", str(yaml_path), "--dry-run=phase6", cwd=str(project_dir))
         assert result.returncode == 0, f"automix --dry-run failed: {result.stderr}"
@@ -415,10 +412,9 @@ class TestPresetsCommand:
         assert len(data["presets"]) > 0, "No built-in presets found"
 
     def test_presets_specific_name(self):
-        """vcmix presets --name pop_vocal — should show details for a specific preset."""
+        """vcmix presets --name pop_vocal — should show details or report not found."""
         result = run_cli("presets", "--name", "pop_vocal")
-        # pop_vocal may or may not exist depending on preset definitions
-        # but the command should not crash
+        # pop_vocal may or may not exist — but the command should not crash
         assert result.returncode in (0, 1), f"presets --name crashed: {result.stderr}"
 
 
@@ -478,38 +474,43 @@ class TestCLIBasic:
 class TestExitCodes:
     """Verify standardized exit codes for various error conditions."""
 
-    def test_config_error_exit_code(self, tmp_path):
-        """Config with non-existent required fields should report warnings."""
-        # YAML with valid syntax but missing tracks — validate reports warning, exits 0
+    def test_config_warning_exit_code(self, tmp_path):
+        """YAML with missing tracks should report issues via validate (exit 0 with warnings)."""
         bad_yaml = tmp_path / "bad.yaml"
-        bad_yaml.write_text("name: Test\nbpm: 120\nsample_rate: 44100\n", encoding="utf-8")
+        bad_yaml.write_text(
+            'name: Bad\nbpm: 120\nsample_rate: 44100\ntracks: []\n'
+            'master:\n  levels: {}\n  effects: []\n  output: out.wav\n',
+            encoding="utf-8",
+        )
         result = run_cli("validate", str(bad_yaml))
-        # validate exits 0 even with warnings (it's not an error, just advisory)
-        assert result.returncode == 0, f"Expected exit code 0 for warnings, got {result.returncode}"
-        assert "warning" in result.stdout.lower() or "no tracks" in result.stdout.lower()
+        # validate returns 0 even with warnings (they are advisory)
+        assert result.returncode == 0
+        assert "warning" in result.stdout.lower() or "No tracks" in result.stdout
+
+    def test_invalid_yaml_parse_error(self, tmp_path):
+        """Truly invalid YAML should fail with non-zero exit code."""
+        bad_yaml = tmp_path / "bad.yaml"
+        bad_yaml.write_text("{{{{invalid yaml:::", encoding="utf-8")
+        result = run_cli("validate", str(bad_yaml))
+        assert result.returncode != 0, (
+            f"Expected non-zero exit for invalid YAML, got {result.returncode}"
+        )
 
     def test_io_error_exit_code(self, tmp_path):
         """Missing audio file should exit with code 3 (EXIT_IO_ERROR)."""
-        yaml_content = """name: "Missing Audio"
-bpm: 120
-sample_rate: 44100
-
-tracks:
-  - name: vocal
-    file: "nonexistent.wav"
-    volume: 0.9
-    effects: []
-
-master:
-  levels:
-    vocal: 1.0
-  effects: []
-  output: "output.wav"
-"""
+        yaml_content = (
+            'name: "Missing Audio"\nbpm: 120\nsample_rate: 44100\n\n'
+            'tracks:\n  - name: vocal\n    file: "nonexistent.wav"\n'
+            '    volume: 0.9\n    effects: []\n\n'
+            'master:\n  levels:\n    vocal: 1.0\n  effects: []\n'
+            '  output: "output.wav"\n'
+        )
         yaml_path = tmp_path / "missing_audio.yaml"
         yaml_path.write_text(yaml_content, encoding="utf-8")
         result = run_cli("render", str(yaml_path), cwd=str(tmp_path))
-        assert result.returncode == 3, f"Expected exit code 3 (IO error), got {result.returncode}"
+        assert result.returncode == 3, (
+            f"Expected exit code 3 (IO error), got {result.returncode}"
+        )
 
     def test_success_exit_code(self, project_dir):
         """Successful render should exit with code 0."""

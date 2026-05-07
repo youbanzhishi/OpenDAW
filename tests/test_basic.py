@@ -249,7 +249,7 @@ class TestRegistry:
         reg = PluginRegistry()
         assert "vc-reverb" in reg
         assert "vc-eq" in reg
-        assert len(reg.list_plugins()) == 18
+        assert len(reg.list_plugins()) == 20
 
     def test_registry_get_unknown(self):
         from vcmix.plugins.registry import PluginRegistry
