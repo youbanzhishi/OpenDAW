@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.17.0] - 2026-05-18
+
+### Added
+#### Phase 15: AI编曲引擎
+- music_theory模块：12音阶+18和弦+22进程+K-S调性检测+composer自动编曲
+
+#### 智能混音闭环
+- 渲染→分析→诊断→调参→验证自动迭代
+
+#### 编曲混音一体化
+- 一键compose+auto-mix
+
+#### 新CLI命令
+- compose / auto-mix / compose-and-mix
+
+#### 新API端点
+- /ai/compose, /ai/auto-mix, /ai/compose-and-mix
+
+### Tests
+- 183新测试
+- 总计1283测试全绿
+
+
 ## [0.16.0] - 2026-05-17
 
 ### Added
