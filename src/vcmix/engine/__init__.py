@@ -20,8 +20,8 @@ Dependencies: numpy, soundfile
 from vcmix.engine.analyzer import Analyzer
 from vcmix.engine.autofix import AutoFix
 from vcmix.engine.automix import (
-    AutoMixer,
     AdjustmentSuggestion,
+    AutoMixer,
     MasterMixState,
     MixingState,
     TrackMixState,

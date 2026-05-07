@@ -7,12 +7,9 @@ Uses the same PluginRegistry as the CLI.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, HTTPException
 
 from vcmix.plugins.registry import PluginRegistry
-from vcmix.plugins.adapter import PluginAdapter
 
 router = APIRouter()
 

@@ -27,15 +27,13 @@ Dependencies: fastapi, uvicorn, websockets
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
-from typing import Any
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from vcmix.web.routes import render, plugins, presets, arrangement, automix
+from vcmix.web.routes import arrangement, automix, plugins, presets, render
 from vcmix.web.websocket import router as ws_router
 
 # ── Application Factory ──────────────────────────────────────────────────

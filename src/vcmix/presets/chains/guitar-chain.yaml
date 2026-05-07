@@ -1,0 +1,34 @@
+name: guitar-chain
+description: Guitar processing - Comp → EQ → Delay → Reverb
+routing: serial
+tags:
+  - guitar
+  - acoustic
+  - electric
+effects:
+  - name: vc-comp
+    params:
+      threshold: -18
+      ratio: 2.5
+      attack: 10
+      release: 60
+  - name: vc-eq
+    params:
+      low_cut: 80
+      high_shelf: 6000
+      peak_freq: 800
+      peak_gain: 2
+      peak_q: 1.2
+  - name: vc-delay
+    params:
+      time: 1/4
+      feedback: 15
+      mix: 8
+  - name: vc-reverb
+    params:
+      room: 25
+      decay: 20
+      damping: 60
+      mix: 8
+      predelay: 30
+      wetlpf: 4000

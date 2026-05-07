@@ -18,18 +18,16 @@ Dependencies: pytest, numpy, pyyaml
 
 from __future__ import annotations
 
+import pytest
 import yaml
 
-import pytest
-
-from vcmix.separation.arrangement import Section
 from vcmix.engine.arrangement_strategy import (
+    _SECTION_DEFAULTS,
     ArrangementStrategy,
     SectionMixParams,
-    _SECTION_DEFAULTS,
     _interpolate_params,
 )
-
+from vcmix.separation.arrangement import Section
 
 # ---------------------------------------------------------------------------
 # Helper: create Section objects
@@ -37,7 +35,7 @@ from vcmix.engine.arrangement_strategy import (
 
 def _make_sections() -> list[Section]:
     """Create a typical 5-section song arrangement (32 beats)."""
-    beat_sec = 0.5  # 120 BPM
+    _beat_sec = 0.5  # 120 BPM  # noqa: F841
     return [
         Section(name="intro",  start_beat=0,  end_beat=4,
                 start_sec=0.0,  end_sec=2.0,  active_stems=["bass"],

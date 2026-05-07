@@ -15,6 +15,7 @@ Dependencies: pytest, numpy
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
@@ -97,7 +98,6 @@ class TestRendererDataStreamIntegration:
     def test_data_stream_json_format(self) -> None:
         """stream='json' should create JSON DataStream."""
         from vcmix.config.parser import ProjectConfig
-        from vcmix.stream.emitter import DataStream
         config = ProjectConfig(name="test", tracks=[], master={"levels": {}, "output": "out.wav"})
         r = Renderer(config, stream="json")
         assert r.data_stream.format == "json"

@@ -19,11 +19,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 import soundfile as sf
 import yaml
 
-from vcmix.config.parser import parse_project, EffectConfig, TrackConfig, ProjectConfig
+from vcmix.config.parser import EffectConfig, ProjectConfig, TrackConfig, parse_project
 from vcmix.engine.renderer import Renderer
 
 

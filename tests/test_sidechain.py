@@ -19,14 +19,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pytest
 import soundfile as sf
 import yaml
 
-from vcmix.config.parser import parse_project, EffectConfig, TrackConfig, ProjectConfig
-from vcmix.plugins.adapter import PluginAdapter
+from vcmix.config.parser import EffectConfig, ProjectConfig, TrackConfig, parse_project
 from vcmix.plugins.vc_plugins import VCPluginAdapter
-from vcmix.plugins.registry import PluginRegistry
 
 
 class TestSidechainConfig:

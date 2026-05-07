@@ -131,10 +131,39 @@ class EffectConfig(BaseModel):
     )
 
 
+class AutomationPointConfig(BaseModel):
+    """A single automation control point.
+
+    Attributes:
+        time_beat: Position in beats.
+        value: Parameter value at this point.
+        curve_type: Interpolation mode (step/linear/smooth).
+    """
+    time_beat: float = Field(..., description="Position in beats")
+    value: float = Field(..., description="Parameter value")
+    curve_type: str = Field(default="linear", description="Interpolation: step, linear, smooth")
+
+
 class TrackConfig(BaseModel):
-    """A single audio track with its insert effect chain."""
+    """A single audio track with its insert effect chain.
+
+    Phase 9 additions:
+        - type: Track type ('audio' or 'midi')
+        - midi_file: Path to .mid file (for type=midi)
+        - synth: Built-in synthesizer type (for type=midi)
+        - automation: Parameter automation definitions
+    """
     name: str = Field(..., description="Track name, e.g. 'vocal', 'accomp'")
-    file: str = Field(..., description="Path to audio file (relative to project dir)")
+    file: str = Field(default="", description="Path to audio file (relative to project dir)")
+    type: str = Field(default="audio", description="Track type: 'audio' or 'midi' (Phase 9)")
+    midi_file: str | None = Field(
+        default=None,
+        description="Path to .mid file for MIDI tracks (Phase 9)"
+    )
+    synth: str | None = Field(
+        default=None,
+        description="Built-in synth type for MIDI tracks: sine/sawtooth/square/triangle (Phase 9)"
+    )
     effects: list[EffectConfig] = Field(
         default_factory=list,
         description="Ordered insert effect chain"
@@ -154,6 +183,10 @@ class TrackConfig(BaseModel):
     volume: float = Field(default=1.0, ge=0.0, description="Track volume (linear, 1.0=unity)")
     mute: bool = Field(default=False, description="Mute this track")
     solo: bool = Field(default=False, description="Solo this track")
+    automation: dict[str, list[list[float | str]]] = Field(
+        default_factory=dict,
+        description="Parameter automation: {param_name: [[beat, value, curve_type], ...]} (Phase 9)"
+    )
 
 
 class SendBusConfig(BaseModel):

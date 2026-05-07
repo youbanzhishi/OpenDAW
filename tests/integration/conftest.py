@@ -13,7 +13,6 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-
 # ── Constants ──────────────────────────────────────────────────────────────
 
 SAMPLE_RATE = 44100
@@ -24,7 +23,9 @@ FREQ_ACCOMP = 261.6   # C4
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
-def _generate_sine(freq: float, sr: int = SAMPLE_RATE, duration: float = DURATION_S) -> tuple[np.ndarray, int]:
+def _generate_sine(
+    freq: float, sr: int = SAMPLE_RATE, duration: float = DURATION_S,
+) -> tuple[np.ndarray, int]:
     """Generate a sine wave audio buffer."""
     t = np.linspace(0, duration, int(sr * duration), endpoint=False, dtype=np.float32)
     audio = (0.5 * np.sin(2 * np.pi * freq * t)).astype(np.float32)

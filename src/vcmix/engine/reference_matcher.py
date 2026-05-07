@@ -36,7 +36,6 @@ import numpy as np
 
 from vcmix.engine.analyzer import Analyzer
 
-
 # ── Data structures ─────────────────────────────────────────────────────────
 
 @dataclass

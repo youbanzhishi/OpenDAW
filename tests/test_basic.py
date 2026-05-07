@@ -15,13 +15,10 @@ Run: pytest tests/ -v
 Dependencies: pytest, numpy, soundfile, pyyaml, pydantic
 """
 
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pytest
 import soundfile as sf
-
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
 

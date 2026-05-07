@@ -15,7 +15,6 @@ from vcmix.separation.arrangement import (
     extract_arrangement,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers: synthesise sine-wave stems with energy profiles
 # ---------------------------------------------------------------------------
@@ -41,7 +40,7 @@ def _make_song_stems() -> dict[str, np.ndarray]:
         beats 20-23: bridge (only vocals, low)
         beats 24-31: outro  (bass + drums, medium)
     """
-    total_beats = 32
+    _total_beats = 32  # noqa: F841
 
     # Bass: present in intro/verse/chorus/outro
     bass = np.concatenate([
@@ -230,7 +229,8 @@ class TestEdgeCases:
         sections = extractor.extract(stems, sr, bpm)
         # With no energy changes, should be one section
         assert len(sections) == 1
-        assert sections[0].name in ("intro", "chorus")  # constant high energy = chorus, constant medium = intro
+        # constant high energy = chorus, constant medium = intro
+        assert sections[0].name in ("intro", "chorus")
 
     def test_two_stem_different_energy(self):
         """Two stems with clearly different energy regions."""

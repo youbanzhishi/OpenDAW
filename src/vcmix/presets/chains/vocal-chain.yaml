@@ -1,0 +1,36 @@
+name: vocal-chain
+description: Standard vocal processing chain - DeEsser → Comp → EQ → Reverb → Limiter
+routing: serial
+tags:
+  - vocal
+  - pop
+  - standard
+effects:
+  - name: vc-deesser
+    params:
+      threshold: -40
+      reduction: -6
+  - name: vc-comp
+    params:
+      threshold: -24
+      ratio: 3
+      attack: 5
+      release: 50
+  - name: vc-eq
+    params:
+      low_cut: 80
+      high_shelf: 8000
+      peak_freq: 2500
+      peak_gain: -2
+      peak_q: 1.5
+  - name: vc-reverb
+    params:
+      room: 30
+      decay: 35
+      damping: 50
+      mix: 10
+      predelay: 50
+      wetlpf: 5000
+  - name: vc-limiter
+    params:
+      ceiling: -1

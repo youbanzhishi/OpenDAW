@@ -16,13 +16,9 @@ Dependencies: pytest, numpy
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
-import pytest
-import soundfile as sf
 
-from vcmix.engine.bus import SendReturnBus, BusManager
+from vcmix.engine.bus import BusManager, SendReturnBus
 
 
 class TestSendReturnBus:

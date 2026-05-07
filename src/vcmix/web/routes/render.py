@@ -7,12 +7,12 @@ Shares the same Renderer engine as the CLI.
 
 from __future__ import annotations
 
-import uuid
 import threading
+import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
 from vcmix.config.parser import parse_project
@@ -113,7 +113,6 @@ async def trigger_render(
     Poll /api/render/{job_id} for status.
     """
     import tempfile
-    import os
 
     job_id = str(uuid.uuid4())[:8]
 

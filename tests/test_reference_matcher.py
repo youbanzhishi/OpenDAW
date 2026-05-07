@@ -16,11 +16,9 @@ Dependencies: pytest, numpy
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from vcmix.engine.reference_matcher import (
     MatchDiff,
-    ReferenceAdjustment,
     ReferenceMatcher,
     SpectralFeatures,
 )
@@ -137,12 +135,18 @@ class TestComputeMatch:
     def test_identical_features(self) -> None:
         """Identical current and reference should produce near-zero deltas."""
         features = SpectralFeatures(
-            bands={"sub": 0.01, "low": 0.05, "mid": 0.30, "high_mid": 0.25, "high": 0.20, "air": 0.05},
+            bands={
+                "sub": 0.01, "low": 0.05, "mid": 0.30,
+                "high_mid": 0.25, "high": 0.20, "air": 0.05,
+            },
             rms_db=-16.0,
             peak_db=-4.0,
             dynamic_range_db=12.0,
             spectral_centroid_hz=2000.0,
-            band_ratios={"sub": 0.013, "low": 0.065, "mid": 0.39, "high_mid": 0.325, "high": 0.26, "air": 0.065},
+            band_ratios={
+                "sub": 0.013, "low": 0.065, "mid": 0.39,
+                "high_mid": 0.325, "high": 0.26, "air": 0.065,
+            },
         )
 
         matcher = ReferenceMatcher()
@@ -182,13 +186,19 @@ class TestComputeMatch:
             rms_db=-16.0,
             peak_db=-4.0,
             dynamic_range_db=12.0,
-            band_ratios={"sub": 0.1, "low": 0.2, "mid": 0.30, "high_mid": 0.15, "high": 0.15, "air": 0.1},
+            band_ratios={
+                "sub": 0.1, "low": 0.2, "mid": 0.30,
+                "high_mid": 0.15, "high": 0.15, "air": 0.1,
+            },
         )
         reference = SpectralFeatures(
             rms_db=-16.0,
             peak_db=-4.0,
             dynamic_range_db=12.0,
-            band_ratios={"sub": 0.01, "low": 0.05, "mid": 0.30, "high_mid": 0.30, "high": 0.25, "air": 0.09},
+            band_ratios={
+                "sub": 0.01, "low": 0.05, "mid": 0.30,
+                "high_mid": 0.30, "high": 0.25, "air": 0.09,
+            },
         )
 
         matcher = ReferenceMatcher()
@@ -214,13 +224,19 @@ class TestComputeMatch:
             rms_db=-16.0,
             peak_db=-4.0,
             dynamic_range_db=12.0,
-            band_ratios={"sub": 0.02, "low": 0.06, "mid": 0.35, "high_mid": 0.28, "high": 0.22, "air": 0.07},
+            band_ratios={
+                "sub": 0.02, "low": 0.06, "mid": 0.35,
+                "high_mid": 0.28, "high": 0.22, "air": 0.07,
+            },
         )
         reference = SpectralFeatures(
             rms_db=-16.0,
             peak_db=-4.0,
             dynamic_range_db=12.0,
-            band_ratios={"sub": 0.02, "low": 0.06, "mid": 0.35, "high_mid": 0.28, "high": 0.22, "air": 0.07},
+            band_ratios={
+                "sub": 0.02, "low": 0.06, "mid": 0.35,
+                "high_mid": 0.28, "high": 0.22, "air": 0.07,
+            },
         )
 
         matcher = ReferenceMatcher()

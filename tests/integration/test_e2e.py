@@ -23,7 +23,6 @@ import numpy as np
 import pytest
 import soundfile as sf
 
-
 # ── Helper ─────────────────────────────────────────────────────────────────
 
 def run_cli(*args: str, cwd: str | None = None) -> subprocess.CompletedProcess:
@@ -283,7 +282,11 @@ class TestGraphCommand:
         """vcmix graph project.yaml -f mermaid — should output Mermaid syntax."""
         result = run_cli("graph", str(project_dir / "project.yaml"), "-f", "mermaid")
         assert result.returncode == 0, f"graph mermaid failed: {result.stderr}"
-        assert "graph" in result.stdout.lower() or "flowchart" in result.stdout.lower() or "-->" in result.stdout
+        assert (
+            "graph" in result.stdout.lower()
+            or "flowchart" in result.stdout.lower()
+            or "-->" in result.stdout
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════

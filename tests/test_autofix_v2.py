@@ -18,9 +18,8 @@ Dependencies: pytest, numpy
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from vcmix.engine.autofix import AutoFix, GainStageInfo, ChainAnalysis
+from vcmix.engine.autofix import AutoFix, ChainAnalysis, GainStageInfo
 
 
 class TestGainStageInfo:
@@ -68,7 +67,10 @@ class TestChainAnalysis:
         analysis = ChainAnalysis(
             stages=[
                 GainStageInfo(effect_name="input", output_rms_db=-18.0, input_rms_db=-18.0),
-                GainStageInfo(effect_name="vc-gain", output_rms_db=-12.0, input_rms_db=-18.0, gain_delta_db=6.0),
+                GainStageInfo(
+                    effect_name="vc-gain", output_rms_db=-12.0,
+                    input_rms_db=-18.0, gain_delta_db=6.0,
+                ),
             ],
             total_gain_db=6.0,
         )
@@ -251,7 +253,7 @@ class TestFixGainStaging:
             "effects": [{"name": "vc-gain", "params": {"gain": 3}}]
         }
         original_effects_len = len(track_config["effects"])
-        fixed = fixer.fix_gain_staging(track_config, analysis)
+        fixer.fix_gain_staging(track_config, analysis)
 
         # Original should be unchanged
         assert len(track_config["effects"]) == original_effects_len

@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from vcmix.presets.manager import list_presets, get_preset, save_preset
+from vcmix.presets.manager import get_preset, list_presets, save_preset
 
 router = APIRouter()
 

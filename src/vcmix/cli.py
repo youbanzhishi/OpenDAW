@@ -60,6 +60,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -82,7 +83,10 @@ def main() -> None:
 @click.option("--ab", is_flag=True, help="Render A/B comparison versions (Phase 2)")
 @click.option("--diff", is_flag=True, help="Include difference analysis in A/B mode")
 @click.option("--arrangement-aware", is_flag=True, help="Apply arrangement-aware mixing (Phase 7)")
-def render(project: Path, report: bool, auto_fix: bool, stream: str, ab: bool, diff: bool, arrangement_aware: bool) -> None:
+def render(
+    project: Path, report: bool, auto_fix: bool, stream: str,
+    ab: bool, diff: bool, arrangement_aware: bool,
+) -> None:
     """Render a mix project from YAML config."""
     import vcmix
 
@@ -284,13 +288,13 @@ def _graph_mermaid(cfg) -> None:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def analyze(audio_file: Path, as_json: bool) -> None:
     """Analyze an audio file for RMS/Peak/spectrum/sibilance."""
+
     import vcmix
-    import numpy as np
 
     try:
         from vcmix.audio.io import read_audio
-        from vcmix.engine.analyzer import Analyzer
         from vcmix.audio.meter import Meter
+        from vcmix.engine.analyzer import Analyzer
 
         audio, sr = read_audio(audio_file)
         analyzer = Analyzer(sample_rate=sr)
@@ -357,8 +361,8 @@ def automix(
         Use --dry-run to see suggestions without writing files.
         Use --reference ref.wav to match a reference track's sound.
     """
+
     import vcmix
-    import numpy as np
 
     try:
         # Detect mode: YAML file → Phase 6, audio file → Phase 4
@@ -384,7 +388,6 @@ def _automix_phase4(
     as_json: bool,
 ) -> None:
     """Phase 4: Analyze dry vocal and generate YAML config."""
-    import numpy as np
 
     from vcmix.audio.io import read_audio
     from vcmix.engine.automix import AutoMixer
@@ -446,14 +449,12 @@ def _automix_phase6(
         5. Generate suggestions
         6. Apply suggestions to produce new config (or show dry-run)
     """
-    import numpy as np
-    import yaml
 
+    from vcmix.audio.io import read_audio
     from vcmix.config.parser import parse_project
-    from vcmix.engine.renderer import Renderer
     from vcmix.engine.automix import AutoMixer
     from vcmix.engine.reference_matcher import ReferenceMatcher
-    from vcmix.audio.io import read_audio
+    from vcmix.engine.renderer import Renderer
 
     # Step 1: Parse project
     cfg = parse_project(project_file)
@@ -551,8 +552,9 @@ def _automix_phase6(
 
     # Step 6: Apply suggestions and write new config
     # Convert ProjectConfig to dict for modification
-    from vcmix.config.parser import parse_project
     import yaml as _yaml
+
+    from vcmix.config.parser import parse_project
 
     # Read the raw YAML to preserve structure
     raw_config = _yaml.safe_load(project_file.read_text(encoding="utf-8"))
@@ -616,7 +618,7 @@ def _ref_adj_to_suggestion(adj) -> Any:
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def presets_cmd(name: str | None, as_json: bool) -> None:
     """List all built-in effect chain presets."""
-    from vcmix.presets.manager import list_presets, get_preset
+    from vcmix.presets.manager import get_preset, list_presets
 
     if name:
         chain = get_preset(name)
@@ -690,10 +692,6 @@ def separate(
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-if __name__ == "__main__":
-    main()
-
-
 # ── Phase 7: arrangement command ──────────────────────────────────────────
 @main.command()
 @click.argument("project", type=click.Path(exists=True, path_type=Path))
@@ -707,120 +705,10 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
     vcmix arrangement project.yaml --strategy — Show per-section mixing strategy
     """
     import json as json_mod
+
     from vcmix.config.parser import parse_project
     from vcmix.engine.arrangement_strategy import ArrangementStrategy
-
-    cfg = parse_project(project)
-
-    # Try to find audio file for arrangement analysis
-    audio_file = None
-    for track in cfg.tracks:
-        track_file = Path(track.file) if isinstance(track.file, str) else track.file
-        if track_file and track_file.exists():
-            audio_file = track_file
-            break
-
-    if not audio_file:
-        click.secho("⚠ No audio file found for arrangement analysis", fg="yellow")
-        click.echo("  Provide audio files in project YAML for analysis.")
-        return
-
-    # Load audio and extract arrangement
-    try:
-        import soundfile as sf
-        audio, sr = sf.read(str(audio_file))
-        if audio.ndim > 1:
-            audio = audio.mean(axis=1)
-    except ImportError:
-        click.secho("✗ soundfile not installed, cannot analyze audio", fg="red")
-        return
-    except Exception as e:
-        click.secho(f"✗ Cannot read audio: {e}", fg="red")
-        return
-
     from vcmix.separation.arrangement import ArrangementExtractor
-    extractor = ArrangementExtractor()
-    stems = {"mix": audio}
-    sections = extractor.extract(stems, sr, cfg.bpm)
-
-    if not sections:
-        click.secho("⚠ No sections detected", fg="yellow")
-        return
-
-    if not strategy:
-        if as_json:
-            data = [{"type": s.section_type, "start_beat": s.start_beat,
-                      "end_beat": s.end_beat, "confidence": s.confidence}
-                     for s in sections]
-            click.echo(json_mod.dumps(data, indent=2))
-        else:
-            click.secho("╔══════════════════════════════════════╗", fg="cyan")
-            click.secho("║     Arrangement Analysis            ║", fg="cyan")
-            click.secho("╚══════════════════════════════════════╝", fg="cyan")
-            for s in sections:
-                bar = "█" * int(s.confidence * 20)
-                click.echo(f"  {s.section_type:>8s}  beats {s.start_beat:5.1f}-{s.end_beat:5.1f}  [{bar}] {s.confidence:.0%}")
-        return
-
-    strat = ArrangementStrategy.from_sections(sections, bpm=cfg.bpm)
-
-    if as_json:
-        result = []
-        for s in sections:
-            params = strat.get_params_at_beat(s.start_beat)
-            result.append({
-                "section": s.section_type,
-                "start_beat": s.start_beat,
-                "end_beat": s.end_beat,
-                "strategy": {
-                    "reverb_mix": params.reverb_mix,
-                    "delay_mix": params.delay_mix,
-                    "compression_ratio": params.compression_ratio,
-                    "gain_offset_db": params.gain_offset_db,
-                    "crossfade_beats": params.crossfade_beats,
-                }
-            })
-        click.echo(json_mod.dumps(result, indent=2))
-    else:
-        click.secho("╔══════════════════════════════════════╗", fg="cyan")
-        click.secho("║   Arrangement Mixing Strategy       ║", fg="cyan")
-        click.secho("╚══════════════════════════════════════╝", fg="cyan")
-        click.echo(f"  {'Section':>8s}  {'Beats':>12s}  {'Reverb':>6s}  {'Delay':>5s}  {'Comp':>4s}  {'Gain':>5s}")
-        click.echo("  " + "─" * 52)
-        for s in sections:
-            params = strat.get_params_at_beat(s.start_beat)
-            click.echo(f"  {s.section_type:>8s}  {s.start_beat:5.1f}-{s.end_beat:<5.1f}  "
-                       f"{params.reverb_mix:5.1f}%  {params.delay_mix:4.1f}%  "
-                       f"{params.compression_ratio:3.1f}:1  {params.gain_offset_db:+4.1f}dB")
-
-        overrides = strat.to_yaml_overrides()
-        if overrides:
-            click.echo()
-            click.secho("YAML Overrides:", fg="yellow")
-            import yaml
-            click.echo(yaml.dump(overrides, default_flow_style=False))
-
-
-if __name__ == "__main__":
-    main()
-
-
-# ── Phase 7: arrangement command ──────────────────────────────────────────
-@main.command()
-@click.argument("project", type=click.Path(exists=True, path_type=Path))
-@click.option("--strategy", is_flag=True, help="Show mixing strategy per section")
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
-    """Analyze song arrangement structure and mixing strategy.
-
-    \b
-    vcmix arrangement project.yaml           — Show section analysis
-    vcmix arrangement project.yaml --strategy — Show per-section mixing strategy
-    """
-    import json as json_mod
-    from vcmix.config.parser import parse_project
-    from vcmix.separation.arrangement import ArrangementExtractor
-    from vcmix.engine.arrangement_strategy import ArrangementStrategy, SectionMixParams
 
     cfg = parse_project(project)
 
@@ -860,7 +748,10 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
             click.secho("╚══════════════════════════════════════╝", fg="cyan")
             for s in sections:
                 bar = "█" * {"low": 5, "medium": 10, "high": 18}.get(s.energy_level, 10)
-                click.echo(f"  {s.name:>8s}  beats {s.start_beat:5d}-{s.end_beat:<5d}  [{bar}] {s.energy_level}")
+                click.echo(
+                    f"  {s.name:>8s}  beats "
+                    f"{s.start_beat:5d}-{s.end_beat:<5d}  [{bar}] {s.energy_level}"
+                )
         return
 
     # Show mixing strategy
@@ -887,7 +778,10 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
         click.secho("╔══════════════════════════════════════╗", fg="cyan")
         click.secho("║   Arrangement Mixing Strategy       ║", fg="cyan")
         click.secho("╚══════════════════════════════════════╝", fg="cyan")
-        click.echo(f"  {'Section':>8s}  {'Beats':>12s}  {'Reverb':>6s}  {'Delay':>5s}  {'Comp':>4s}  {'Gain':>5s}")
+        click.echo(
+            f"  {'Section':>8s}  {'Beats':>12s}  "
+            f"{'Reverb':>6s}  {'Delay':>5s}  {'Comp':>4s}  {'Gain':>5s}"
+        )
         click.echo("  " + "─" * 52)
         for s in sections:
             params = strat.get_params_at_beat(s.start_beat)
@@ -902,3 +796,179 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
             click.secho("YAML Overrides:", fg="yellow")
             import yaml
             click.echo(yaml.dump(overrides, default_flow_style=False))
+
+
+# ── Phase 9: chain-presets command ────────────────────────────────────────
+
+@main.group("chain-presets")
+def chain_presets_group() -> None:
+    """Manage plugin chain presets (Phase 9).
+
+    \b
+    vcmix chain-presets list                  — List all chain presets
+    vcmix chain-presets apply vocal-chain     — Apply a chain to a track
+    vcmix chain-presets save my-chain         — Save chain from a track
+    vcmix chain-presets show vocal-chain      — Show chain preset details
+    """
+    pass
+
+
+@chain_presets_group.command("list")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def chain_presets_list(as_json: bool) -> None:
+    """List all available chain presets."""
+    from vcmix.presets.chain_presets import ChainPresetManager
+
+    manager = ChainPresetManager()
+    preset_names = manager.list_presets()
+
+    if as_json:
+        result = []
+        for name in preset_names:
+            preset = manager.get(name)
+            if preset:
+                result.append({
+                    "name": preset.name,
+                    "description": preset.description,
+                    "effects": preset.effect_count,
+                    "routing": preset.routing,
+                    "tags": preset.tags,
+                })
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        click.secho(f"Chain Presets ({len(preset_names)}):", fg="cyan")
+        for name in preset_names:
+            preset = manager.get(name)
+            if preset:
+                effects_str = " → ".join(preset.effect_names)
+                click.echo(f"  • {name} ({preset.effect_count} effects)")
+                click.echo(f"    {effects_str}")
+                if preset.tags:
+                    click.echo(f"    tags: {', '.join(preset.tags)}")
+
+
+@chain_presets_group.command("apply")
+@click.argument("preset_name")
+@click.option("--track", required=True, help="Track name to apply chain to")
+@click.option("--project", type=click.Path(exists=True, path_type=Path),
+              help="Project YAML file (for in-place modification)")
+@click.option("--json", "as_json", is_flag=True, help="Output result as JSON")
+def chain_presets_apply(
+    preset_name: str, track: str, project: Path | None, as_json: bool
+) -> None:
+    """Apply a chain preset to a track.
+
+    If --project is given, updates the YAML file in-place.
+    Otherwise, prints the resulting track config.
+    """
+    from vcmix.presets.chain_presets import ChainPresetManager
+
+    manager = ChainPresetManager()
+    chain = manager.get(preset_name)
+    if chain is None:
+        click.secho(f"✗ Chain preset not found: {preset_name}", fg="red")
+        sys.exit(1)
+
+    if project:
+        import yaml as yaml_mod
+        raw = yaml_mod.safe_load(project.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            click.secho("✗ Invalid project YAML", fg="red")
+            sys.exit(1)
+
+        tracks = raw.get("tracks", [])
+        found = False
+        for t in tracks:
+            if t.get("name") == track:
+                updated = manager.apply_to_track(chain, t)
+                t.clear()
+                t.update(updated)
+                found = True
+                break
+
+        if not found:
+            click.secho(f"✗ Track '{track}' not found in project", fg="red")
+            sys.exit(1)
+
+        with open(project, "w", encoding="utf-8") as f:
+            yaml_mod.dump(raw, f, default_flow_style=False, allow_unicode=True)
+        click.secho(f"✔ Applied '{preset_name}' to track '{track}'", fg="green")
+    else:
+        track_config = {"name": track, "file": "unknown.wav"}
+        result = manager.apply_to_track(chain, track_config)
+        if as_json:
+            click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            click.secho(f"Chain: {chain.name}", fg="cyan")
+            click.secho(f"Track: {track}", fg="cyan")
+            for i, effect in enumerate(chain.effects, 1):
+                params_str = ", ".join(f"{k}={v}" for k, v in effect.params.items())
+                status = "" if effect.enabled else " [DISABLED]"
+                click.echo(f"  {i}. {effect.name} ({params_str}){status}")
+
+
+@chain_presets_group.command("save")
+@click.argument("name")
+@click.option("--from-project", type=click.Path(exists=True, path_type=Path),
+              help="Project YAML file to extract chain from")
+@click.option("--from-track", help="Track name in the project")
+@click.option("--description", default="", help="Description for the chain preset")
+def chain_presets_save(
+    name: str, from_project: Path | None, from_track: str | None, description: str
+) -> None:
+    """Save a chain preset from an existing track configuration."""
+    from vcmix.presets.chain_presets import ChainPresetManager
+
+    if not from_project or not from_track:
+        click.secho("✗ Both --from-project and --from-track are required", fg="red")
+        sys.exit(1)
+
+    import yaml as yaml_mod
+    raw = yaml_mod.safe_load(from_project.read_text(encoding="utf-8"))
+
+    tracks = raw.get("tracks", [])
+    track_config = None
+    for t in tracks:
+        if t.get("name") == from_track:
+            track_config = t
+            break
+
+    if track_config is None:
+        click.secho(f"✗ Track '{from_track}' not found", fg="red")
+        sys.exit(1)
+
+    manager = ChainPresetManager()
+    path = manager.save_from_track(name, description, track_config)
+    click.secho(f"✔ Chain preset '{name}' saved → {path}", fg="green")
+
+
+@chain_presets_group.command("show")
+@click.argument("preset_name")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def chain_presets_show(preset_name: str, as_json: bool) -> None:
+    """Show details of a chain preset."""
+    from vcmix.presets.chain_presets import ChainPresetManager
+
+    manager = ChainPresetManager()
+    chain = manager.get(preset_name)
+    if chain is None:
+        click.secho(f"✗ Chain preset not found: {preset_name}", fg="red")
+        sys.exit(1)
+
+    if as_json:
+        click.echo(json.dumps(chain.to_dict(), ensure_ascii=False, indent=2))
+    else:
+        click.secho(f"Chain: {chain.name}", fg="cyan")
+        click.echo(f"  Description: {chain.description}")
+        click.echo(f"  Routing: {chain.routing}")
+        click.echo(f"  Effects ({chain.effect_count}):")
+        for i, effect in enumerate(chain.effects, 1):
+            params_str = ", ".join(f"{k}={v}" for k, v in effect.params.items())
+            status = "" if effect.enabled else " [DISABLED]"
+            click.echo(f"    {i}. {effect.name} ({params_str}){status}")
+        if chain.input_gain_db != 0:
+            click.echo(f"  Input gain: {chain.input_gain_db:+.1f} dB")
+        if chain.output_gain_db != 0:
+            click.echo(f"  Output gain: {chain.output_gain_db:+.1f} dB")
+        if chain.tags:
+            click.echo(f"  Tags: {', '.join(chain.tags)}")

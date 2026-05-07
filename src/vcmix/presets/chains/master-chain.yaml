@@ -1,0 +1,24 @@
+name: master-chain
+description: Master bus processing - EQ → MultiBand Comp → Limiter
+routing: serial
+tags:
+  - master
+  - bus
+  - final
+effects:
+  - name: vc-eq
+    params:
+      low_cut: 30
+      high_shelf: 16000
+      peak_freq: 200
+      peak_gain: -1
+      peak_q: 0.7
+  - name: vc-multiband
+    params:
+      low_threshold: -12
+      mid_threshold: -10
+      high_threshold: -8
+      ratio: 2.0
+  - name: vc-limiter
+    params:
+      ceiling: -1

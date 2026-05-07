@@ -21,7 +21,6 @@ Dependencies: pytest, numpy
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from vcmix.engine.automix import (
     AdjustmentSuggestion,
@@ -31,7 +30,6 @@ from vcmix.engine.automix import (
     TrackMixState,
 )
 from vcmix.stream.emitter import DataStream, EventLevel, StreamEvent
-
 
 # ── Phase 4 Tests ───────────────────────────────────────────────────────────
 

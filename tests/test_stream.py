@@ -1,8 +1,8 @@
 """Tests for vcmix.stream module."""
 import io
 import json
-import pytest
-from vcmix.stream.emitter import DataStream, StreamEvent, EventLevel
+
+from vcmix.stream.emitter import DataStream, StreamEvent
 
 
 class TestStreamEvent:

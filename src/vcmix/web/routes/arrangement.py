@@ -11,11 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from vcmix.config.parser import parse_project
-from vcmix.separation.arrangement import ArrangementExtractor, Section
 from vcmix.engine.arrangement_strategy import ArrangementStrategy
+from vcmix.separation.arrangement import ArrangementExtractor, Section
 
 router = APIRouter()
 

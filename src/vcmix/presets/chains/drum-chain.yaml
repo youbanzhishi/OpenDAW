@@ -1,0 +1,34 @@
+name: drum-chain
+description: Drum bus processing - Gate → Comp → EQ → Parallel Comp
+routing: serial
+tags:
+  - drums
+  - bus
+  - parallel
+effects:
+  - name: vc-gate
+    params:
+      threshold: -40
+      attack: 0.1
+      release: 50
+  - name: vc-comp
+    params:
+      threshold: -20
+      ratio: 4
+      attack: 1
+      release: 20
+  - name: vc-eq
+    params:
+      low_shelf: 60
+      low_gain: 3
+      peak_freq: 400
+      peak_gain: -2
+      peak_q: 1.0
+      high_shelf: 8000
+      high_gain: 2
+  - name: vc-comp
+    params:
+      threshold: -10
+      ratio: 2
+      attack: 10
+      release: 100

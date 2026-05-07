@@ -60,10 +60,10 @@ Standardized Exit Codes (AI Agent processable):
     6  Missing dependency
 
 Dependencies: numpy, soundfile, pyyaml, pydantic, click, rich, librosa
-Version: 0.8.0 (Phase 8)
+Version: 0.9.0 (Phase 9)
 """
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __author__ = "youbanzhishi"
 
 # ── Standardized exit codes for AI Agent programmatic handling ──

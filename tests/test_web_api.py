@@ -18,17 +18,14 @@ Coverage:
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
-from typing import Any
 
 import pytest
-import yaml
 
 # ── Test Client Setup ────────────────────────────────────────────────────
 
 try:
     from fastapi.testclient import TestClient
+
     from vcmix.web.app import app
     HAS_FASTAPI = True
 except ImportError:
@@ -162,7 +159,7 @@ class TestPresets:
 
 class TestValidate:
     def test_validate_valid_yaml(self, client):
-        resp = client.post(
+        client.post(
             "/api/validate?yaml_content=" + json.dumps(MINIMAL_YAML),
         )
         # The validate endpoint uses query param, but our endpoint expects it

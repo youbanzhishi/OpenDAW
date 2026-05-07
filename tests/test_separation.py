@@ -1,8 +1,7 @@
 """Tests for vcmix.separation module."""
 import numpy as np
-import pytest
-import soundfile as sf
-from vcmix.separation.reverse_analyzer import analyze_stem, StemAnalysis, _generate_config
+
+from vcmix.separation.reverse_analyzer import StemAnalysis, _generate_config, analyze_stem
 
 
 class TestAnalyzeStem:

@@ -14,8 +14,8 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from vcmix.config.parser import parse_project
-from vcmix.engine.renderer import Renderer
 from vcmix.engine.automix import AutoMixer
+from vcmix.engine.renderer import Renderer
 
 router = APIRouter()
 
@@ -106,8 +106,8 @@ async def run_automix(request: AutomixRequest):
         # Step 5: Apply if not dry-run
         output_path = None
         if not request.dry_run:
+
             import yaml
-            import copy
 
             raw_config = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
             new_config = mixer.apply(raw_config, suggestions)
@@ -151,7 +151,7 @@ async def validate_yaml(yaml_content: str = Query(..., description="YAML content
     Returns validation issues and project summary.
     """
     import tempfile
-    import yaml
+
 
     try:
         # Write to temp file for validation
