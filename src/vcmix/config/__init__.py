@@ -1,17 +1,18 @@
 """
-vcmix.config — YAML configuration parsing and validation.
+vcmix.config — YAML project configuration parsing and validation.
 
 This subpackage provides:
-    - parser: Parse YAML project files into structured config dicts
-    - validator: Validate config against schema rules
+    - Pydantic data models for project/track/effect/master layers
+    - YAML parser with BPM note-value auto-conversion
+    - Config validation utilities
 
 Usage:
-    from vcmix.config import parse_project, validate_config
+    from vcmix.config.parser import parse_project
+    cfg = parse_project("project.yaml")
 
 Dependencies: pyyaml, pydantic
 """
 
-from vcmix.config.parser import parse_project
-from vcmix.config.validator import validate_config
+from vcmix.config.parser import parse_project, ProjectConfig, TrackConfig, EffectConfig, MasterConfig
 
-__all__ = ["parse_project", "validate_config"]
+__all__ = ["parse_project", "ProjectConfig", "TrackConfig", "EffectConfig", "MasterConfig"]

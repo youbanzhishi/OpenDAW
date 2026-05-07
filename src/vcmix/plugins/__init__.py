@@ -1,15 +1,17 @@
 """
-vcmix.plugins — Plugin adapter framework for VCMix.
+vcmix.plugins — Plugin adapter layer for VC plugin CLI integration.
 
 This subpackage provides:
-    - adapter: PluginAdapter base class for all plugin types
-    - registry: Plugin registry for dynamic discovery and loading
-    - vc_plugins: VC Plugin CLI adapters (wraps AudioFX CLI tools)
+    - PluginAdapter: Abstract base class for all plugin adapters
+    - VCPluginAdapter: Concrete adapter for VC plugin CLI subprocess calls
+    - PluginRegistry: Plugin lookup and registration by name
 
 Usage:
-    from vcmix.plugins import PluginAdapter, PluginRegistry
+    from vcmix.plugins.registry import PluginRegistry
+    registry = PluginRegistry()
+    plugin = registry.get("vc-reverb")
 
-Dependencies: subprocess (for VC CLI adapters), pathlib
+Dependencies: numpy, subprocess
 """
 
 from vcmix.plugins.adapter import PluginAdapter

@@ -4,17 +4,15 @@ autofix.py — Adaptive parameter adjustment engine for VCMix.
 Automatically corrects common mixing issues:
     - Gain staging (target RMS/headroom per stage)
     - Clip prevention (limiter insertion on hot signals)
-    - Phase alignment suggestions
-    - Frequency masking warnings
+    - Over-compression warnings
 
-This is a rules-based engine in Phase 1, with ML-based
-suggestions planned for Phase 3.
+Rules-based engine in Phase 1; ML-based suggestions planned for Phase 3.
 
 Usage:
     from vcmix.engine.autofix import AutoFix
     fixer = AutoFix(target_rms_db=-18.0, headroom_db=-1.0)
-    adjustments = fixer.analyze(track_audio, track_config)
-    fixed_audio = fixer.apply(track_audio, adjustments)
+    adjustments = fixer.analyze(audio)
+    fixed_audio = fixer.apply_gain(audio, adjustments["gain_db"])
 
 Dependencies: numpy, vcmix.engine.analyzer
 """
@@ -36,7 +34,7 @@ class AutoFix:
 
     Args:
         target_rms_db: Target RMS level in dBFS (default -18 dBFS).
-        headroom_db: Target headroom in dBFS (default -1 dB peak).
+        headroom_db: Target headroom ceiling in dBFS (default -1 dB peak).
         sample_rate: Audio sample rate.
     """
 
@@ -53,11 +51,11 @@ class AutoFix:
             config: Optional track configuration dict.
 
         Returns:
-            Dict with recommended adjustments (gain_db, limiter, warnings).
+            Dict with gain_db, limiter recommendation, and warnings.
         """
         analyzer = Analyzer(sample_rate=self.sample_rate)
-        current_rms = analyzer.rms(audio)
-        current_peak = analyzer.peak(audio)
+        current_rms = analyzer.compute_rms(audio)
+        current_peak = analyzer.compute_peak(audio)
 
         adjustments: dict[str, Any] = {
             "gain_db": 0.0,
@@ -84,6 +82,13 @@ class AutoFix:
                 f"Peak would exceed headroom ({projected_peak_db:.1f} dBFS > {self.headroom_db:.1f} dBFS)"
             )
 
+        # Warn on over-compression (very low dynamic range)
+        dynamic_range = current_peak_db - current_rms_db
+        if dynamic_range < 3.0:
+            adjustments["warnings"].append(
+                f"Low dynamic range ({dynamic_range:.1f} dB) — possible over-compression"
+            )
+
         return adjustments
 
     def apply_gain(self, audio: np.ndarray, gain_db: float) -> np.ndarray:
@@ -95,7 +100,7 @@ class AutoFix:
             gain_db: Gain in dB to apply.
 
         Returns:
-            Adjusted audio buffer.
+            Adjusted audio buffer (new array).
         """
         gain_linear = 10.0 ** (gain_db / 20.0)
         return audio * gain_linear

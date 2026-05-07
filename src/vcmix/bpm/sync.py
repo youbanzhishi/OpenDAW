@@ -1,78 +1,132 @@
 """
-sync.py — BPM synchronization and beat grid calculations for VCMix.
+sync.py — BPM note-value to millisecond conversion for VCMix.
 
-Provides utilities for aligning audio clips to a project BPM:
-    - calc_stretch_ratio(): Time-stretch ratio between source and target BPM
-    - calc_beat_grid(): Sample positions of beats at a given BPM
-    - quantize_to_grid(): Snap events to nearest beat grid position
+Converts musical note values to timing in milliseconds at a given BPM.
+This is the core utility for BPM-synced delay times and other timing.
+
+Supported note value formats:
+    "1/1"   — whole note
+    "1/2"   — half note
+    "1/4"   — quarter note
+    "1/8"   — eighth note
+    "1/16"  — sixteenth note
+    "1/8d"  — dotted eighth (×1.5)
+    "1/8t"  — eighth triplet (×2/3)
+    "1/4."  — dotted quarter (alternative notation)
+
+Formula:
+    quarter_ms = 60000 / BPM
+    note_ms    = quarter_ms × (4 / denominator) × numerator
+    dotted     = note_ms × 1.5
+    triplet    = note_ms × (2/3)
 
 Usage:
-    from vcmix.bpm.sync import calc_stretch_ratio, calc_beat_grid
-    ratio = calc_stretch_ratio(source_bpm=128, target_bpm=120)
-    grid = calc_beat_grid(bpm=120, sample_rate=44100, duration_sec=180)
+    from vcmix.bpm.sync import note_to_ms, resolve_bpm_times
+    ms = note_to_ms("1/8d", bpm=62)  # 181.5 ms
+    params = resolve_bpm_times({"time": "1/8d", "fb": 12}, bpm=62)
+    # {"time": 181.5, "fb": 12}
 
-Dependencies: numpy
+Dependencies: re (standard library)
 """
 
 from __future__ import annotations
 
-import numpy as np
+import re
+from typing import Any
+
+# Pattern: "N/D", "N/Dd", "N/Dt", "N/D."
+_NOTE_RE = re.compile(r"^(\d+)/(\d+)([dt]?)\.?$")
 
 
-def calc_stretch_ratio(source_bpm: float, target_bpm: float) -> float:
+def note_to_ms(bpm: float, note_value: str) -> float:
     """
-    Calculate time-stretch ratio to convert from source to target BPM.
-
-    Args:
-        source_bpm: Original BPM of the audio.
-        target_bpm: Desired target BPM.
-
-    Returns:
-        Stretch ratio (1.0 = no change, >1.0 = slow down, <1.0 = speed up).
-    """
-    if source_bpm <= 0 or target_bpm <= 0:
-        raise ValueError("BPM values must be positive")
-    return source_bpm / target_bpm
-
-
-def calc_beat_grid(bpm: float, sample_rate: int = 44100,
-                   duration_sec: float = 180.0,
-                   time_signature: str = "4/4") -> np.ndarray:
-    """
-    Calculate sample positions of beats for a given BPM.
+    Convert a BPM note value to milliseconds.
 
     Args:
         bpm: Beats per minute.
-        sample_rate: Sample rate in Hz.
-        duration_sec: Duration of the project in seconds.
-        time_signature: Time signature string (e.g., "4/4").
+        note_value: Note string like "1/4", "1/8d", "1/16t".
 
     Returns:
-        Array of sample positions where beats occur.
+        Duration in milliseconds (1 decimal place).
+
+    Raises:
+        ValueError: If note_value format is unrecognized.
+
+    Examples:
+        >>> note_to_ms(120, "1/4")
+        500.0
+        >>> note_to_ms(62, "1/8d")
+        181.5
     """
-    if bpm <= 0:
-        raise ValueError("BPM must be positive")
+    if isinstance(note_value, (int, float)):
+        return float(note_value)
 
-    samples_per_beat = int(sample_rate * 60.0 / bpm)
-    total_samples = int(duration_sec * sample_rate)
-    n_beats = total_samples // samples_per_beat
+    value_str = str(note_value).strip()
 
-    return np.arange(n_beats) * samples_per_beat
+    # Try plain number first
+    try:
+        return float(value_str)
+    except ValueError:
+        pass
+
+    m = _NOTE_RE.match(value_str)
+    if not m:
+        raise ValueError(
+            f"Invalid note value: '{note_value}'. "
+            f"Expected number (ms) or note like '1/4', '1/8d', '1/8t'"
+        )
+
+    numerator = int(m.group(1))
+    denominator = int(m.group(2))
+    modifier = m.group(3)
+
+    if denominator == 0:
+        raise ValueError(f"Denominator cannot be zero: '{note_value}'")
+
+    quarter_ms = 60000.0 / bpm
+    base_ms = quarter_ms * (4.0 * numerator / denominator)
+
+    if modifier == "d":
+        base_ms *= 1.5
+    elif modifier == "t":
+        base_ms *= 2.0 / 3.0
+
+    return round(base_ms, 1)
 
 
-def quantize_to_grid(position_samples: int, beat_grid: np.ndarray) -> int:
+def resolve_bpm_times(
+    params: dict[str, Any],
+    bpm: float = 120.0,
+    time_keys: list[str] | None = None,
+) -> dict[str, Any]:
     """
-    Snap a sample position to the nearest beat grid position.
+    Resolve note-value parameters in a dict to milliseconds.
+
+    Only converts values matching the N/D[d|t] pattern.
+    Numbers and other strings are left unchanged.
 
     Args:
-        position_samples: Sample position to quantize.
-        beat_grid: Array of beat grid positions.
+        params: Effect parameters dict.
+        bpm: Project BPM.
+        time_keys: Parameter names to convert (default: ["time", "predelay"]).
 
     Returns:
-        Nearest beat grid position as integer sample offset.
-    """
-    if len(beat_grid) == 0:
-        return position_samples
+        New dict with note values replaced by ms floats.
 
-    idx = np.argmin(np.abs(beat_grid - position_samples))
-    return int(beat_grid[idx])
+    Examples:
+        >>> resolve_bpm_times({"time": "1/8d", "feedback": 12}, bpm=62)
+        {'time': 181.5, 'feedback': 12}
+    """
+    if time_keys is None:
+        time_keys = ["time", "predelay"]
+
+    resolved = dict(params)
+    for key in time_keys:
+        if key in resolved:
+            val = resolved[key]
+            if isinstance(val, str) and _NOTE_RE.match(val.strip()):
+                try:
+                    resolved[key] = note_to_ms(bpm, val)
+                except ValueError:
+                    pass  # Leave unchanged if unrecognizable
+    return resolved

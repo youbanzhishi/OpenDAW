@@ -1,8 +1,8 @@
-# ── VCMix 示例项目：《九万字》混音 ──────────────────────────────
-# 声明式混音配置 — AI Agent 可直接读写理解
-# BPM=62, 人声轨完整处理链 + 伴奏轨直通
+# ── VCMix 示例项目：《九万字》完整混音配置 ──────────────────────
+# 包含Master处理链的完整版本
+# BPM=62, 人声全链路 + 伴奏EQ + Master Comp+Limiter
 
-name: "九万字"
+name: "九万字-Full"
 bpm: 62
 sample_rate: 44100
 
@@ -11,25 +11,21 @@ tracks:
     file: "vocal_dry.wav"
     volume: 1.0
     effects:
-      # 1. 齿音消除 — surgical de-essing
       - name: vc-deesser
         params:
           threshold: -40
           reduction: -6
 
-      # 2. 增益 — 提升人声整体电平
       - name: vc-gain
         params:
           gain: 6
 
-      # 3. EQ — 清理低频 + 高频空气感
       - name: vc-eq
         params:
           low_cut: 80
           high_shelf: 8000
           peak_gain: -3
 
-      # 4. 压缩 — 控制动态
       - name: vc-comp
         params:
           threshold: -30
@@ -37,13 +33,11 @@ tracks:
           attack: 5
           release: 50
 
-      # 5. 饱和 — 温暖感
       - name: vc-saturator
         params:
           drive: 20
           mix: 15
 
-      # 6. 混响 — 空间感 (room small)
       - name: vc-reverb
         params:
           room: 30
@@ -53,14 +47,12 @@ tracks:
           predelay: 50
           wetlpf: 5000
 
-      # 7. 延迟 — BPM同步: 1/8d @62BPM = 181.5ms
       - name: vc-delay
         params:
-          time: "1/8d"      # 自动换算: 60000/62 × 4/8 × 1.5 = 181.5ms
+          time: "1/8d"      # 181.5ms @BPM62
           feedback: 12
           mix: 5
 
-      # 8. 限幅 — 安全兜底
       - name: vc-limiter
         params:
           ceiling: -1
@@ -68,11 +60,31 @@ tracks:
   - name: accomp
     file: "accomp.wav"
     volume: 1.0
-    effects: []   # 伴奏直接进mix
+    effects:
+      # 伴奏也做轻微EQ处理
+      - name: vc-eq
+        params:
+          low_cut: 40
+          high_shelf: 12000
+          peak_gain: -1
 
 master:
   levels:
     vocal: 0.8
     accomp: 0.35
-  effects: []
-  output: "jiuwanzi_mix.wav"
+  effects:
+    # Master压缩 — 胶水感
+    - name: vc-comp
+      params:
+        threshold: -18
+        ratio: 1.5
+        attack: 10
+        release: 100
+        makeup: 2
+
+    # Master限幅 — 最终安全
+    - name: vc-limiter
+      params:
+        ceiling: -1
+        release: 50
+  output: "jiuwanzi_full_mix.wav"

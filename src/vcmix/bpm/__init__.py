@@ -1,17 +1,17 @@
 """
-vcmix.bpm — BPM detection and synchronization utilities.
+vcmix.bpm — BPM detection and sync utilities.
 
 This subpackage provides:
-    - detector: Tempo/BPM detection from audio signals
-    - sync: BPM sync calculations (time-stretch ratio, beat alignment)
+    - detector: BPM detection from audio via librosa
+    - sync:     BPM note-value to millisecond conversion
 
 Usage:
-    from vcmix.bpm import detect_bpm, calc_stretch_ratio
+    from vcmix.bpm.detector import detect_bpm
+    from vcmix.bpm.sync import note_to_ms, resolve_bpm_times
 
-Dependencies: numpy, librosa (optional for beat tracking)
+Dependencies: librosa (optional, for detection), numpy
 """
 
-from vcmix.bpm.detector import detect_bpm
-from vcmix.bpm.sync import calc_stretch_ratio, calc_beat_grid
+from vcmix.bpm.sync import note_to_ms, resolve_bpm_times
 
-__all__ = ["detect_bpm", "calc_stretch_ratio", "calc_beat_grid"]
+__all__ = ["note_to_ms", "resolve_bpm_times"]

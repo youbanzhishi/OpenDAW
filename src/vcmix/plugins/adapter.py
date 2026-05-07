@@ -1,71 +1,88 @@
 """
-adapter.py — PluginAdapter base class for VCMix.
+adapter.py — PluginAdapter abstract base class for VCMix.
 
-Defines the interface that all plugins must implement:
-    - process(): Apply the plugin to an audio buffer
-    - get_parameters(): Return current parameter state
-    - set_parameters(): Update parameters from a dict
+Defines the standard interface that all plugin adapters must implement.
+Every adapter takes (audio, params, sample_rate) and returns processed audio.
 
-Two plugin backends:
-    1. Native Python plugins (implement process() directly)
-    2. VC CLI plugins (shell out to AudioFX CLI executables)
+The adapter pattern decouples the rendering engine from the plugin
+implementation, allowing:
+    - VC CLI subprocess calls (VCPluginAdapter)
+    - Pure Python/numpy effects (native adapters, Phase 2)
+    - VST3 hosting via external bridge (Phase 5)
 
 Usage:
     class MyPlugin(PluginAdapter):
-        def process(self, audio, sample_rate):
-            return audio * self.gain
+        def process(self, audio, params, sample_rate):
+            # ... process audio ...
+            return processed_audio
 
-    plugin = MyPlugin(name="my_gain", gain=0.8)
-    result = plugin.process(audio, 44100)
-
-Dependencies: numpy, abc
+Dependencies: abc, numpy
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 
 
-@dataclass
 class PluginAdapter(ABC):
     """
-    Abstract base class for all VCMix plugins.
+    Abstract base class for VCMix plugin adapters.
 
-    Args:
-        name: Unique plugin instance name.
-        enabled: Whether the plugin is active.
-        parameters: Dict of plugin-specific parameters.
+    Subclasses must implement the process() method.
+    Optionally override validate_params() for parameter checking.
     """
 
-    name: str
-    enabled: bool = True
-    parameters: dict[str, Any] = field(default_factory=dict)
+    # Subclasses should set these
+    name: str = "unknown"
+    description: str = ""
 
     @abstractmethod
-    def process(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
+    def process(
+        self,
+        audio: np.ndarray,
+        params: dict[str, Any],
+        sample_rate: int = 44100,
+    ) -> np.ndarray:
         """
-        Process audio buffer through this plugin.
+        Process audio through this plugin.
 
         Args:
             audio: Input audio buffer (1D mono or 2D multi-channel).
-            sample_rate: Sample rate in Hz.
+            params: Plugin-specific parameters dict.
+            sample_rate: Audio sample rate.
 
         Returns:
             Processed audio buffer (same shape as input).
         """
         ...
 
-    def get_parameters(self) -> dict[str, Any]:
-        """Return current parameter state."""
-        return dict(self.parameters)
+    def validate_params(self, params: dict[str, Any]) -> list[str]:
+        """
+        Validate plugin parameters and return list of issues.
 
-    def set_parameters(self, params: dict[str, Any]) -> None:
-        """Update parameters from a dict."""
-        self.parameters.update(params)
+        Override in subclasses to add parameter validation.
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(name={self.name!r}, enabled={self.enabled})"
+        Args:
+            params: Plugin parameters dict.
+
+        Returns:
+            List of validation error strings. Empty list = valid.
+        """
+        return []
+
+    def get_param(self, params: dict[str, Any], key: str, default: Any = None) -> Any:
+        """
+        Safely get a parameter value with optional default.
+
+        Args:
+            params: Parameters dict.
+            key: Parameter name.
+            default: Default value if key not found.
+
+        Returns:
+            Parameter value or default.
+        """
+        return params.get(key, default)
