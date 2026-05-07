@@ -71,6 +71,7 @@ from vcmix.web.routes.agent_api import router as agent_router
 from vcmix.web.routes.waveform import router as waveform_router
 from vcmix.web.routes.piano_roll import router as piano_roll_router
 from vcmix.web.routes.ai_transcription import router as ai_transcription_router
+from vcmix.web.routes.collaboration import router as collab_router
 from vcmix.web.websocket import router as ws_router
 
 # ── Application Factory ──────────────────────────────────────────────────
@@ -81,9 +82,9 @@ def create_app() -> FastAPI:
         title="VCMix Web API",
         description=(
             "AI-native open-source DAW — REST API + WebSocket. "
-            "Phase 17: AI transcription, style matching, transfer, and remix."
+            "Phase 18: Collaboration, multi-format export, stem export, and project versioning."
         ),
-        version="0.17.0",
+        version="0.18.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
     )
@@ -103,6 +104,9 @@ def create_app() -> FastAPI:
 
     # ── Register Phase 17 AI Transcription API ──
     app.include_router(ai_transcription_router, prefix="/api/v1", tags=["ai-transcription"])
+
+    # ── Register Phase 18 Collaboration & Export API ──
+    app.include_router(collab_router, prefix="/api/v1", tags=["collaboration-export"])
 
     # ── Register Phase 13 Visualization API ──
     app.include_router(waveform_router, prefix="/api/v1", tags=["visualization"])

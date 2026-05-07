@@ -1898,3 +1898,235 @@ def remix_cmd(
     except Exception as e:
         click.secho(f"✗ Remix failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+# ── Phase 18: Export & Version Management ──────────────────────────────────
+
+
+@main.command("export")
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--format", "-f", "fmt", type=click.Choice(["wav", "mp3", "flac", "ogg"]),
+              default="wav", help="Output format")
+@click.option("--output", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output file path")
+@click.option("--bitrate", type=str, default=None, help="MP3 bitrate (e.g. 320k)")
+@click.option("--sample-rate", type=int, default=None, help="Target sample rate")
+def export_cmd(
+    project: Path, fmt: str, output: Path | None, bitrate: str | None,
+    sample_rate: int | None,
+) -> None:
+    """Export project audio to WAV/MP3/FLAC/OGG (Phase 18).
+
+    Renders the project and exports to the specified format.
+
+    Examples:
+
+        vcmix export project.yaml --format mp3 --bitrate 320k
+        vcmix export project.yaml --format flac --output mix.flac
+    """
+    import vcmix
+    from vcmix.export.exporter import AudioExporter
+
+    try:
+        # Render first
+        from vcmix.config.parser import parse_project
+        from vcmix.engine.renderer import Renderer
+
+        cfg = parse_project(project)
+        cfg.__dict__["_project_dir"] = project.parent.resolve()
+        engine = Renderer(cfg, stream="none")
+        wav_output = engine.run()
+
+        if wav_output is None:
+            click.secho("✗ Render produced no output", fg="red")
+            sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+        # Export to target format
+        quality = {}
+        if bitrate:
+            quality["bitrate"] = bitrate
+        if sample_rate:
+            quality["sample_rate"] = sample_rate
+
+        if output is None:
+            output = Path(wav_output).with_suffix(f".{fmt}")
+
+        exporter = AudioExporter()
+        result = exporter.export(
+            input_wav=str(wav_output),
+            output_path=str(output),
+            format=fmt,
+            quality=quality or None,
+        )
+        click.secho(f"✔ Exported → {result} ({fmt})", fg="green")
+
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except ValueError as e:
+        click.secho(f"✗ Invalid format: {e}", fg="red")
+        sys.exit(vcmix.EXIT_CONFIG_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Export failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("export-stems")
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--format", "-f", "fmt", type=click.Choice(["wav", "mp3", "flac", "ogg"]),
+              default="wav", help="Output format")
+@click.option("--output-dir", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output directory for stems")
+@click.option("--by-bus", is_flag=True, help="Export by bus instead of per-track")
+def export_stems_cmd(
+    project: Path, fmt: str, output_dir: Path | None, by_bus: bool,
+) -> None:
+    """Export project stems — per-track or per-bus (Phase 18).
+
+    Each track (or bus) is rendered and exported as a separate file.
+
+    Examples:
+
+        vcmix export-stems project.yaml --format wav
+        vcmix export-stems project.yaml --by-bus --format flac
+    """
+    import vcmix
+    from vcmix.export.exporter import AudioExporter
+
+    try:
+        if output_dir is None:
+            output_dir = project.parent / "stems"
+
+        exporter = AudioExporter()
+        if by_bus:
+            results = exporter.export_stems_by_bus(
+                project_yaml=str(project),
+                output_dir=str(output_dir),
+                format=fmt,
+            )
+        else:
+            results = exporter.export_stems(
+                project_yaml=str(project),
+                output_dir=str(output_dir),
+                format=fmt,
+            )
+
+        click.secho(f"✔ Exported {len(results)} stems → {output_dir}/", fg="green")
+        for name, path in results.items():
+            click.echo(f"  {name}: {path}")
+
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Stem export failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("snapshot")
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--message", "-m", type=str, default="", help="Snapshot description")
+def snapshot_cmd(project: Path, message: str) -> None:
+    """Create a project snapshot (Phase 18).
+
+    Saves a versioned copy of the project YAML for later restoration.
+
+    Examples:
+
+        vcmix snapshot project.yaml --message "v1 baseline"
+    """
+    import vcmix
+    from vcmix.project.version_manager import ProjectVersionManager
+
+    try:
+        vm = ProjectVersionManager()
+        snapshot_id = vm.create_snapshot(str(project), message=message)
+        click.secho(f"✔ Snapshot created: {snapshot_id}", fg="green")
+        if message:
+            click.echo(f"  Message: {message}")
+
+    except FileNotFoundError as e:
+        click.secho(f"✗ File not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Snapshot failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("snapshots")
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
+def snapshots_cmd(project: Path, as_json: bool) -> None:
+    """List project snapshots (Phase 18).
+
+    Shows all saved snapshots with timestamps and messages.
+
+    Examples:
+
+        vcmix snapshots project.yaml
+        vcmix snapshots project.yaml --json
+    """
+    import vcmix
+    import hashlib
+    from vcmix.project.version_manager import ProjectVersionManager
+
+    try:
+        vm = ProjectVersionManager()
+        project_name = project.stem
+        project_id = hashlib.sha256(project_name.encode("utf-8")).hexdigest()[:12]
+        snapshots = vm.list_snapshots(project_id)
+
+        if as_json:
+            click.echo(json.dumps(snapshots, ensure_ascii=False, indent=2, default=str))
+        else:
+            if not snapshots:
+                click.echo("No snapshots found.")
+            else:
+                click.secho(f"Snapshots for {project_name} ({len(snapshots)}):", fg="cyan")
+                for snap in snapshots:
+                    msg = snap.get("message", "")
+                    ts = snap.get("created_at", "")
+                    sid = snap.get("snapshot_id", "")
+                    click.echo(f"  {sid}  {ts}  {msg}")
+
+    except Exception as e:
+        click.secho(f"✗ Failed to list snapshots: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+
+
+@main.command("restore")
+@click.argument("project", type=click.Path(exists=True, path_type=Path))
+@click.option("--snapshot", "-s", type=str, required=True, help="Snapshot ID to restore")
+def restore_cmd(project: Path, snapshot: str) -> None:
+    """Restore project from a snapshot (Phase 18).
+
+    Creates a backup of the current project and replaces it with
+    the snapshot version.
+
+    Examples:
+
+        vcmix restore project.yaml --snapshot snap_12345_abc12345
+    """
+    import vcmix
+    import hashlib
+    from vcmix.project.version_manager import ProjectVersionManager
+
+    try:
+        vm = ProjectVersionManager()
+        project_name = project.stem
+        project_id = hashlib.sha256(project_name.encode("utf-8")).hexdigest()[:12]
+        restored = vm.restore_snapshot(
+            project_id=project_id,
+            snapshot_id=snapshot,
+            projects_dir=project.parent,
+        )
+        click.secho(f"✔ Restored snapshot: {snapshot}", fg="green")
+        click.echo(f"  Project: {restored}")
+
+    except FileNotFoundError as e:
+        click.secho(f"✗ Not found: {e}", fg="red")
+        sys.exit(vcmix.EXIT_IO_ERROR)
+    except Exception as e:
+        click.secho(f"✗ Restore failed: {e}", fg="red")
+        sys.exit(vcmix.EXIT_RENDER_ERROR)
+

@@ -63,7 +63,7 @@ Dependencies: numpy, soundfile, pyyaml, pydantic, click, rich, librosa
 Version: 0.9.0 (Phase 9)
 """
 
-__version__ = "0.15.0"
+__version__ = "0.18.0"
 __author__ = "youbanzhishi"
 
 # ── Standardized exit codes for AI Agent programmatic handling ──
