@@ -40,8 +40,8 @@ import json
 import sys
 from pathlib import Path
 
-import numpy as np
 import click
+import numpy as np
 
 
 @click.group()
@@ -306,7 +306,7 @@ def analyze(audio_file: Path, as_json: bool) -> None:
 @main.command()
 def presets() -> None:
     """List all available mixing presets."""
-    from vcmix.presets.manager import list_presets, get_preset
+    from vcmix.presets.manager import get_preset, list_presets
     for name in list_presets():
         chain = get_preset(name)
         effects = ', '.join(e["name"] for e in chain)
@@ -343,9 +343,10 @@ def separate(audio_file: Path, output_dir, model: str, two_stems: str) -> None:
 def automix_cmd(audio_file: Path, preset: str, output: str) -> None:
     """Auto-generate a VCMix config for a dry vocal."""
     try:
+        import yaml
+
         from vcmix.audio.io import read_audio
         from vcmix.presets.manager import get_preset
-        import yaml
 
         audio, sr = read_audio(audio_file)
 
@@ -359,14 +360,20 @@ def automix_cmd(audio_file: Path, preset: str, output: str) -> None:
             from vcmix.engine.analyzer import Analyzer
             analyzer = Analyzer(sample_rate=sr)
             rms = analyzer.compute_rms(audio)
-            rms_db = 20 * np.log10(rms) if rms > 0 else -120.0
+            _rms_db = 20 * np.log10(rms) if rms > 0 else -120.0  # noqa: F841
 
             # Simple auto-chain based on analysis
             chain = [
                 {"name": "vc-deesser", "params": {"threshold": -40, "reduction": -6}},
                 {"name": "vc-eq", "params": {"low_cut": 80, "high_shelf": 8000}},
-                {"name": "vc-comp", "params": {"threshold": -24, "ratio": 3, "attack": 5, "release": 50}},
-                {"name": "vc-reverb", "params": {"room": 30, "decay": 35, "damping": 50, "mix": 10, "predelay": 50, "wetlpf": 5000}},
+                {"name": "vc-comp", "params": {
+                    "threshold": -24, "ratio": 3,
+                    "attack": 5, "release": 50
+                }},
+                {"name": "vc-reverb", "params": {
+                    "room": 30, "decay": 35, "damping": 50,
+                    "mix": 10, "predelay": 50, "wetlpf": 5000
+                }},
                 {"name": "vc-limiter", "params": {"ceiling": -1}},
             ]
 
