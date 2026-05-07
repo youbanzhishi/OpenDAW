@@ -187,7 +187,7 @@ class MidiParser:
         # First pass: extract tempo and time signature from all tracks
         for track in mid.tracks:
             for msg in track:
-                if msg.type == "set_tempo" and msg.time > 0:
+                if msg.type == "set_tempo":
                     bpm = mido.tempo2bpm(msg.tempo)
                 elif msg.type == "time_signature":
                     time_sig_num = msg.numerator

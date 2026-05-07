@@ -33,6 +33,7 @@ Dependencies: numpy (optional, for vectorized queries)
 
 from __future__ import annotations
 
+import math as _math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -229,7 +230,7 @@ class AutomationCurve:
 
         if left.curve_type == CurveType.SMOOTH:
             # Cosine interpolation (ease-in-out)
-            t_smooth = (1.0 - math_cos(math_pi * t)) / 2.0
+            t_smooth = (1.0 - _math.cos(_math.pi * t)) / 2.0
             return left.value + t_smooth * (right.value - left.value)
 
         # Fallback to linear
@@ -264,15 +265,4 @@ class AutomationCurve:
         return f"AutomationCurve(points={self.point_count}, range={self.value_range})"
 
 
-# ── Lazy imports for math functions (avoid circular issues) ──────────────
 
-def math_cos(x: float) -> float:
-    """Cosine function wrapper."""
-    import math
-    return math.cos(x)
-
-
-def math_pi() -> float:
-    """Pi constant wrapper."""
-    import math
-    return math.pi
