@@ -597,7 +597,7 @@ class AutoMixer:
                     ))
 
         # Master dynamic range
-        if state.master.dynamic_range_db < _MASTER_DR_MIN:
+        if state.master.dynamic_range_db < _MASTER_DR_MIN and state.master.dynamic_range_db > 0:
             suggestions.append(AdjustmentSuggestion(
                 target="master",
                 action="compressor",
