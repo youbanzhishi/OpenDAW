@@ -867,7 +867,9 @@ def sampler_info(project: Path, track: str, as_json: bool) -> None:
         click.echo(f"  Zones:       {info['zone_count']}")
         for z in info['zones']:
             loaded = "✔" if z['sample_loaded'] else "✗"
-            loop_info = f"{z['loop_mode']} loop {z.get('loop_start', 'N/A')}-{z.get('loop_end', 'N/A')}"
+            loop_s = z.get('loop_start', 'N/A')
+            loop_e = z.get('loop_end', 'N/A')
+            loop_info = f"{z['loop_mode']} loop {loop_s}-{loop_e}"
             loop_str = f" [{loop_info}]" if z['has_loop'] else ""
             click.echo(f"    {loaded} {z['file']}")
             click.echo(f"      key={z['key_range']} vel={z['velocity_range']} "

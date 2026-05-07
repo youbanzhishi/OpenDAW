@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.1] - 2026-05-09
+
+### Added
+- E2E demo project "Neon Lights" for showcase and integration testing
+
+### Fixed
+- MIDI轨道验证误报：MIDI track validator false positive on valid tracks
+- Sampler info KeyError: missing key access in zone info display
+- ruff lint: line-too-long in sampler info display (cli.py:870)
+
+### Tests
+- 528 tests passed
+
+
 ## [0.11.0] - 2026-05-08
 
 ### Added
