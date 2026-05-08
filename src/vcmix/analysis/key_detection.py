@@ -91,9 +91,16 @@ class KeyDetector:
                 "Install with: pip install librosa"
             )
 
-        # Convert to mono (handle both (N,) and (N,C) formats)
+        # Convert to mono (handle both formats)
+        # analyzer passes (channels, samples), soundfile gives (samples, channels)
         if audio.ndim == 2:
-            mono = np.mean(audio, axis=1).astype(np.float32)
+            # Heuristic: the longer axis is samples
+            if audio.shape[0] > audio.shape[1]:
+                # (samples, channels) → mean over channels (axis=1)
+                mono = np.mean(audio, axis=1).astype(np.float32)
+            else:
+                # (channels, samples) → mean over channels (axis=0)
+                mono = np.mean(audio, axis=0).astype(np.float32)
         else:
             mono = audio.astype(np.float32)
 
