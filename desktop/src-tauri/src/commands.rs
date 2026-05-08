@@ -24,7 +24,7 @@ pub struct AnalysisResult {
     pub project: String,
     pub bpm: f64,
     pub sample_rate: u32,
-    pub tracks: Vec<serde_json::Value>,
+    pub tracks: Vec<PresetInfo>,
     pub master: serde_json::Value,
 }
 
@@ -59,7 +59,7 @@ pub struct SpectrumData {
 
 #[derive(Debug, Serialize)]
 pub struct MidiNoteData {
-    pub notes: Vec<serde_json::Value>,
+    pub notes: Vec<PresetInfo>,
     pub note_count: usize,
     pub bpm: f64,
     pub total_beats: f64,
@@ -157,7 +157,7 @@ pub async fn list_presets(state: State<'_, BackendState>) -> Result<PresetList, 
     let url = format!("{}/api/presets", state.base_url);
     let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
-    let presets: Vec<serde_json::Value> = data.get("presets").and_then(|v| v.as_array()).cloned().unwrap_or_default()
+    let presets: Vec<PresetInfo> = data.get("presets").and_then(|v| v.as_array()).cloned().unwrap_or_default()
         .iter().map(|p| PresetInfo {
             name: p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             description: p.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
