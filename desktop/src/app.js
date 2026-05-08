@@ -1,1 +1,1 @@
-/tmp/OpenDAW/src/vcmix/web/static/app.js
+../../src/vcmix/web/static/app.js

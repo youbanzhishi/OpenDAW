@@ -7,13 +7,13 @@
     "beforeDevCommand": "",
     "devUrl": "http://localhost:8000",
     "beforeBuildCommand": "",
-    "frontendDist": ""
+    "frontendDist": "./frontend"
   },
   "app": {
-    "title": "VCMix \u2014 AI-native DAW",
+    "title": "VCMix — AI-native DAW",
     "windows": [
       {
-        "title": "VCMix \u2014 AI-native DAW",
+        "title": "VCMix — AI-native DAW",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,
@@ -37,12 +37,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      {
-        "path": "../python-dist/**",
-        "target": ""
-      }
-    ],
+    "resources": [],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
