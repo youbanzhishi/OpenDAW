@@ -47,7 +47,7 @@ jobs:
           cache-from: type=gha,scope=core
           cache-to: type=gha,mode=max,scope=core
       - name: Smoke test core
-        run: docker run --rm ghcr.io/${{ github.repository_owner }}/vcmix:core-latest python -m vcmix.cli --help
+        run: docker run --rm ghcr.io/${{ github.repository_owner }}/vcmix:core-latest sh -c "python -m vcmix.cli --help && python -c 'from vcmix.web.app import create_app; print(create_app)'"
 
   build-full:
     name: Build & Push (full)

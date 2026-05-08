@@ -83,6 +83,7 @@ RUN set -eux; \
 
 # ── 安装Python依赖 ────────────────────────────────────────
 # core模式：只装web相关（FastAPI/uvicorn/numpy/scipy等）
+# Cache bust: v0.22.2-web-fix
 RUN pip install --no-cache-dir ".[web]"
 
 # full模式：额外装AI依赖（Demucs/PyTorch，约1.5GB）
