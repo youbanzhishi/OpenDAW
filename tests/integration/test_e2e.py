@@ -12,9 +12,11 @@ Run: pytest tests/integration/ -v
 
 Dependencies: pytest, numpy, soundfile
 """
-
 from __future__ import annotations
 
+
+import os
+import sys
 import json
 import subprocess
 from pathlib import Path
@@ -151,6 +153,7 @@ def project_dir_sends(tmp_path):
 class TestRenderCommand:
     """Tests for 'vcmix render' subcommand."""
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_basic(self, project_dir):
         """vcmix render project.yaml — basic render should succeed (exit 0)."""
         result = run_cli("render", str(project_dir / "project.yaml"), cwd=str(project_dir))
