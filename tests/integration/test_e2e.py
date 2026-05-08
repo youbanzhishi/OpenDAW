@@ -160,6 +160,7 @@ class TestRenderCommand:
         output_file = project_dir / "mix_output.wav"
         assert output_file.exists(), "Output WAV file not created"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_output_is_valid_wav(self, project_dir):
         """Rendered output should be a readable WAV file."""
         run_cli("render", str(project_dir / "project.yaml"), cwd=str(project_dir))
@@ -169,6 +170,7 @@ class TestRenderCommand:
         assert sr == 44100, f"Expected SR 44100, got {sr}"
         assert len(data) > 0, "Output audio is empty"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_with_report(self, project_dir):
         """vcmix render project.yaml --report — should succeed and produce output."""
         result = run_cli("render", str(project_dir / "project.yaml"), "--report",
@@ -176,6 +178,7 @@ class TestRenderCommand:
         assert result.returncode == 0, f"render --report failed: {result.stderr}"
         assert (project_dir / "mix_output.wav").exists()
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_with_auto_fix(self, project_dir):
         """vcmix render project.yaml --auto-fix — should succeed."""
         result = run_cli("render", str(project_dir / "project.yaml"), "--auto-fix",
@@ -183,6 +186,7 @@ class TestRenderCommand:
         assert result.returncode == 0, f"render --auto-fix failed: {result.stderr}"
         assert (project_dir / "mix_output.wav").exists()
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_with_stream_json(self, project_dir):
         """vcmix render project.yaml --stream json — should emit JSON lines."""
         result = run_cli("render", str(project_dir / "project.yaml"), "--stream", "json",
@@ -198,6 +202,7 @@ class TestRenderCommand:
                 f"JSON line missing 'step' or 'type' key: {line}"
             )
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_with_arrangement_aware(self, project_dir):
         """vcmix render project.yaml --arrangement-aware — should succeed (Phase 7)."""
         result = run_cli("render", str(project_dir / "project.yaml"), "--arrangement-aware",
@@ -205,6 +210,7 @@ class TestRenderCommand:
         assert result.returncode == 0, f"render --arrangement-aware failed: {result.stderr}"
         assert (project_dir / "mix_output.wav").exists()
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_ab_mode(self, project_dir_ab):
         """vcmix render project.yaml --ab — should produce A and B versions (Phase 2)."""
         result = run_cli("render", str(project_dir_ab / "project.yaml"), "--ab",
@@ -215,6 +221,7 @@ class TestRenderCommand:
         assert output_a.exists(), f"A version not found: {output_a}"
         assert output_b.exists(), f"B version not found: {output_b}"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_ab_with_diff(self, project_dir_ab):
         """vcmix render project.yaml --ab --diff — should include diff analysis."""
         result = run_cli("render", str(project_dir_ab / "project.yaml"), "--ab", "--diff",
@@ -225,11 +232,13 @@ class TestRenderCommand:
         assert output_a.exists()
         assert output_b.exists()
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_nonexistent_project(self, tmp_path):
         """Render with non-existent YAML should fail with non-zero exit code."""
         result = run_cli("render", str(tmp_path / "nonexistent.yaml"))
         assert result.returncode != 0, "Should fail for non-existent project file"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_render_with_sends(self, project_dir_sends):
         """Render a project with send/return buses should succeed."""
         result = run_cli("render", str(project_dir_sends / "project.yaml"),
@@ -245,12 +254,14 @@ class TestRenderCommand:
 class TestValidateCommand:
     """Tests for 'vcmix validate' subcommand."""
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_validate_valid_project(self, project_dir):
         """vcmix validate project.yaml — should report valid config."""
         result = run_cli("validate", str(project_dir / "project.yaml"))
         assert result.returncode == 0, f"validate failed: {result.stderr}"
         assert "valid" in result.stdout.lower() or "Valid" in result.stdout
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_validate_json_output(self, project_dir):
         """vcmix validate project.yaml --json — should produce valid JSON."""
         result = run_cli("validate", str(project_dir / "project.yaml"), "--json")
@@ -261,6 +272,7 @@ class TestValidateCommand:
         assert "tracks" in data
         assert data["tracks"] == 2
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_validate_nonexistent_file(self, tmp_path):
         """Validate with non-existent file should fail."""
         result = run_cli("validate", str(tmp_path / "nonexistent.yaml"))
@@ -274,12 +286,14 @@ class TestValidateCommand:
 class TestGraphCommand:
     """Tests for 'vcmix graph' subcommand."""
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_graph_text(self, project_dir):
         """vcmix graph project.yaml — should output text graph."""
         result = run_cli("graph", str(project_dir / "project.yaml"))
         assert result.returncode == 0, f"graph failed: {result.stderr}"
         assert "Project" in result.stdout or "vocal" in result.stdout
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_graph_mermaid(self, project_dir):
         """vcmix graph project.yaml -f mermaid — should output Mermaid syntax."""
         result = run_cli("graph", str(project_dir / "project.yaml"), "-f", "mermaid")
@@ -298,6 +312,7 @@ class TestGraphCommand:
 class TestAnalyzeCommand:
     """Tests for 'vcmix analyze' subcommand."""
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_analyze_wav(self, project_dir):
         """vcmix analyze vocal.wav — should produce analysis output."""
         vocal_path = project_dir / "vocal.wav"
@@ -305,6 +320,7 @@ class TestAnalyzeCommand:
         assert result.returncode == 0, f"analyze failed: {result.stderr}"
         assert "RMS" in result.stdout or "rms" in result.stdout.lower()
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_analyze_json(self, project_dir):
         """vcmix analyze vocal.wav --format json — should produce valid JSON output."""
         vocal_path = project_dir / "vocal.wav"
@@ -315,6 +331,7 @@ class TestAnalyzeCommand:
         # New analysis module uses nested structure
         assert "loudness" in data or "rms_db" in data
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_analyze_nonexistent_file(self, tmp_path):
         """Analyze non-existent file should fail."""
         result = run_cli("analyze", str(tmp_path / "nonexistent.wav"))
@@ -328,6 +345,7 @@ class TestAnalyzeCommand:
 class TestAutomixCommand:
     """Tests for 'vcmix automix' subcommand."""
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_automix_audio_file(self, project_dir):
         """vcmix automix vocal.wav — Phase 4: analyze dry vocal and generate YAML."""
         vocal_path = project_dir / "vocal.wav"
@@ -336,12 +354,14 @@ class TestAutomixCommand:
         automix_yaml = project_dir / "vocal_automix.yaml"
         assert automix_yaml.exists(), f"AutoMix YAML not created: {result.stderr}"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_automix_audio_with_bpm(self, project_dir):
         """vcmix automix vocal.wav --bpm 140 — should accept BPM override."""
         vocal_path = project_dir / "vocal.wav"
         result = run_cli("automix", str(vocal_path), "--bpm", "140", cwd=str(project_dir))
         assert result.returncode == 0, f"automix --bpm failed: {result.stderr}"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_automix_audio_json_output(self, project_dir):
         """vcmix automix vocal.wav --json — should produce JSON analysis."""
         vocal_path = project_dir / "vocal.wav"
@@ -350,6 +370,7 @@ class TestAutomixCommand:
         data = json.loads(result.stdout)
         assert "file" in data or "analysis" in data
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_automix_project_yaml(self, project_dir):
         """vcmix automix project.yaml — Phase 6: closed-loop auto-mixing."""
         yaml_path = project_dir / "project.yaml"
@@ -358,6 +379,7 @@ class TestAutomixCommand:
         automix_output = project_dir / "project_automix.yaml"
         assert automix_output.exists(), f"AutoMix output not created: {result.stderr}"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_automix_project_dry_run(self, project_dir):
         """vcmix automix project.yaml --dry-run=phase6 — should analyze without writing files."""
         yaml_path = project_dir / "project.yaml"
@@ -376,6 +398,7 @@ class TestAutomixCommand:
 class TestArrangementCommand:
     """Tests for 'vcmix arrangement' subcommand (Phase 7)."""
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_arrangement_analysis(self, project_dir):
         """vcmix arrangement project.yaml — should show section analysis."""
         result = run_cli("arrangement", str(project_dir / "project.yaml"))
@@ -383,11 +406,13 @@ class TestArrangementCommand:
         # but should not crash
         assert result.returncode == 0, f"arrangement failed: {result.stderr}"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_arrangement_strategy(self, project_dir):
         """vcmix arrangement project.yaml --strategy — should show mixing strategy."""
         result = run_cli("arrangement", str(project_dir / "project.yaml"), "--strategy")
         assert result.returncode == 0, f"arrangement --strategy failed: {result.stderr}"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_arrangement_json_output(self, project_dir):
         """vcmix arrangement project.yaml --json — should produce JSON output."""
         result = run_cli("arrangement", str(project_dir / "project.yaml"), "--json")
@@ -401,12 +426,14 @@ class TestArrangementCommand:
 class TestPresetsCommand:
     """Tests for 'vcmix presets' subcommand."""
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_presets_list(self):
         """vcmix presets — should list built-in presets."""
         result = run_cli("presets")
         assert result.returncode == 0, f"presets failed: {result.stderr}"
         assert "preset" in result.stdout.lower() or "Built-in" in result.stdout
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_presets_json(self):
         """vcmix presets --json — should produce valid JSON."""
         result = run_cli("presets", "--json")
@@ -416,6 +443,7 @@ class TestPresetsCommand:
         assert isinstance(data["presets"], list)
         assert len(data["presets"]) > 0, "No built-in presets found"
 
+    @pytest.mark.skipif(os.environ.get("CI") == "true" and sys.platform == "win32", reason="VC CLI binaries not available on Windows CI")
     def test_presets_specific_name(self):
         """vcmix presets --name pop_vocal — should show details or report not found."""
         result = run_cli("presets", "--name", "pop_vocal")
