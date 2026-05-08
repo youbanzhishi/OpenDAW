@@ -121,7 +121,7 @@ class TestParser:
         from vcmix.config.parser import parse_project
         # Need to adjust the file path in YAML to absolute
         content = simple_yaml.read_text()
-        content = content.replace(sample_wav.name, str(sample_wav))
+        content = content.replace(sample_wav.name, str(sample_wav).replace(chr(92), "/"))  # Windows: backslash→forward slash for YAML
         simple_yaml.write_text(content, encoding="utf-8")
 
         cfg = parse_project(simple_yaml)
