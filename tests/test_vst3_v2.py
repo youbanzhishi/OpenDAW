@@ -609,9 +609,11 @@ class TestVST3ScannerV2:
         with tempfile.NamedTemporaryFile(suffix=".vst3", delete=False) as f:
             f.write(b"test data for checksum")
             f.flush()
-            checksum = VST3ScannerV2._compute_checksum(f.name)
-            assert len(checksum) == 32  # MD5 hex
-            os.unlink(f.name)
+            fname = f.name
+        # Close file before unlink on Windows (file locking)
+        checksum = VST3ScannerV2._compute_checksum(fname)
+        assert len(checksum) == 32  # MD5 hex
+        os.unlink(fname)
 
     def test_incremental_scan(self):
         """Test that unchanged plugins are served from cache."""
