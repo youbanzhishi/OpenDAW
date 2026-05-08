@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """conftest.py — Shared fixtures for VCMix integration tests.
 
 Generates synthetic test audio (sine waves) and project YAML files
