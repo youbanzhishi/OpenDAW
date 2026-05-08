@@ -45,6 +45,17 @@ jobs:
         with:
           node-version: 20
 
+      - name: Prepare frontend dist
+        shell: bash
+        run: |
+          # Copy Python web static files as Tauri frontend dist
+          mkdir -p desktop/src-tauri/frontend
+          cp src/vcmix/web/static/index.html desktop/src-tauri/frontend/
+          cp src/vcmix/web/static/style.css desktop/src-tauri/frontend/
+          cp src/vcmix/web/static/app.js desktop/src-tauri/frontend/ 2>/dev/null || true
+          echo "Frontend dist prepared:"
+          ls -la desktop/src-tauri/frontend/
+
       - name: Install desktop npm dependencies
         working-directory: desktop
         shell: bash
