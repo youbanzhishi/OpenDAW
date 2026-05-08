@@ -51,11 +51,11 @@ jobs:
         run: npm install
 
       - name: Build Tauri app
-        working-directory: desktop
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          projectPath: desktop
           tagName: ${{ github.ref_name }}
           releaseName: 'VCMix Desktop ${{ github.ref_name }}'
           releaseBody: 'Cross-platform desktop build for ${{ matrix.target }}'
