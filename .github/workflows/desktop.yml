@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build Desktop (${{ matrix.platform }})
+    name: Build Desktop (${{ matrix.target }})
     strategy:
       matrix:
         include:
@@ -29,14 +29,10 @@ jobs:
 
       - name: Install system dependencies (Linux)
         if: matrix.target == 'linux'
+        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,10 +40,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install VCMix Python package
+        shell: bash
         run: pip install -e ".[web]"
 
-      - name: Install desktop dependencies
+      - name: Install @tauri-apps/cli
         working-directory: desktop
+        shell: bash
         run: npm install
 
       - name: Build Tauri app

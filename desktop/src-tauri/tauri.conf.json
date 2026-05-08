@@ -7,13 +7,13 @@
     "beforeDevCommand": "",
     "devUrl": "http://localhost:8000",
     "beforeBuildCommand": "",
-    "frontendDist": "../src"
+    "frontendDist": ""
   },
   "app": {
-    "title": "VCMix — AI-native DAW",
+    "title": "VCMix \u2014 AI-native DAW",
     "windows": [
       {
-        "title": "VCMix — AI-native DAW",
+        "title": "VCMix \u2014 AI-native DAW",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,
@@ -49,7 +49,10 @@
       "timestampUrl": "",
       "wix": null,
       "nsis": {
-        "languages": ["English", "SimpChinese"],
+        "languages": [
+          "English",
+          "SimpChinese"
+        ],
         "displayLanguageSelector": true,
         "installMode": "currentUser",
         "headerImage": "",
@@ -81,7 +84,10 @@
     },
     "linux": {
       "deb": {
-        "depends": ["libwebkit2gtk-4.1-0", "libappindicator3-1"]
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libappindicator3-1"
+        ]
       },
       "appimage": {
         "bundleMediaFramework": false
