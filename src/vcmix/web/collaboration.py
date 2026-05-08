@@ -40,7 +40,7 @@ import json
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from fastapi import WebSocket
 
