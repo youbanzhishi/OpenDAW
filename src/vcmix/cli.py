@@ -312,42 +312,42 @@ def _graph_mermaid(cfg) -> None:
 
 @main.command()
 @click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-def analyze(audio_file: Path, as_json: bool) -> None:
-    """Analyze an audio file for RMS/Peak/spectrum/sibilance."""
+@click.option("--items", default=None, help="Analysis items: loudness,spectrum,bpm,key,sibilance,dynamics")
+@click.option("--format", "output_format", type=click.Choice(["json", "text", "markdown"]), default="json", help="Output format")
+@click.option("--duration", type=float, default=0, help="Analysis duration in seconds (0=all)")
+@click.option("--output", type=click.Path(path_type=Path), default=None, help="Output file path")
+def analyze(audio_file: Path, items: str | None, output_format: str, duration: float, output: Path | None) -> None:
+    """Analyze audio file: loudness, spectrum, BPM, key, sibilance, dynamics."""
 
     import vcmix
 
     try:
-        from vcmix.audio.io import read_audio
-        from vcmix.audio.meter import Meter
-        from vcmix.engine.analyzer import Analyzer
+        from vcmix.analysis import AudioAnalyzer
 
-        audio, sr = read_audio(audio_file)
-        analyzer = Analyzer(sample_rate=sr)
-        meter = Meter(sample_rate=sr)
+        # Parse items
+        item_list = None
+        if items:
+            item_list = [i.strip() for i in items.split(",")]
 
-        result = {
-            "file": str(audio_file),
-            "sample_rate": sr,
-            "duration_s": round(audio.shape[-1] / sr, 2),
-            "channels": audio.shape[0] if audio.ndim == 2 else 1,
-            **meter.full_report(audio),
-            "sibilance_ratio": round(analyzer.compute_sibilance(audio), 4),
-            "spectrum": analyzer.compute_spectrum(audio),
-        }
+        # Only print status messages for non-JSON output or when saving to file
+        if output_format != "json" or output:
+            click.secho(f"🔍 Analyzing: {audio_file}", fg="cyan")
+            if item_list:
+                click.echo(f"   Items: {', '.join(item_list)}")
 
-        if as_json:
-            click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+        analyzer = AudioAnalyzer()
+        result = analyzer.analyze(audio_file, items=item_list, duration=duration or 0.0)
+
+        # Format report
+        report = analyzer.format_report(result, format=output_format)
+
+        # Output
+        if output:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(report, encoding="utf-8")
+            click.secho(f"✓ Report saved to: {output}", fg="green")
         else:
-            click.echo(f"File:     {audio_file}")
-            click.echo(f"Duration: {result['duration_s']}s | SR: {sr}Hz | Ch: {result['channels']}")
-            click.echo(f"RMS:      {result['rms_db']:.2f} dBFS")
-            click.echo(f"Peak:     {result['peak_db']:.2f} dBFS")
-            click.echo(f"TruePeak: {result['true_peak_db']:.2f} dBFS")
-            click.echo(f"LUFS:     {result['lufs']:.1f}")
-            click.echo(f"DR:       {result['dynamic_range_db']:.2f} dB")
-            click.echo(f"Sibilance: {result['sibilance_ratio']:.4f}")
+            click.echo(report)
 
     except FileNotFoundError as e:
         click.secho(f"✗ File not found: {e}", fg="red")

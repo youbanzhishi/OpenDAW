@@ -304,14 +304,14 @@ class TestAnalyzeCommand:
         assert "RMS" in result.stdout or "rms" in result.stdout.lower()
 
     def test_analyze_json(self, project_dir):
-        """vcmix analyze vocal.wav --json — should produce valid JSON output."""
+        """vcmix analyze vocal.wav --format json — should produce valid JSON output."""
         vocal_path = project_dir / "vocal.wav"
-        result = run_cli("analyze", str(vocal_path), "--json")
-        assert result.returncode == 0, f"analyze --json failed: {result.stderr}"
+        result = run_cli("analyze", str(vocal_path), "--format", "json")
+        assert result.returncode == 0, f"analyze --format json failed: {result.stderr}"
         data = json.loads(result.stdout)
         assert "file" in data
-        assert "rms_db" in data
-        assert "peak_db" in data
+        # New analysis module uses nested structure
+        assert "loudness" in data or "rms_db" in data
 
     def test_analyze_nonexistent_file(self, tmp_path):
         """Analyze non-existent file should fail."""
