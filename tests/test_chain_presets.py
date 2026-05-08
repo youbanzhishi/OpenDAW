@@ -291,25 +291,23 @@ class TestConvenienceFunctions:
 # ── YAML Chain File Tests ───────────────────────────────────────────────
 
 class TestYamlChainFiles:
+    # Use project-root relative path so CI works regardless of checkout dir
+    _chains_dir = Path(__file__).resolve().parent.parent / "src" / "vcmix" / "presets" / "chains"
+
     def test_vocal_chain_yaml_exists(self):
-        chains_dir = Path("/tmp/OpenDAW/src/vcmix/presets/chains")
-        assert (chains_dir / "vocal-chain.yaml").exists()
+        assert (self._chains_dir / "vocal-chain.yaml").exists()
 
     def test_drum_chain_yaml_exists(self):
-        chains_dir = Path("/tmp/OpenDAW/src/vcmix/presets/chains")
-        assert (chains_dir / "drum-chain.yaml").exists()
+        assert (self._chains_dir / "drum-chain.yaml").exists()
 
     def test_master_chain_yaml_exists(self):
-        chains_dir = Path("/tmp/OpenDAW/src/vcmix/presets/chains")
-        assert (chains_dir / "master-chain.yaml").exists()
+        assert (self._chains_dir / "master-chain.yaml").exists()
 
     def test_guitar_chain_yaml_exists(self):
-        chains_dir = Path("/tmp/OpenDAW/src/vcmix/presets/chains")
-        assert (chains_dir / "guitar-chain.yaml").exists()
+        assert (self._chains_dir / "guitar-chain.yaml").exists()
 
     def test_vocal_chain_yaml_valid(self):
-        chains_dir = Path("/tmp/OpenDAW/src/vcmix/presets/chains")
-        with open(chains_dir / "vocal-chain.yaml") as f:
+        with open(self._chains_dir / "vocal-chain.yaml") as f:
             data = yaml.safe_load(f)
         preset = ChainPreset.from_dict(data)
         assert preset.name == "vocal-chain"
