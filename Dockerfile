@@ -24,9 +24,9 @@ FROM python:3.11-slim AS base
 # VCMIX_PROFILE: 启动模式，core=轻量 / full=完整
 ARG VCMIX_PROFILE=core
 # OpenDAW源码版本（tag或branch）
-ARG OPENDAW_VERSION=v0.22.0
+ARG OPENDAW_VERSION=v0.22.2
 # AudioFX CLI插件版本（tag）
-ARG AUDIOFX_RELEASE_VERSION=v2.7.0
+ARG AUDIOFX_RELEASE_VERSION=v2.8.0
 
 # ── 换国内源 ──────────────────────────────────────────────
 # apt换阿里云镜像（兼容bookworm和trixie两种格式）
@@ -124,4 +124,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # ── 启动命令 ──────────────────────────────────────────────
 # 根据VCMIX_PROFILE环境变量选择core/full模式
+# ── Pre-flight check: verify web dependencies ────────────────────────
+RUN python -c "from vcmix.web.app import create_app; print('Web UI OK')" \
+    || (echo "ERROR: Web UI dependencies not installed!" && exit 1)
+
 CMD ["sh", "-c", "vcmix serve --profile ${VCMIX_PROFILE:-core} --host 0.0.0.0 --port 8000"]
