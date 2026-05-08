@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -125,7 +125,7 @@ class EffectConfig(BaseModel):
         default_factory=dict,
         description="Plugin parameters (note values auto-converted to ms)"
     )
-    sidechain: str | None = Field(
+    sidechain: Optional[str] = Field(
         default=None,
         description="Sidechain source track name (Phase 2)"
     )
@@ -158,8 +158,8 @@ class SampleZoneConfig(BaseModel):
     velocity_high: int = Field(
         default=127, ge=0, le=127, description="Highest velocity for this zone"
     )
-    loop_start: int | None = Field(default=None, description="Loop start in samples")
-    loop_end: int | None = Field(default=None, description="Loop end in samples")
+    loop_start: Optional[int] = Field(default=None, description="Loop start in samples")
+    loop_end: Optional[int] = Field(default=None, description="Loop end in samples")
     loop_mode: str = Field(default="forward", description="Loop mode: forward/reverse/alternate")
     trigger_mode: str = Field(default="gate", description="Trigger mode: gate/one-shot")
     tune_cents: float = Field(default=0.0, ge=-100, le=100, description="Fine tuning in cents")
@@ -180,11 +180,11 @@ class TrackConfig(BaseModel):
         default="audio",
         description="Track type: 'audio', 'midi', 'vst3', or 'sampler' (Phase 9.5)",
     )
-    midi_file: str | None = Field(
+    midi_file: Optional[str] = Field(
         default=None,
         description="Path to .mid file for MIDI tracks (Phase 9)"
     )
-    synth: str | None = Field(
+    synth: Optional[str] = Field(
         default=None,
         description="Built-in synth type for MIDI tracks: sine/sawtooth/square/triangle (Phase 9)"
     )
@@ -192,11 +192,11 @@ class TrackConfig(BaseModel):
         default_factory=list,
         description="Ordered insert effect chain"
     )
-    effects_a: list[EffectConfig] | None = Field(
+    effects_a: Optional[list[EffectConfig]] = Field(
         default=None,
         description="A-chain for A/B comparison (Phase 2)"
     )
-    effects_b: list[EffectConfig] | None = Field(
+    effects_b: Optional[list[EffectConfig]] = Field(
         default=None,
         description="B-chain for A/B comparison (Phase 2)"
     )
@@ -207,20 +207,20 @@ class TrackConfig(BaseModel):
     volume: float = Field(default=1.0, ge=0.0, description="Track volume (linear, 1.0=unity)")
     mute: bool = Field(default=False, description="Mute this track")
     solo: bool = Field(default=False, description="Solo this track")
-    automation: dict[str, list[list[float | str]]] = Field(
+    automation: dict[str, list[list[Union[float, str]]]] = Field(
         default_factory=dict,
         description="Parameter automation: {param_name: [[beat, value, curve_type], ...]} (Phase 9)"
     )
     # Phase 9: VST3 plugin hosting
-    plugin_path: str | None = Field(
+    plugin_path: Optional[str] = Field(
         default=None,
         description="Path to VST3 plugin bundle (.vst3) for type=vst3 tracks (Phase 9)"
     )
-    preset: str | None = Field(
+    preset: Optional[str] = Field(
         default=None,
         description="Factory preset name for VST3 plugin (Phase 9)"
     )
-    preset_file: str | None = Field(
+    preset_file: Optional[str] = Field(
         default=None,
         description="Path to .vstpreset file for VST3 plugin (Phase 9)"
     )
@@ -307,7 +307,7 @@ def _convert_effects_note_values(effects: list[dict], bpm: float) -> None:
             effect["params"] = convert_note_values(effect["params"], bpm)
 
 
-def parse_project(yaml_path: Path | str) -> ProjectConfig:
+def parse_project(yaml_path: Union[Path, str]) -> ProjectConfig:
     """
     Parse a VCMix YAML project file into a validated ProjectConfig.
 

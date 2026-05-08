@@ -1,31 +1,31 @@
 """
-cli.py — VCMix command-line interface entry point.
+cli.py -- VCMix command-line interface entry point.
 
 Provides the `vcmix` CLI with subcommands:
-    render    — Render a mix project from YAML config
-    validate  — Validate a YAML config without rendering
-    graph     — Visualize the signal routing graph
-    analyze   — Analyze audio file(s) for RMS/Peak/spectrum
-    automix   — Auto-analyze and intelligently mix a project (Phase 4 + Phase 6)
-    presets   — List all built-in presets (Phase 4)
-    separate  — Source separation via Demucs (Phase 4)
+    render    -- Render a mix project from YAML config
+    validate  -- Validate a YAML config without rendering
+    graph     -- Visualize the signal routing graph
+    analyze   -- Analyze audio file(s) for RMS/Peak/spectrum
+    automix   -- Auto-analyze and intelligently mix a project (Phase 4 + Phase 6)
+    presets   -- List all built-in presets (Phase 4)
+    separate  -- Source separation via Demucs (Phase 4)
 
 Phase 2 additions:
-    --ab      — Render A/B comparison versions
-    --diff    — Include difference analysis in A/B mode
+    --ab      -- Render A/B comparison versions
+    --diff    -- Include difference analysis in A/B mode
 
 Phase 4 additions:
-    automix   — Intelligent auto-mixing from dry vocal analysis
-    presets   — List/inspect built-in effect chain presets
-    separate  — Demucs-based source separation
-    analyze-mix       — Reverse-engineer mixing parameters
-    analyze-arrangement — Analyze arrangement structure
-    generate-config   — One-click analysis + VCMix config generation
+    automix   -- Intelligent auto-mixing from dry vocal analysis
+    presets   -- List/inspect built-in effect chain presets
+    separate  -- Demucs-based source separation
+    analyze-mix       -- Reverse-engineer mixing parameters
+    analyze-arrangement -- Analyze arrangement structure
+    generate-config   -- One-click analysis + VCMix config generation
 
 Phase 6 additions:
-    automix project.yaml        — DataStream closed-loop auto-mixing
-    automix project.yaml --dry-run — Show suggestions without writing
-    automix project.yaml --reference ref.wav — Reference track matching
+    automix project.yaml        -- DataStream closed-loop auto-mixing
+    automix project.yaml --dry-run -- Show suggestions without writing
+    automix project.yaml --reference ref.wav -- Reference track matching
 
 Usage:
     vcmix render project.yaml
@@ -72,7 +72,7 @@ import numpy as np
 @click.group()
 @click.version_option(package_name="vcmix")
 def main() -> None:
-    """VCMix — AI-native open-source DAW CLI."""
+    """VCMix -- AI-native open-source DAW CLI."""
     pass
 
 
@@ -124,26 +124,26 @@ def render(
         output_path = engine.run()
 
         if stream != "json":
-            click.secho(f"✔ Render complete → {output_path}", fg="green")
+            click.secho(f"[OK] Render complete -> {output_path}", fg="green")
             if ab:
                 output_a = output_path.with_name(output_path.stem + "_a" + output_path.suffix)
                 output_b = output_path.with_name(output_path.stem + "_b" + output_path.suffix)
                 if output_a.exists():
-                    click.secho(f"  A version → {output_a}", fg="cyan")
+                    click.secho(f"  A version -> {output_a}", fg="cyan")
                 if output_b.exists():
-                    click.secho(f"  B version → {output_b}", fg="cyan")
+                    click.secho(f"  B version -> {output_b}", fg="cyan")
 
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except ValueError as e:
-        click.secho(f"✗ Config error: {e}", fg="red")
+        click.secho(f"[FAIL] Config error: {e}", fg="red")
         sys.exit(vcmix.EXIT_CONFIG_ERROR)
     except RuntimeError as e:
-        click.secho(f"✗ Plugin error: {e}", fg="red")
+        click.secho(f"[FAIL] Plugin error: {e}", fg="red")
         sys.exit(vcmix.EXIT_PLUGIN_ERROR)
     except Exception as e:
-        click.secho(f"✗ Render failed: {e}", fg="red")
+        click.secho(f"[FAIL] Render failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -172,16 +172,16 @@ def validate(project: Path, as_json: bool) -> None:
         else:
             if issues:
                 for issue in issues:
-                    click.secho(f"✗ {issue}", fg="yellow")
+                    click.secho(f"[FAIL] {issue}", fg="yellow")
                 click.secho(f"Config has {len(issues)} warning(s)", fg="yellow")
             else:
-                click.secho("✔ Config is valid", fg="green")
+                click.secho("[OK] Config is valid", fg="green")
 
     except Exception as e:
         if as_json:
             click.echo(json.dumps({"valid": False, "error": str(e)}))
         else:
-            click.secho(f"✗ Validation failed: {e}", fg="red")
+            click.secho(f"[FAIL] Validation failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_CONFIG_ERROR)
 
 
@@ -265,14 +265,14 @@ def _graph_text(cfg) -> None:
     if cfg.sends:
         click.echo("  Send/Return Buses:")
         for bus in cfg.sends:
-            chain = " → ".join(e.name for e in bus.effects) if bus.effects else "(direct)"
+            chain = " -> ".join(e.name for e in bus.effects) if bus.effects else "(direct)"
             click.echo(f"    {bus.name}: {chain} (return={bus.return_level})")
         click.echo()
 
     for track in cfg.tracks:
         click.echo(f"  Track: {track.name} ({track.file})")
         if track.effects:
-            chain = " → ".join(e.name for e in track.effects)
+            chain = " -> ".join(e.name for e in track.effects)
             click.echo(f"    Chain: {chain}")
         else:
             click.echo("    Chain: (direct)")
@@ -280,18 +280,18 @@ def _graph_text(cfg) -> None:
             sends_str = ", ".join(f"{k}={v}" for k, v in track.sends.items())
             click.echo(f"    Sends: {sends_str}")
         if track.effects_a or track.effects_b:
-            a_chain = " → ".join(e.name for e in (track.effects_a or [])) or "(same)"
-            b_chain = " → ".join(e.name for e in (track.effects_b or [])) or "(same)"
+            a_chain = " -> ".join(e.name for e in (track.effects_a or [])) or "(same)"
+            b_chain = " -> ".join(e.name for e in (track.effects_b or [])) or "(same)"
             click.echo(f"    A: {a_chain}")
             click.echo(f"    B: {b_chain}")
         level = cfg.master.levels.get(track.name, 1.0)
-        click.echo(f"    → Master (level={level})")
+        click.echo(f"    -> Master (level={level})")
         click.echo()
 
     if cfg.master.effects:
-        chain = " → ".join(e.name for e in cfg.master.effects)
+        chain = " -> ".join(e.name for e in cfg.master.effects)
         click.echo(f"  Master Chain: {chain}")
-    click.echo(f"  → Output: {cfg.master.output}")
+    click.echo(f"  -> Output: {cfg.master.output}")
 
 
 def _graph_mermaid(cfg) -> None:
@@ -331,7 +331,7 @@ def analyze(audio_file: Path, items: str | None, output_format: str, duration: f
 
         # Only print status messages for non-JSON output or when saving to file
         if output_format != "json" or output:
-            click.secho(f"🔍 Analyzing: {audio_file}", fg="cyan")
+            click.secho(f"[Search] Analyzing: {audio_file}", fg="cyan")
             if item_list:
                 click.echo(f"   Items: {', '.join(item_list)}")
 
@@ -345,19 +345,19 @@ def analyze(audio_file: Path, items: str | None, output_format: str, duration: f
         if output:
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_text(report, encoding="utf-8")
-            click.secho(f"✓ Report saved to: {output}", fg="green")
+            click.secho(f"[OK] Report saved to: {output}", fg="green")
         else:
             click.echo(report)
 
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Analysis failed: {e}", fg="red")
+        click.secho(f"[FAIL] Analysis failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Phase 4+6: automix command ────────────────────────────────────────────
+# -- Phase 4+6: automix command --------------------------------------------
 
 @main.command()
 @click.argument("input_path", type=click.Path(exists=True, path_type=Path))
@@ -392,7 +392,7 @@ def automix(
     import vcmix
 
     try:
-        # Detect mode: YAML file → Phase 6, audio file → Phase 4
+        # Detect mode: YAML file -> Phase 6, audio file -> Phase 4
         is_yaml = input_path.suffix.lower() in (".yaml", ".yml")
 
         if is_yaml:
@@ -401,10 +401,10 @@ def automix(
             _automix_phase4(input_path, bpm, output, as_json)
 
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ AutoMix failed: {e}", fg="red")
+        click.secho(f"[FAIL] AutoMix failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -447,12 +447,12 @@ def _automix_phase4(
         with open(output, "w", encoding="utf-8") as f:
             yaml.dump(yaml_config, f, default_flow_style=False, allow_unicode=True)
 
-        click.secho("✔ AutoMix analysis complete", fg="green")
+        click.secho("[OK] AutoMix analysis complete", fg="green")
         click.echo(f"  RMS:       {analysis['rms_db']:.1f} dBFS")
         click.echo(f"  Peak:      {analysis['peak_db']:.1f} dBFS")
         click.echo(f"  DR:        {analysis['dynamic_range_db']:.1f} dB")
         click.echo(f"  Sibilance: {analysis['sibilance_ratio']:.4f}"
-                    f" {'⚠ needs de-ess' if analysis['needs_deesser'] else '✓ OK'}")
+                    f" {'[!] needs de-ess' if analysis['needs_deesser'] else '[OK] OK'}")
         click.echo(f"  Gain:      {analysis['gain_needed_db']:+.1f} dB")
         click.echo(f"  Config:    {output}")
 
@@ -471,7 +471,7 @@ def _automix_phase6(
     Steps:
         1. Parse the YAML project config
         2. Render with DataStream enabled to capture events
-        3. Analyze events → MixingState
+        3. Analyze events -> MixingState
         4. Optionally match against a reference track
         5. Generate suggestions
         6. Apply suggestions to produce new config (or show dry-run)
@@ -488,12 +488,12 @@ def _automix_phase6(
     cfg.__dict__["_project_dir"] = project_file.parent.resolve()
 
     # Step 2: Render with DataStream to capture events
-    click.secho(f"▸ Rendering {cfg.name} with DataStream...", fg="cyan")
+    click.secho(f"> Rendering {cfg.name} with DataStream...", fg="cyan")
     engine = Renderer(cfg, stream="none")
     try:
         engine.run()
     except (ValueError, RuntimeError):
-        # May fail with no tracks or other issues — still collect events
+        # May fail with no tracks or other issues -- still collect events
         pass
     events = engine.get_stream_events()
 
@@ -505,16 +505,16 @@ def _automix_phase6(
 
     click.secho(f"  Tracks analyzed: {len(state.tracks)}", fg="cyan")
     if state.has_clipping:
-        click.secho("  ⚠ Clipping detected", fg="yellow")
+        click.secho("  [!] Clipping detected", fg="yellow")
     if state.has_low_snr:
-        click.secho("  ⚠ Low SNR detected", fg="yellow")
+        click.secho("  [!] Low SNR detected", fg="yellow")
     if state.has_sibilance:
-        click.secho("  ⚠ Sibilance detected", fg="yellow")
+        click.secho("  [!] Sibilance detected", fg="yellow")
 
     # Step 4: Optional reference matching
     ref_adjustments = []
     if reference is not None:
-        click.secho(f"▸ Analyzing reference: {reference.name}", fg="cyan")
+        click.secho(f"> Analyzing reference: {reference.name}", fg="cyan")
         ref_audio, ref_sr = read_audio(reference)
         ref_matcher = ReferenceMatcher(sample_rate=ref_sr)
         ref_features = ref_matcher.analyze_reference(ref_audio, ref_sr)
@@ -545,12 +545,12 @@ def _automix_phase6(
 
     # Display suggestions
     if all_suggestions_raw:
-        click.secho(f"\n▸ AutoMix Suggestions ({len(all_suggestions_raw)}):", fg="green")
+        click.secho(f"\n> AutoMix Suggestions ({len(all_suggestions_raw)}):", fg="green")
         for i, s in enumerate(all_suggestions_raw, 1):
-            priority_marker = "❗" if s.priority == 1 else "⚠" if s.priority == 2 else "💡"
+            priority_marker = "!" if s.priority == 1 else "[!]" if s.priority == 2 else "[!]"
             click.echo(f"  {i}. {priority_marker} [{s.target}] {s.action}: {s.reason}")
     else:
-        click.secho("\n✔ Mix looks good — no suggestions needed", fg="green")
+        click.secho("\n[OK] Mix looks good -- no suggestions needed", fg="green")
 
     # Dry-run: stop here
     if dry_run is not None:
@@ -607,7 +607,7 @@ def _automix_phase6(
     with open(output, "w", encoding="utf-8") as f:
         _yaml.dump(new_config, f, default_flow_style=False, allow_unicode=True)
 
-    click.secho(f"\n✔ AutoMix config written → {output}", fg="green")
+    click.secho(f"\n[OK] AutoMix config written -> {output}", fg="green")
 
     if as_json:
         import json
@@ -638,7 +638,7 @@ def _ref_adj_to_suggestion(adj) -> Any:
     )
 
 
-# ── Phase 4: presets command ──────────────────────────────────────────────
+# -- Phase 4: presets command ----------------------------------------------
 
 @main.command("presets")
 @click.option("--name", type=str, default=None, help="Show details for a specific preset")
@@ -650,7 +650,7 @@ def presets_cmd(name: str | None, as_json: bool) -> None:
     if name:
         chain = get_preset(name)
         if chain is None:
-            click.secho(f"✗ Preset not found: {name}", fg="red")
+            click.secho(f"[FAIL] Preset not found: {name}", fg="red")
             sys.exit(1)
         if as_json:
             click.echo(json.dumps({"name": name, "effects": chain}, ensure_ascii=False, indent=2))
@@ -668,10 +668,10 @@ def presets_cmd(name: str | None, as_json: bool) -> None:
             for pname in preset_names:
                 chain = get_preset(pname)
                 n_effects = len(chain) if chain else 0
-                click.echo(f"  • {pname} ({n_effects} effects)")
+                click.echo(f"  * {pname} ({n_effects} effects)")
 
 
-# ── Phase 4: separate command ─────────────────────────────────────────────
+# -- Phase 4: separate command ---------------------------------------------
 
 @main.command()
 @click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
@@ -703,23 +703,23 @@ def separate(
             two_stems=two_stems,
         )
 
-        click.secho("✔ Separation complete:", fg="green")
+        click.secho("[OK] Separation complete:", fg="green")
         for stem_name, stem_path in sorted(results.items()):
-            click.echo(f"  • {stem_name}: {stem_path}")
+            click.echo(f"  * {stem_name}: {stem_path}")
 
     except ImportError as e:
-        click.secho(f"✗ Demucs not installed: {e}", fg="red")
+        click.secho(f"[FAIL] Demucs not installed: {e}", fg="red")
         click.echo("  Install with: pip install demucs")
         sys.exit(vcmix.EXIT_MISSING_DEP)
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Separation failed: {e}", fg="red")
+        click.secho(f"[FAIL] Separation failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Phase 7: arrangement command ──────────────────────────────────────────
+# -- Phase 7: arrangement command ------------------------------------------
 @main.command()
 @click.argument("project", type=click.Path(exists=True, path_type=Path))
 @click.option("--strategy", is_flag=True, help="Show mixing strategy per section")
@@ -728,8 +728,8 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
     """Analyze song arrangement structure and mixing strategy.
 
     \b
-    vcmix arrangement project.yaml           — Show section analysis
-    vcmix arrangement project.yaml --strategy — Show per-section mixing strategy
+    vcmix arrangement project.yaml           -- Show section analysis
+    vcmix arrangement project.yaml --strategy -- Show per-section mixing strategy
     """
     import json as json_mod
 
@@ -757,7 +757,7 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
                 continue
 
     if not sections:
-        click.secho("⚠ No audio found for arrangement analysis", fg="yellow")
+        click.secho("[!] No audio found for arrangement analysis", fg="yellow")
         click.echo("  Provide audio files in project YAML for analysis.")
         return
 
@@ -770,11 +770,11 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
                      for s in sections]
             click.echo(json_mod.dumps(data, indent=2))
         else:
-            click.secho("╔══════════════════════════════════════╗", fg="cyan")
-            click.secho("║     Arrangement Analysis            ║", fg="cyan")
-            click.secho("╚══════════════════════════════════════╝", fg="cyan")
+            click.secho("+======================================+", fg="cyan")
+            click.secho("|     Arrangement Analysis            |", fg="cyan")
+            click.secho("+======================================+", fg="cyan")
             for s in sections:
-                bar = "█" * {"low": 5, "medium": 10, "high": 18}.get(s.energy_level, 10)
+                bar = "#" * {"low": 5, "medium": 10, "high": 18}.get(s.energy_level, 10)
                 click.echo(
                     f"  {s.name:>8s}  beats "
                     f"{s.start_beat:5d}-{s.end_beat:<5d}  [{bar}] {s.energy_level}"
@@ -802,14 +802,14 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
             })
         click.echo(json_mod.dumps(result, indent=2))
     else:
-        click.secho("╔══════════════════════════════════════╗", fg="cyan")
-        click.secho("║   Arrangement Mixing Strategy       ║", fg="cyan")
-        click.secho("╚══════════════════════════════════════╝", fg="cyan")
+        click.secho("+======================================+", fg="cyan")
+        click.secho("|   Arrangement Mixing Strategy       |", fg="cyan")
+        click.secho("+======================================+", fg="cyan")
         click.echo(
             f"  {'Section':>8s}  {'Beats':>12s}  "
             f"{'Reverb':>6s}  {'Delay':>5s}  {'Comp':>4s}  {'Gain':>5s}"
         )
-        click.echo("  " + "─" * 52)
+        click.echo("  " + "-" * 52)
         for s in sections:
             params = strat.get_params_at_beat(s.start_beat)
             click.echo(f"  {s.name:>8s}  {s.start_beat:5d}-{s.end_beat:<5d}  "
@@ -826,15 +826,15 @@ def arrangement(project: Path, strategy: bool, as_json: bool) -> None:
 
 
 
-# ── Phase 9.5: sampler command ────────────────────────────────────────
+# -- Phase 9.5: sampler command ----------------------------------------
 
 @main.group("sampler")
 def sampler_group() -> None:
     """Sampler track operations (Phase 9.5).
 
     \b
-    vcmix sampler info --project proj.yaml --track piano    — Show sampler info
-    vcmix sampler render --project proj.yaml --track piano   — Render sampler track
+    vcmix sampler info --project proj.yaml --track piano    -- Show sampler info
+    vcmix sampler render --project proj.yaml --track piano   -- Render sampler track
     """
     pass
 
@@ -860,12 +860,12 @@ def sampler_info(project: Path, track: str, as_json: bool) -> None:
             break
 
     if track_cfg is None:
-        click.secho(f"✗ Track '{track}' not found in project", fg="red")
+        click.secho(f"[FAIL] Track '{track}' not found in project", fg="red")
         sys.exit(1)
 
     if getattr(track_cfg, 'type', 'audio') != 'sampler':
         track_type = getattr(track_cfg, 'type', 'audio')
-        click.secho(f"✗ Track '{track}' is not a sampler track (type={track_type})", fg="red")
+        click.secho(f"[FAIL] Track '{track}' is not a sampler track (type={track_type})", fg="red")
         sys.exit(1)
 
     sampler_track = SamplerTrack.from_config(track_cfg, project_dir)
@@ -874,22 +874,22 @@ def sampler_info(project: Path, track: str, as_json: bool) -> None:
         click.echo(json.dumps(sampler_track.info, ensure_ascii=False, indent=2))
     else:
         info = sampler_track.info
-        click.secho("╔══════════════════════════════════════╗", fg="cyan")
-        click.secho(f"║   Sampler Track: {track:<20s}║", fg="cyan")
-        click.secho("╚══════════════════════════════════════╝", fg="cyan")
+        click.secho("+======================================+", fg="cyan")
+        click.secho(f"|   Sampler Track: {track:<20s}|", fg="cyan")
+        click.secho("+======================================+", fg="cyan")
         click.echo(f"  Sample Rate: {info['sample_rate']}")
         click.echo(f"  BPM:         {info['bpm']}")
         click.echo(f"  MIDI File:   {info['midi_file'] or 'N/A'}")
         click.echo(f"  Zones:       {info['zone_count']}")
         for z in info['zones']:
-            loaded = "✔" if z['sample_loaded'] else "✗"
+            loaded = "[OK]" if z['sample_loaded'] else "[FAIL]"
             loop_s = z.get('loop_start', 'N/A')
             loop_e = z.get('loop_end', 'N/A')
             loop_info = f"{z['loop_mode']} loop {loop_s}-{loop_e}"
             loop_str = f" [{loop_info}]" if z['has_loop'] else ""
             click.echo(f"    {loaded} {z['file']}")
             click.echo(f"      key={z['key_range']} vel={z['velocity_range']} "
-                       f"root={z['root_key']} tune={z['tune_cents']}¢ "
+                       f"root={z['root_key']} tune={z['tune_cents']}c "
                        f"gain={z['gain_db']}dB{loop_str}")
             click.echo(f"      trigger={z['trigger_mode']} samples={z['sample_length']}")
 
@@ -915,18 +915,18 @@ def sampler_render(project: Path, track: str, output: Path | None) -> None:
             break
 
     if track_cfg is None:
-        click.secho(f"✗ Track '{track}' not found", fg="red")
+        click.secho(f"[FAIL] Track '{track}' not found", fg="red")
         sys.exit(1)
 
     if getattr(track_cfg, 'type', 'audio') != 'sampler':
-        click.secho(f"✗ Track '{track}' is not a sampler track", fg="red")
+        click.secho(f"[FAIL] Track '{track}' is not a sampler track", fg="red")
         sys.exit(1)
 
     sampler_track = SamplerTrack.from_config(track_cfg, project_dir, sample_rate=cfg.sample_rate)
     sampler_track.bpm = cfg.bpm
 
     if sampler_track.zone_count == 0:
-        click.secho("✗ No sample zones loaded", fg="red")
+        click.secho("[FAIL] No sample zones loaded", fg="red")
         sys.exit(1)
 
     audio = sampler_track.render_full()
@@ -935,21 +935,21 @@ def sampler_render(project: Path, track: str, output: Path | None) -> None:
         output = project_dir / f"{track}_sampler_output.wav"
 
     write_audio(audio, output, cfg.sample_rate)
-    click.secho(f"✔ Sampler track '{track}' rendered → {output}", fg="green")
+    click.secho(f"[OK] Sampler track '{track}' rendered -> {output}", fg="green")
     click.echo(f"  Duration: {len(audio) / cfg.sample_rate:.2f}s ({len(audio)} samples)")
 
 
-# ── Phase 9: chain-presets command ────────────────────────────────────────
+# -- Phase 9: chain-presets command ----------------------------------------
 
 @main.group("chain-presets")
 def chain_presets_group() -> None:
     """Manage plugin chain presets (Phase 9).
 
     \b
-    vcmix chain-presets list                  — List all chain presets
-    vcmix chain-presets apply vocal-chain     — Apply a chain to a track
-    vcmix chain-presets save my-chain         — Save chain from a track
-    vcmix chain-presets show vocal-chain      — Show chain preset details
+    vcmix chain-presets list                  -- List all chain presets
+    vcmix chain-presets apply vocal-chain     -- Apply a chain to a track
+    vcmix chain-presets save my-chain         -- Save chain from a track
+    vcmix chain-presets show vocal-chain      -- Show chain preset details
     """
     pass
 
@@ -981,8 +981,8 @@ def chain_presets_list(as_json: bool) -> None:
         for name in preset_names:
             preset = manager.get(name)
             if preset:
-                effects_str = " → ".join(preset.effect_names)
-                click.echo(f"  • {name} ({preset.effect_count} effects)")
+                effects_str = " -> ".join(preset.effect_names)
+                click.echo(f"  * {name} ({preset.effect_count} effects)")
                 click.echo(f"    {effects_str}")
                 if preset.tags:
                     click.echo(f"    tags: {', '.join(preset.tags)}")
@@ -1007,14 +1007,14 @@ def chain_presets_apply(
     manager = ChainPresetManager()
     chain = manager.get(preset_name)
     if chain is None:
-        click.secho(f"✗ Chain preset not found: {preset_name}", fg="red")
+        click.secho(f"[FAIL] Chain preset not found: {preset_name}", fg="red")
         sys.exit(1)
 
     if project:
         import yaml as yaml_mod
         raw = yaml_mod.safe_load(project.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
-            click.secho("✗ Invalid project YAML", fg="red")
+            click.secho("[FAIL] Invalid project YAML", fg="red")
             sys.exit(1)
 
         tracks = raw.get("tracks", [])
@@ -1028,12 +1028,12 @@ def chain_presets_apply(
                 break
 
         if not found:
-            click.secho(f"✗ Track '{track}' not found in project", fg="red")
+            click.secho(f"[FAIL] Track '{track}' not found in project", fg="red")
             sys.exit(1)
 
         with open(project, "w", encoding="utf-8") as f:
             yaml_mod.dump(raw, f, default_flow_style=False, allow_unicode=True)
-        click.secho(f"✔ Applied '{preset_name}' to track '{track}'", fg="green")
+        click.secho(f"[OK] Applied '{preset_name}' to track '{track}'", fg="green")
     else:
         track_config = {"name": track, "file": "unknown.wav"}
         result = manager.apply_to_track(chain, track_config)
@@ -1061,7 +1061,7 @@ def chain_presets_save(
     from vcmix.presets.chain_presets import ChainPresetManager
 
     if not from_project or not from_track:
-        click.secho("✗ Both --from-project and --from-track are required", fg="red")
+        click.secho("[FAIL] Both --from-project and --from-track are required", fg="red")
         sys.exit(1)
 
     import yaml as yaml_mod
@@ -1075,12 +1075,12 @@ def chain_presets_save(
             break
 
     if track_config is None:
-        click.secho(f"✗ Track '{from_track}' not found", fg="red")
+        click.secho(f"[FAIL] Track '{from_track}' not found", fg="red")
         sys.exit(1)
 
     manager = ChainPresetManager()
     path = manager.save_from_track(name, description, track_config)
-    click.secho(f"✔ Chain preset '{name}' saved → {path}", fg="green")
+    click.secho(f"[OK] Chain preset '{name}' saved -> {path}", fg="green")
 
 
 @chain_presets_group.command("show")
@@ -1093,7 +1093,7 @@ def chain_presets_show(preset_name: str, as_json: bool) -> None:
     manager = ChainPresetManager()
     chain = manager.get(preset_name)
     if chain is None:
-        click.secho(f"✗ Chain preset not found: {preset_name}", fg="red")
+        click.secho(f"[FAIL] Chain preset not found: {preset_name}", fg="red")
         sys.exit(1)
 
     if as_json:
@@ -1115,7 +1115,7 @@ def chain_presets_show(preset_name: str, as_json: bool) -> None:
             click.echo(f"  Tags: {', '.join(chain.tags)}")
 
 
-# ── Demucs v2: analyze-mix command ───────────────────────────────────────
+# -- Demucs v2: analyze-mix command ---------------------------------------
 
 @main.command("analyze-mix")
 @click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
@@ -1160,7 +1160,7 @@ def analyze_mix(
                 analysis = analyzer.analyze_stem(audio, stem_name)
                 results[stem_name] = analysis.to_dict()
             except Exception as e:
-                click.secho(f"    ✗ Failed: {e}", fg="yellow")
+                click.secho(f"    [FAIL] Failed: {e}", fg="yellow")
                 results[stem_name] = {"error": str(e)}
 
         if as_json:
@@ -1197,17 +1197,17 @@ def analyze_mix(
                                f"width={pan['stereo_width']:.2f}")
 
     except ImportError as e:
-        click.secho(f"✗ Missing dependency: {e}", fg="red")
+        click.secho(f"[FAIL] Missing dependency: {e}", fg="red")
         sys.exit(vcmix.EXIT_MISSING_DEP)
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Analysis failed: {e}", fg="red")
+        click.secho(f"[FAIL] Analysis failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Demucs v2: analyze-arrangement command ──────────────────────────────
+# -- Demucs v2: analyze-arrangement command ------------------------------
 
 @main.command("analyze-arrangement")
 @click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
@@ -1277,17 +1277,17 @@ def analyze_arrangement_cmd(
                            f"[{s.energy_level}]  active: {active}")
 
     except ImportError as e:
-        click.secho(f"✗ Missing dependency: {e}", fg="red")
+        click.secho(f"[FAIL] Missing dependency: {e}", fg="red")
         sys.exit(vcmix.EXIT_MISSING_DEP)
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Analysis failed: {e}", fg="red")
+        click.secho(f"[FAIL] Analysis failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Demucs v2: generate-config command ─────────────────────────────────
+# -- Demucs v2: generate-config command ---------------------------------
 
 @main.command("generate-config")
 @click.argument("audio_file", type=click.Path(exists=True, path_type=Path))
@@ -1343,7 +1343,7 @@ def generate_config_cmd(
             audio, sr = read_audio(stem_path)
             stems_audio[stem_name] = audio
             stem_analyses[stem_name] = mix_analyzer.analyze_stem(audio, stem_name)
-            click.echo(f"  ✓ {stem_name}: RMS={stem_analyses[stem_name].rms_db:.1f}dB")
+            click.echo(f"  [OK] {stem_name}: RMS={stem_analyses[stem_name].rms_db:.1f}dB")
 
         # Analyze arrangement
         click.secho("Analyzing arrangement...", fg="cyan")
@@ -1366,20 +1366,20 @@ def generate_config_cmd(
         result_path = generator.generate_to_file(
             stem_analyses, timeline, bpm, output,
         )
-        click.secho(f"✔ Config saved → {result_path}", fg="green")
+        click.secho(f"[OK] Config saved -> {result_path}", fg="green")
 
     except ImportError as e:
-        click.secho(f"✗ Missing dependency: {e}", fg="red")
+        click.secho(f"[FAIL] Missing dependency: {e}", fg="red")
         sys.exit(vcmix.EXIT_MISSING_DEP)
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Config generation failed: {e}", fg="red")
+        click.secho(f"[FAIL] Config generation failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Phase 12: Arrangement Template & Mix Preset Commands ──────────────────────
+# -- Phase 12: Arrangement Template & Mix Preset Commands ----------------------
 
 @main.command("templates")
 @click.option("--genre", type=str, default=None, help="Filter by genre")
@@ -1409,9 +1409,9 @@ def list_arrangement_templates(genre: str | None, as_json: bool) -> None:
         click.secho(f"\n  Arrangement Templates ({len(keys)}):\n", fg="cyan", bold=True)
         for key in keys:
             tmpl = TEMPLATE_REGISTRY[key]
-            sections_str = " → ".join(tmpl.section_names)
+            sections_str = " -> ".join(tmpl.section_names)
             click.echo(f"  {key}")
-            click.echo(f"    {tmpl.name} [{tmpl.genre}] — BPM {tmpl.bpm_range[0]}-{tmpl.bpm_range[1]}")
+            click.echo(f"    {tmpl.name} [{tmpl.genre}] -- BPM {tmpl.bpm_range[0]}-{tmpl.bpm_range[1]}")
             click.echo(f"    {sections_str}")
             click.echo(f"    {tmpl.total_bars} bars, key: {tmpl.default_key}")
             click.echo()
@@ -1430,7 +1430,7 @@ def apply_template(template_name: str, bpm: float, musical_key: str, output: Pat
 
     template = get_template(template_name)
     if template is None:
-        click.secho(f"✗ Template not found: {template_name}", fg="red")
+        click.secho(f"[FAIL] Template not found: {template_name}", fg="red")
         click.echo("  Use 'vcmix templates' to list available templates.")
         sys.exit(vcmix.EXIT_CONFIG_ERROR)
 
@@ -1443,13 +1443,13 @@ def apply_template(template_name: str, bpm: float, musical_key: str, output: Pat
 
         output.write_text(yaml_str, encoding="utf-8")
 
-        click.secho(f"✔ Applied template: {template.name}", fg="green")
+        click.secho(f"[OK] Applied template: {template.name}", fg="green")
         click.echo(f"  BPM: {bpm}, Key: {musical_key}")
         click.echo(f"  Sections: {len(template.structure)}, Total bars: {template.total_bars}")
-        click.echo(f"  Output → {output}")
+        click.echo(f"  Output -> {output}")
 
     except Exception as e:
-        click.secho(f"✗ Template application failed: {e}", fg="red")
+        click.secho(f"[FAIL] Template application failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -1488,7 +1488,7 @@ def list_mix_presets_cmd(genre: str | None, as_json: bool) -> None:
             click.echo()
 
 
-# ── Phase 15: AI Composition & Smart Mixing Commands ────────────────────
+# -- Phase 15: AI Composition & Smart Mixing Commands --------------------
 
 @main.command("compose")
 @click.option("--genre", type=str, required=True, help="Genre: pop/rock/edm/hiphop/rnb/ballad/lofi")
@@ -1503,7 +1503,7 @@ def compose_cmd(
     genre: str, bpm: float, musical_key: str, mood: str,
     duration: float, reference: Path | None, output: Path | None, as_json: bool,
 ) -> None:
-    """AI composition engine — generate a complete arrangement (Phase 15).
+    """AI composition engine -- generate a complete arrangement (Phase 15).
 
     Creates a VCMix project configuration with chord progression, melody,
     drum patterns, bass lines, and instrument assignments based on the
@@ -1527,7 +1527,7 @@ def compose_cmd(
             output_dict = result.to_dict()
             click.echo(json.dumps(output_dict, ensure_ascii=False, indent=2, default=str))
         else:
-            click.secho(f"✔ Composition generated: {genre.title()} in {musical_key}", fg="green")
+            click.secho(f"[OK] Composition generated: {genre.title()} in {musical_key}", fg="green")
             click.echo(f"  BPM: {bpm}, Duration: {duration}s, Mood: {mood}")
             click.echo(f"  Scale: {result.scale}")
             click.echo(f"  Sections: {result.sections}, Total bars: {result.total_bars}")
@@ -1546,10 +1546,10 @@ def compose_cmd(
                 encoding="utf-8",
             )
             if not as_json:
-                click.secho(f"  Saved → {output}", fg="cyan")
+                click.secho(f"  Saved -> {output}", fg="cyan")
 
     except Exception as e:
-        click.secho(f"✗ Composition failed: {e}", fg="red")
+        click.secho(f"[FAIL] Composition failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -1561,9 +1561,9 @@ def compose_cmd(
 def auto_mix_cmd(
     project: Path, max_iterations: int, target_lufs: float, as_json: bool,
 ) -> None:
-    """Smart mixing closed-loop — auto-iterate to optimize mix (Phase 15).
+    """Smart mixing closed-loop -- auto-iterate to optimize mix (Phase 15).
 
-    Runs an iterative render→analyze→diagnose→adjust→verify pipeline
+    Runs an iterative render->analyze->diagnose->adjust->verify pipeline
     to optimize the mix toward target loudness, spectral balance, and
     dynamic range.
     """
@@ -1580,7 +1580,7 @@ def auto_mix_cmd(
         if as_json:
             click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
         else:
-            click.secho(f"✔ Smart mixing complete ({result.total_iterations} iterations)", fg="green")
+            click.secho(f"[OK] Smart mixing complete ({result.total_iterations} iterations)", fg="green")
             click.echo(f"  Converged: {'Yes' if result.converged else 'No'}")
             click.echo(f"  Initial LUFS: {result.initial_analysis.lufs:.1f}")
             click.echo(f"  Final LUFS: {result.final_analysis.lufs:.1f}")
@@ -1594,10 +1594,10 @@ def auto_mix_cmd(
                 click.echo(f"    Improved: {'Yes' if itr.improved else 'No'}")
 
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Auto-mix failed: {e}", fg="red")
+        click.secho(f"[FAIL] Auto-mix failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -1614,7 +1614,7 @@ def compose_and_mix_cmd(
     genre: str, bpm: float, musical_key: str, mood: str,
     duration: float, max_iterations: int, output: Path | None, as_json: bool,
 ) -> None:
-    """One-click compose + mix — AI composition with smart mixing (Phase 15).
+    """One-click compose + mix -- AI composition with smart mixing (Phase 15).
 
     Generates a complete arrangement and automatically optimizes the mix
     in a single pipeline.
@@ -1637,7 +1637,7 @@ def compose_and_mix_cmd(
             click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
         else:
             status_color = {"success": "green", "partial": "yellow", "failed": "red"}
-            click.secho(f"✔ Compose & Mix: {result.status.upper()}", fg=status_color.get(result.status, "white"))
+            click.secho(f"[OK] Compose & Mix: {result.status.upper()}", fg=status_color.get(result.status, "white"))
             if result.composition:
                 click.echo(f"  Genre: {genre}, Key: {musical_key}, BPM: {bpm}")
                 click.echo(f"  Sections: {result.composition.sections}")
@@ -1655,14 +1655,14 @@ def compose_and_mix_cmd(
                 encoding="utf-8",
             )
             if not as_json:
-                click.secho(f"  Saved → {output}", fg="cyan")
+                click.secho(f"  Saved -> {output}", fg="cyan")
 
     except Exception as e:
-        click.secho(f"✗ Compose & Mix failed: {e}", fg="red")
+        click.secho(f"[FAIL] Compose & Mix failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Phase 16: Serve command ──────────────────────────────────────────────
+# -- Phase 16: Serve command ----------------------------------------------
 
 
 @main.command()
@@ -1680,12 +1680,12 @@ def serve(host: str, port: int, reload: bool, profile: str) -> None:
     and WebSocket endpoints for AI Agent and human interaction.
 
     Profiles:
-        core — Lightweight mode: render/plugins/presets/midi/automation/
+        core -- Lightweight mode: render/plugins/presets/midi/automation/
                arrangement/automix + agent_api basic endpoints.
                No AI transcription, collaboration, or visualization routes.
                Recommended for 1G memory servers.
 
-        full — All features including AI transcription, collaboration,
+        full -- All features including AI transcription, collaboration,
                waveform/spectrum/piano-roll visualization. (default)
 
     Examples:
@@ -1700,7 +1700,7 @@ def serve(host: str, port: int, reload: bool, profile: str) -> None:
         from vcmix.web.app import create_app
     except ImportError:
         click.secho(
-            "✗ Web UI dependencies not installed. Install with: pip install vcmix[web]",
+            "[FAIL] Web UI dependencies not installed. Install with: pip install vcmix[web]",
             fg="red",
         )
         sys.exit(6)
@@ -1712,10 +1712,10 @@ def serve(host: str, port: int, reload: bool, profile: str) -> None:
     app = create_app(profile=profile)  # type: ignore[arg-type]
 
     if profile == "core":
-        click.secho(f"♫ VCMix web UI (core profile) → http://{host}:{port}", fg="cyan", bold=True)
-        click.secho("  ⚡ Core mode: AI/collab/visualization endpoints disabled", fg="yellow")
+        click.secho(f"~ VCMix web UI (core profile) -> http://{host}:{port}", fg="cyan", bold=True)
+        click.secho("  ! Core mode: AI/collab/visualization endpoints disabled", fg="yellow")
     else:
-        click.secho(f"♫ VCMix web UI → http://{host}:{port}", fg="cyan", bold=True)
+        click.secho(f"~ VCMix web UI -> http://{host}:{port}", fg="cyan", bold=True)
 
     if reload:
         uvicorn.run(
@@ -1729,7 +1729,7 @@ def serve(host: str, port: int, reload: bool, profile: str) -> None:
         uvicorn.run(app, host=host, port=port)
 
 
-# ── Phase 17: AI Transcription, Style Match, Style Transfer, Remix ──────
+# -- Phase 17: AI Transcription, Style Match, Style Transfer, Remix ------
 
 
 @main.command("transcribe")
@@ -1740,13 +1740,13 @@ def serve(host: str, port: int, reload: bool, profile: str) -> None:
 def transcribe_cmd(
     reference: Path, output_dir: Path | None, as_json: bool,
 ) -> None:
-    """AI transcription —扒带 reference track into editable VCMix project (Phase 17).
+    """AI transcription --扒带 reference track into editable VCMix project (Phase 17).
 
     Analyzes a reference audio track and generates a complete VCMix project
     with separated stems, reverse mixing analysis, BPM/key detection,
     and arrangement structure.
 
-    Pipeline: separate → reverse analyze → detect BPM/key → generate project
+    Pipeline: separate -> reverse analyze -> detect BPM/key -> generate project
     """
     import vcmix
     from vcmix.ai.transcription import AITranscription
@@ -1762,7 +1762,7 @@ def transcribe_cmd(
             click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
         else:
             status_color = "green" if result.status == "success" else "red"
-            click.secho(f"✔ Transcription: {result.status.upper()}", fg=status_color)
+            click.secho(f"[OK] Transcription: {result.status.upper()}", fg=status_color)
             click.echo(f"  BPM: {result.bpm_info.bpm}")
             click.echo(f"  Key: {result.key_info.root} {result.key_info.scale_type}")
             click.echo(f"  Stems: {', '.join(result.stems.keys())}")
@@ -1771,7 +1771,7 @@ def transcribe_cmd(
             click.echo(f"  Time: {result.transcription_time_sec:.3f}s")
 
     except Exception as e:
-        click.secho(f"✗ Transcription failed: {e}", fg="red")
+        click.secho(f"[FAIL] Transcription failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -1781,7 +1781,7 @@ def transcribe_cmd(
 def match_style_cmd(
     reference: Path, as_json: bool,
 ) -> None:
-    """Match reference track style — recommend template and preset (Phase 17).
+    """Match reference track style -- recommend template and preset (Phase 17).
 
     Analyzes a reference track's style features and recommends a matching
     arrangement template and mixing preset.
@@ -1796,7 +1796,7 @@ def match_style_cmd(
         if as_json:
             click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
         else:
-            click.secho("✔ Style Match Results", fg="green")
+            click.secho("[OK] Style Match Results", fg="green")
             click.echo(f"  Genre: {result.features.genre}")
             click.echo(f"  BPM: {result.features.bpm}")
             click.echo(f"  Key: {result.features.key} {result.features.scale_type}")
@@ -1807,7 +1807,7 @@ def match_style_cmd(
             click.echo(f"  Time: {result.match_time_sec:.3f}s")
 
     except Exception as e:
-        click.secho(f"✗ Style match failed: {e}", fg="red")
+        click.secho(f"[FAIL] Style match failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -1821,7 +1821,7 @@ def match_style_cmd(
 def style_transfer_cmd(
     reference: Path, project: Path, output: Path | None, as_json: bool,
 ) -> None:
-    """Style transfer — apply reference mixing style to project (Phase 17).
+    """Style transfer -- apply reference mixing style to project (Phase 17).
 
     Analyzes the reference track's mixing style (EQ, compression, reverb,
     gain balance) and applies it to the target project.
@@ -1844,7 +1844,7 @@ def style_transfer_cmd(
             click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
         else:
             status_color = "green" if result.status == "success" else "red"
-            click.secho(f"✔ Style Transfer: {result.status.upper()}", fg=status_color)
+            click.secho(f"[OK] Style Transfer: {result.status.upper()}", fg=status_color)
             click.echo(f"  EQ transfers: {len(result.eq_transfers)} tracks")
             click.echo(f"  Comp transfers: {len(result.comp_transfers)} tracks")
             click.echo(f"  Reverb transfers: {len(result.reverb_transfers)} tracks")
@@ -1853,7 +1853,7 @@ def style_transfer_cmd(
             click.echo(f"  Time: {result.transfer_time_sec:.3f}s")
 
     except Exception as e:
-        click.secho(f"✗ Style transfer failed: {e}", fg="red")
+        click.secho(f"[FAIL] Style transfer failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -1872,7 +1872,7 @@ def remix_cmd(
     reference: Path, stems: Path, genre: str | None, bpm: float | None,
     output_dir: Path | None, as_json: bool,
 ) -> None:
-    """One-click Remix — blend reference style with new stems (Phase 17).
+    """One-click Remix -- blend reference style with new stems (Phase 17).
 
     Analyzes the reference track, replaces specified stems with new素材,
     and auto-mixes everything in the reference's style.
@@ -1888,11 +1888,11 @@ def remix_cmd(
         for wav_file in stems.glob("*.mp3"):
             new_stems[wav_file.stem] = str(wav_file)
     else:
-        click.secho("✗ --stems must be a directory", fg="red")
+        click.secho("[FAIL] --stems must be a directory", fg="red")
         sys.exit(1)
 
     if not new_stems:
-        click.secho("✗ No audio files found in stems directory", fg="red")
+        click.secho("[FAIL] No audio files found in stems directory", fg="red")
         sys.exit(1)
 
     if output_dir is None:
@@ -1912,18 +1912,18 @@ def remix_cmd(
             click.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2, default=str))
         else:
             status_color = "green" if result.status == "success" else "red"
-            click.secho(f"✔ Remix: {result.status.upper()}", fg=status_color)
+            click.secho(f"[OK] Remix: {result.status.upper()}", fg=status_color)
             click.echo(f"  Replaced stems: {', '.join(result.replaced_stems) or 'none'}")
             click.echo(f"  Kept stems: {', '.join(result.kept_stems) or 'none'}")
             click.echo(f"  Output: {result.output_yaml}")
             click.echo(f"  Time: {result.remix_time_sec:.3f}s")
 
     except Exception as e:
-        click.secho(f"✗ Remix failed: {e}", fg="red")
+        click.secho(f"[FAIL] Remix failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
-# ── Phase 18: Export & Version Management ──────────────────────────────────
+# -- Phase 18: Export & Version Management ----------------------------------
 
 
 @main.command("export")
@@ -1961,7 +1961,7 @@ def export_cmd(
         wav_output = engine.run()
 
         if wav_output is None:
-            click.secho("✗ Render produced no output", fg="red")
+            click.secho("[FAIL] Render produced no output", fg="red")
             sys.exit(vcmix.EXIT_RENDER_ERROR)
 
         # Export to target format
@@ -1981,16 +1981,16 @@ def export_cmd(
             format=fmt,
             quality=quality or None,
         )
-        click.secho(f"✔ Exported → {result} ({fmt})", fg="green")
+        click.secho(f"[OK] Exported -> {result} ({fmt})", fg="green")
 
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except ValueError as e:
-        click.secho(f"✗ Invalid format: {e}", fg="red")
+        click.secho(f"[FAIL] Invalid format: {e}", fg="red")
         sys.exit(vcmix.EXIT_CONFIG_ERROR)
     except Exception as e:
-        click.secho(f"✗ Export failed: {e}", fg="red")
+        click.secho(f"[FAIL] Export failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -2004,7 +2004,7 @@ def export_cmd(
 def export_stems_cmd(
     project: Path, fmt: str, output_dir: Path | None, by_bus: bool,
 ) -> None:
-    """Export project stems — per-track or per-bus (Phase 18).
+    """Export project stems -- per-track or per-bus (Phase 18).
 
     Each track (or bus) is rendered and exported as a separate file.
 
@@ -2034,15 +2034,15 @@ def export_stems_cmd(
                 format=fmt,
             )
 
-        click.secho(f"✔ Exported {len(results)} stems → {output_dir}/", fg="green")
+        click.secho(f"[OK] Exported {len(results)} stems -> {output_dir}/", fg="green")
         for name, path in results.items():
             click.echo(f"  {name}: {path}")
 
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Stem export failed: {e}", fg="red")
+        click.secho(f"[FAIL] Stem export failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -2064,15 +2064,15 @@ def snapshot_cmd(project: Path, message: str) -> None:
     try:
         vm = ProjectVersionManager()
         snapshot_id = vm.create_snapshot(str(project), message=message)
-        click.secho(f"✔ Snapshot created: {snapshot_id}", fg="green")
+        click.secho(f"[OK] Snapshot created: {snapshot_id}", fg="green")
         if message:
             click.echo(f"  Message: {message}")
 
     except FileNotFoundError as e:
-        click.secho(f"✗ File not found: {e}", fg="red")
+        click.secho(f"[FAIL] File not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Snapshot failed: {e}", fg="red")
+        click.secho(f"[FAIL] Snapshot failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -2113,7 +2113,7 @@ def snapshots_cmd(project: Path, as_json: bool) -> None:
                     click.echo(f"  {sid}  {ts}  {msg}")
 
     except Exception as e:
-        click.secho(f"✗ Failed to list snapshots: {e}", fg="red")
+        click.secho(f"[FAIL] Failed to list snapshots: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
 
@@ -2143,13 +2143,13 @@ def restore_cmd(project: Path, snapshot: str) -> None:
             snapshot_id=snapshot,
             projects_dir=project.parent,
         )
-        click.secho(f"✔ Restored snapshot: {snapshot}", fg="green")
+        click.secho(f"[OK] Restored snapshot: {snapshot}", fg="green")
         click.echo(f"  Project: {restored}")
 
     except FileNotFoundError as e:
-        click.secho(f"✗ Not found: {e}", fg="red")
+        click.secho(f"[FAIL] Not found: {e}", fg="red")
         sys.exit(vcmix.EXIT_IO_ERROR)
     except Exception as e:
-        click.secho(f"✗ Restore failed: {e}", fg="red")
+        click.secho(f"[FAIL] Restore failed: {e}", fg="red")
         sys.exit(vcmix.EXIT_RENDER_ERROR)
 
