@@ -46,8 +46,8 @@ jobs:
             VCMIX_PROFILE=core
             OPENDAW_VERSION=${{ steps.version.outputs.version }}
           tags: |
-            ghcr.io/${{ github.repository }}/vcmix:core-${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository }}/vcmix:core-latest
+            ghcr.io/${{ github.repository_owner }}/vcmix:core-${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/vcmix:core-latest
           cache-from: type=gha,scope=core
           cache-to: type=gha,mode=max,scope=core
 
@@ -86,7 +86,7 @@ jobs:
             VCMIX_PROFILE=full
             OPENDAW_VERSION=${{ steps.version.outputs.version }}
           tags: |
-            ghcr.io/${{ github.repository }}/vcmix:full-${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository }}/vcmix:full-latest
+            ghcr.io/${{ github.repository_owner }}/vcmix:full-${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/vcmix:full-latest
           cache-from: type=gha,scope=full
           cache-to: type=gha,mode=max,scope=full
