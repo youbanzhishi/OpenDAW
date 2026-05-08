@@ -319,8 +319,9 @@ def _graph_mermaid(cfg) -> None:
 def analyze(audio_file: Path, items: str | None, output_format: str, duration: float, output: Path | None) -> None:
     """Analyze audio file: loudness, spectrum, BPM, key, sibilance, dynamics."""
 
-    import vcmix
     import warnings
+
+    import vcmix
     # Suppress librosa UserWarnings about n_fft being too large for short signals
     warnings.filterwarnings("ignore", message=".*n_fft.*is too large.*")
 
