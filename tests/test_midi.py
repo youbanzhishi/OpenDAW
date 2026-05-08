@@ -433,6 +433,7 @@ tracks:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             f.flush()
+            f.close()  # Close before parse on Windows (avoids file locking)
             from vcmix.config.parser import parse_project
             config = parse_project(f.name)
             assert len(config.tracks) == 1
