@@ -4,13 +4,10 @@
   "version": "0.13.0",
   "identifier": "com.opendaw.vcmix",
   "build": {
-    "beforeDevCommand": "",
     "devUrl": "http://localhost:8000",
-    "beforeBuildCommand": "",
     "frontendDist": "./frontend"
   },
   "app": {
-    "title": "VCMix — AI-native DAW",
     "windows": [
       {
         "title": "VCMix — AI-native DAW",
@@ -39,29 +36,19 @@
     ],
     "resources": [],
     "windows": {
-      "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
-      "timestampUrl": "",
-      "wix": null,
       "nsis": {
         "languages": [
           "English",
           "SimpChinese"
         ],
         "displayLanguageSelector": true,
-        "installMode": "currentUser",
-        "headerImage": "",
-        "sidebarImage": "",
-        "installerIcon": "",
-        "allowDowngrades": true
+        "installMode": "currentUser"
       }
     },
     "macOS": {
       "frameworks": [],
       "minimumSystemVersion": "10.15",
-      "exceptionDomain": "",
-      "signingIdentity": null,
-      "entitlements": null,
       "dmg": {
         "appPosition": {
           "x": 180,
@@ -106,10 +93,7 @@
       ]
     },
     "updater": {
-      "active": false,
-      "endpoints": [],
-      "dialog": true,
-      "pubkey": ""
+      "active": false
     }
   }
 }
