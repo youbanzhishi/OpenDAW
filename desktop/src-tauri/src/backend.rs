@@ -36,15 +36,15 @@ static BACKEND_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
 
 pub fn spawn_backend() -> Result<u32, String> {
     let (cmd, args) = if cfg!(debug_assertions) {
-        ("python", vec!["-m", BACKEND_MODULE])
+        ("python".to_string(), vec!["-m".to_string(), BACKEND_MODULE.to_string()])
     } else {
         let binary_path = get_bundled_backend_path();
-        (binary_path.as_str(), vec![])
+        (binary_path, vec![])
     };
 
     println!("[VCMix] Spawning backend: {} {}", cmd, args.join(" "));
 
-    let child = Command::new(cmd)
+    let child = Command::new(&cmd)
         .args(&args)
         .env("VCMIX_PORT", BACKEND_PORT.to_string())
         .env("VCMIX_NO_OPEN_BROWSER", "1")
