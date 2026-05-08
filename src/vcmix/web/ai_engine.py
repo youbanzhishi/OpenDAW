@@ -26,11 +26,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
-
+from vcmix.audio.meter import Meter
 from vcmix.engine.analyzer import Analyzer
 from vcmix.engine.automix import AutoMixer
-from vcmix.audio.meter import Meter
 
 # ── Target thresholds ────────────────────────────────────────────────────────
 
@@ -323,7 +321,7 @@ class AIEngine:
         """Diagnose issues for a single track."""
         suggestions: list[dict[str, Any]] = []
         rms_db = track.get("rms_db", -120.0)
-        peak_db = track.get("peak_db", -120.0)
+        track.get("peak_db", -120.0)
         true_peak_db = track.get("true_peak_db", -120.0)
         dr = track.get("dynamic_range_db", 0.0)
         sibilance = track.get("sibilance_ratio", 0.0)
@@ -736,7 +734,8 @@ class AIEngine:
         """
         from vcmix.presets.mix_presets import (
             MIX_PRESET_REGISTRY,
-            list_mix_presets,
+        )
+        from vcmix.presets.mix_presets import (
             suggest_mix_preset as _suggest,
         )
 

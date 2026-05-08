@@ -25,7 +25,6 @@ from typing import Any
 
 import numpy as np
 
-
 # ── Data structures ───────────────────────────────────────────────────
 
 @dataclass
@@ -149,7 +148,7 @@ class ArrangementAnalyzer:
         if not stems:
             return ArrangementTimeline(bpm=bpm)
 
-        beat_samples = int(sr * 60.0 / bpm)
+        int(sr * 60.0 / bpm)
 
         # 1. Compute per-stem energy envelopes
         envelopes = self._compute_envelopes(stems, sr, bpm)

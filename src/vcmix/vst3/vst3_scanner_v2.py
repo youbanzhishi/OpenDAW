@@ -20,13 +20,12 @@ import hashlib
 import json
 import os
 import platform
-import stat
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Optional
 
-from vcmix.vst3.vst3_scanner import VST3PluginInfo, VST3Scanner
+from vcmix.vst3.vst3_scanner import VST3Scanner
 
 
 @dataclass

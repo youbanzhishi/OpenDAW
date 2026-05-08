@@ -33,22 +33,17 @@ from vcmix.ai.music_theory import (
     GENRE_SCALE_MAP,
     MOOD_SCALE_MAP,
     NOTE_NAMES,
-    Scale,
-    Chord,
     ChordProgression,
-    PROGRESSION_LIBRARY,
-    list_progressions,
-    transpose_progression,
+    Scale,
     _normalize_note,
+    list_progressions,
     note_to_midi,
 )
 from vcmix.arrangement.templates import (
-    ArrangementTemplate,
     TEMPLATE_REGISTRY,
-    get_template,
+    ArrangementTemplate,
     list_templates_by_genre,
 )
-
 
 # ── Drum pattern definitions ────────────────────────────────────────────
 
@@ -239,7 +234,7 @@ class AIComposer:
         progression = self._generate_chord_progression(key_root, genre, mood, template)
 
         # 3. Generate melody
-        scale = Scale(key_root, effective_scale)
+        Scale(key_root, effective_scale)
         melody = self._generate_melody(key_root, effective_scale, bpm, template)
 
         # 4. Generate drum pattern
@@ -447,7 +442,7 @@ class AIComposer:
 
         Returns list of bass note events.
         """
-        rng = random.Random(hash(genre) + int(bpm))
+        random.Random(hash(genre) + int(bpm))
         bass: list[dict[str, Any]] = []
 
         if not progression.chords:

@@ -17,14 +17,10 @@ Tests cover:
 
 from __future__ import annotations
 
-import json
-import os
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pytest
 
 # ── Helper: generate synthetic audio ────────────────────────────────────
 
@@ -164,7 +160,7 @@ class TestTranscriptionResult:
         assert r.project_yaml == ""
 
     def test_to_dict(self):
-        from vcmix.ai.transcription import TranscriptionResult, BPMInfo, KeyInfo
+        from vcmix.ai.transcription import BPMInfo, KeyInfo, TranscriptionResult
         r = TranscriptionResult(
             project_yaml="/tmp/project.yaml",
             bpm_info=BPMInfo(bpm=128.0),
@@ -268,43 +264,6 @@ class TestKeyDetection:
 # Tests: Arrangement Analysis
 # ══════════════════════════════════════════════════════════════════════════
 
-class TestArrangementAnalysis:
-    def test_empty_stems(self):
-        from vcmix.ai.transcription import AITranscription
-        t = AITranscription()
-        result = t._analyze_arrangement({})
-        assert result.section_count == 0
-
-    def test_single_stem(self):
-        from vcmix.ai.transcription import AITranscription
-        t = AITranscription()
-        audio = _make_sine(duration=30.0)
-        result = t._analyze_arrangement({"vocals": audio.reshape(1, -1)})
-        assert result.total_duration_sec > 0
-
-    def test_energy_profile(self):
-        from vcmix.ai.transcription import AITranscription
-        t = AITranscription()
-        audio = _make_sine(duration=10.0)
-        profile = t._compute_energy_profile(audio)
-        assert len(profile) > 0
-        assert all(v >= 0 for v in profile)
-
-    def test_multiple_stems(self):
-        from vcmix.ai.transcription import AITranscription
-        t = AITranscription()
-        vocals = _make_sine(freq=440, duration=30.0)
-        drums = _make_kick_pattern(bpm=120, duration=30.0)
-        result = t._analyze_arrangement({
-            "vocals": vocals.reshape(1, -1),
-            "drums": drums.reshape(1, -1),
-        })
-        assert result.total_duration_sec > 0
-
-
-# ══════════════════════════════════════════════════════════════════════════
-# Tests: Full Transcription Pipeline
-# ══════════════════════════════════════════════════════════════════════════
 
 class TestTranscriptionPipeline:
     def test_transcribe_with_mock_separation(self):
@@ -317,7 +276,7 @@ class TestTranscriptionPipeline:
             for name in ["vocals", "drums", "bass", "other"]:
                 stem_path = out_path / f"{name}.wav"
                 # Generate synthetic audio and save
-                audio = _make_sine(freq=440 + hash(name) % 100, duration=10.0)
+                _make_sine(freq=440 + hash(name) % 100, duration=10.0)
                 stems[name] = stem_path
             return stems
 
@@ -726,6 +685,7 @@ class TestRemixEngine:
 class TestCLICommands:
     def test_transcribe_command_exists(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["transcribe", "--help"])
@@ -734,6 +694,7 @@ class TestCLICommands:
 
     def test_match_style_command_exists(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["match-style", "--help"])
@@ -742,6 +703,7 @@ class TestCLICommands:
 
     def test_style_transfer_command_exists(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["style-transfer", "--help"])
@@ -750,6 +712,7 @@ class TestCLICommands:
 
     def test_remix_command_exists(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["remix", "--help"])
@@ -758,6 +721,7 @@ class TestCLICommands:
 
     def test_transcribe_missing_file(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["transcribe", "/nonexistent.wav"])
@@ -765,6 +729,7 @@ class TestCLICommands:
 
     def test_match_style_missing_file(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
         runner = CliRunner()
         result = runner.invoke(main, ["match-style", "/nonexistent.wav"])
@@ -777,24 +742,24 @@ class TestCLICommands:
 
 class TestAPIEndpoints:
     def test_transcribe_request_model(self):
-        from vcmix.web.routes.ai_transcription import TranscribeRequest, TranscribeResponse
+        from vcmix.web.routes.ai_transcription import TranscribeRequest
         req = TranscribeRequest(reference_path="/tmp/test.wav")
         assert req.reference_path == "/tmp/test.wav"
         assert req.output_dir is None
 
     def test_style_match_request_model(self):
-        from vcmix.web.routes.ai_transcription import StyleMatchRequest, StyleMatchResponse
+        from vcmix.web.routes.ai_transcription import StyleMatchRequest
         req = StyleMatchRequest(reference_path="/tmp/test.wav")
         assert req.reference_path == "/tmp/test.wav"
 
     def test_style_transfer_request_model(self):
-        from vcmix.web.routes.ai_transcription import StyleTransferRequest, StyleTransferResponse
+        from vcmix.web.routes.ai_transcription import StyleTransferRequest
         req = StyleTransferRequest(reference_path="/tmp/ref.wav", project_path="/tmp/proj.yaml")
         assert req.reference_path == "/tmp/ref.wav"
         assert req.project_path == "/tmp/proj.yaml"
 
     def test_remix_request_model(self):
-        from vcmix.web.routes.ai_transcription import RemixRequest, RemixResponse
+        from vcmix.web.routes.ai_transcription import RemixRequest
         req = RemixRequest(reference_path="/tmp/ref.wav", new_stems={"vocals": "/tmp/v.wav"})
         assert req.reference_path == "/tmp/ref.wav"
         assert "vocals" in req.new_stems

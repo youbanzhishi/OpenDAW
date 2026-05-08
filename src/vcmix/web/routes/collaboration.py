@@ -20,10 +20,10 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from vcmix.web.collaboration import CollaborationManager, get_collaboration_manager
-from vcmix.web.project_manager import ProjectManager
 from vcmix.export.exporter import AudioExporter
 from vcmix.project.version_manager import ProjectVersionManager
+from vcmix.web.collaboration import get_collaboration_manager
+from vcmix.web.project_manager import ProjectManager
 
 router = APIRouter()
 

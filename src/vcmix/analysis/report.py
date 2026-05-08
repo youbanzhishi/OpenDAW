@@ -53,7 +53,7 @@ class ReportGenerator:
         """Format as human-readable text."""
         lines = []
         lines.append("=" * 60)
-        lines.append(f"VCMix Audio Analysis Report")
+        lines.append("VCMix Audio Analysis Report")
         lines.append("=" * 60)
         lines.append(f"File:       {result.get('file', 'N/A')}")
         lines.append(f"Duration:   {result.get('duration', 'N/A')}s")
@@ -63,13 +63,13 @@ class ReportGenerator:
 
         # Loudness
         if "loudness" in result:
-            l = result["loudness"]
+            loudness = result["loudness"]
             lines.append("─ Loudness ──────────────────────────────")
-            lines.append(f"  Integrated LUFS:  {l.get('integrated_lufs', 'N/A')}")
-            lines.append(f"  RMS (dBFS):       {l.get('rms_dbfs', 'N/A')}")
-            lines.append(f"  True Peak (dBFS): {l.get('true_peak_dbfs', 'N/A')}")
-            lines.append(f"  Dynamic Range:    {l.get('dynamic_range_db', 'N/A')} dB")
-            lines.append(f"  Loudness Range:   {l.get('loudness_range_lu', 'N/A')} LU")
+            lines.append(f"  Integrated LUFS:  {loudness.get('integrated_lufs', 'N/A')}")
+            lines.append(f"  RMS (dBFS):       {loudness.get('rms_dbfs', 'N/A')}")
+            lines.append(f"  True Peak (dBFS): {loudness.get('true_peak_dbfs', 'N/A')}")
+            lines.append(f"  Dynamic Range:    {loudness.get('dynamic_range_db', 'N/A')} dB")
+            lines.append(f"  Loudness Range:   {loudness.get('loudness_range_lu', 'N/A')} LU")
             lines.append("")
 
         # Spectrum
@@ -144,16 +144,16 @@ class ReportGenerator:
 
         # Loudness
         if "loudness" in result:
-            l = result["loudness"]
+            loudness = result["loudness"]
             lines.append("## 🎵 Loudness")
             lines.append("")
-            lines.append(f"| Metric | Value |")
-            lines.append(f"|--------|-------|")
-            lines.append(f"| Integrated LUFS | {l.get('integrated_lufs', 'N/A')} |")
-            lines.append(f"| RMS (dBFS) | {l.get('rms_dbfs', 'N/A')} |")
-            lines.append(f"| True Peak (dBFS) | {l.get('true_peak_dbfs', 'N/A')} |")
-            lines.append(f"| Dynamic Range | {l.get('dynamic_range_db', 'N/A')} dB |")
-            lines.append(f"| Loudness Range | {l.get('loudness_range_lu', 'N/A')} LU |")
+            lines.append("| Metric | Value |")
+            lines.append("|--------|-------|")
+            lines.append(f"| Integrated LUFS | {loudness.get('integrated_lufs', 'N/A')} |")
+            lines.append(f"| RMS (dBFS) | {loudness.get('rms_dbfs', 'N/A')} |")
+            lines.append(f"| True Peak (dBFS) | {loudness.get('true_peak_dbfs', 'N/A')} |")
+            lines.append(f"| Dynamic Range | {loudness.get('dynamic_range_db', 'N/A')} dB |")
+            lines.append(f"| Loudness Range | {loudness.get('loudness_range_lu', 'N/A')} LU |")
             lines.append("")
 
         # Spectrum

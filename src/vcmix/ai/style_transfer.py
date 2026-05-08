@@ -30,9 +30,8 @@ from typing import Any
 
 import numpy as np
 
+from vcmix.ai.reference_matcher_v2 import ReferenceMatcherV2
 from vcmix.separation.reverse_analyzer import ReverseMixAnalyzer
-from vcmix.ai.reference_matcher_v2 import ReferenceMatcherV2, StyleFeatures
-
 
 # ── Data structures ─────────────────────────────────────────────────────
 

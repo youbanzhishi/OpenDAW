@@ -13,24 +13,17 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
+import pytest
 
+from vcmix.ai.arrangement_mixer import ArrangementMixer, ComposeAndMixResult
 from vcmix.ai.smart_mixer import (
     AudioAnalysis,
     Diagnosis,
     IterationResult,
-    SmartMixResult,
     SmartMixer,
-    _MASTER_TARGET_LUFS,
-    _MASTER_PEAK_CEILING,
-    _VOCAL_TARGET_RMS_DB,
-    _LOW_FREQ_BUILDUP_RATIO,
-    _HIGH_FREQ_HARSH_THRESHOLD,
+    SmartMixResult,
 )
-from vcmix.ai.arrangement_mixer import ArrangementMixer, ComposeAndMixResult
-from vcmix.ai.composer import AIComposer
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Data Structure Tests
@@ -319,7 +312,7 @@ class TestSmartMixerDiagnosis:
             t["volume"] = 0.7
         diagnoses = mixer._diagnose(analysis, config)
         # With good levels, there should be few or no critical diagnoses
-        critical = [d for d in diagnoses if d.severity == 1]
+        [d for d in diagnoses if d.severity == 1]
         # May still have some severity 2-3 suggestions
 
 

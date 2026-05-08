@@ -15,8 +15,6 @@ Dependencies: pytest, numpy, soundfile, pyyaml
 from __future__ import annotations
 
 import hashlib
-import shutil
-import time
 from pathlib import Path
 from typing import Any
 
@@ -26,13 +24,10 @@ import soundfile as sf
 import yaml
 
 from vcmix.config.parser import parse_project
-from vcmix.engine.analyzer import Analyzer
-from vcmix.engine.audio_cache import AudioCache
 from vcmix.engine.automix import AutoMixer
 from vcmix.engine.renderer import Renderer
 from vcmix.export.exporter import AudioExporter
 from vcmix.project.version_manager import ProjectVersionManager
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -121,7 +116,6 @@ def simple_project(tmp_path: Path) -> Any:
 @pytest.fixture
 def multi_track_project(tmp_path: Path) -> Any:
     """Create a 6-track project with effects for comprehensive E2E testing."""
-    sr = 44100
     track_specs = [
         ("vocal", 440, 0.4),
         ("bass", 110, 0.5),
@@ -347,7 +341,7 @@ class TestEndToEnd:
         assert output_path.exists()
 
         events = renderer.get_stream_events()
-        event_types = [e.event_type for e in events]
+        [e.event_type for e in events]
         assert len(events) > 0, "Report mode should emit events"
 
     def test_muted_track_rendering(self, tmp_path: Path) -> None:
@@ -506,7 +500,7 @@ class TestEndToEnd:
         """DataStream should emit proper events during rendering."""
         project = simple_project
         renderer = Renderer(project, stream="dict")
-        output_path = renderer.run()
+        renderer.run()
 
         events = renderer.get_stream_events()
         event_types = [e.event_type for e in events]
@@ -714,7 +708,7 @@ class TestTranscriptionWorkflow:
 
         sr = 44100
         n = int(sr * 4)
-        t = np.linspace(0, 4, n, endpoint=False, dtype=np.float32)
+        np.linspace(0, 4, n, endpoint=False, dtype=np.float32)
 
         beat_samples = int(60.0 / 120 * sr)
         audio = np.zeros(n, dtype=np.float32)

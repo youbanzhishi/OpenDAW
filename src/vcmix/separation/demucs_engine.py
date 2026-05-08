@@ -22,7 +22,6 @@ import tempfile
 from pathlib import Path
 from typing import Callable, Optional
 
-import numpy as np
 import soundfile as sf
 
 logger = logging.getLogger(__name__)

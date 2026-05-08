@@ -24,9 +24,8 @@ from typing import Any
 
 import numpy as np
 
-from vcmix.engine.analyzer import Analyzer
 from vcmix.ai.music_theory import detect_key as ks_detect_key
-
+from vcmix.engine.analyzer import Analyzer
 
 # ── Data structures ─────────────────────────────────────────────────────
 

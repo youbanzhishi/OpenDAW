@@ -25,10 +25,9 @@ from typing import Any
 
 import numpy as np
 
-from vcmix.ai.transcription import AITranscription, TranscriptionResult
-from vcmix.ai.style_transfer import StyleTransfer, StyleTransferResult
 from vcmix.ai.reference_matcher_v2 import ReferenceMatcherV2
-
+from vcmix.ai.style_transfer import StyleTransfer, StyleTransferResult
+from vcmix.ai.transcription import AITranscription, TranscriptionResult
 
 # ── Data structures ─────────────────────────────────────────────────────
 

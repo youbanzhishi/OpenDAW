@@ -79,6 +79,7 @@ Dependencies: fastapi, uvicorn, websockets
 
 from __future__ import annotations
 
+import os as _os
 from pathlib import Path
 from typing import Literal
 
@@ -98,10 +99,10 @@ from vcmix.web.websocket import router as ws_router
 _HEAVY_ROUTES_AVAILABLE: bool = True
 
 try:
-    from vcmix.web.routes.waveform import router as waveform_router
-    from vcmix.web.routes.piano_roll import router as piano_roll_router
     from vcmix.web.routes.ai_transcription import router as ai_transcription_router
     from vcmix.web.routes.collaboration import router as collab_router
+    from vcmix.web.routes.piano_roll import router as piano_roll_router
+    from vcmix.web.routes.waveform import router as waveform_router
 except ImportError:
     _HEAVY_ROUTES_AVAILABLE = False
 
@@ -246,7 +247,5 @@ def _register_core_stubs(app: FastAPI) -> None:
 
 # ── Module-level app instance for uvicorn ──
 # Uses VCMIX_PROFILE environment variable; defaults to "full" for backward compat.
-import os as _os
-
 _profile = _os.environ.get("VCMIX_PROFILE", "full")
 app = create_app(profile=_profile)  # type: ignore[arg-type]

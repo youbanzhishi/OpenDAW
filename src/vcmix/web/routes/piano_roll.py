@@ -7,10 +7,9 @@ Provides:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from vcmix.web.project_manager import ProjectManager

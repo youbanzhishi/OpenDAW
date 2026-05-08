@@ -25,10 +25,9 @@ from typing import Any
 
 import numpy as np
 
-from vcmix.ai.music_theory import detect_key as ks_detect_key, NOTE_NAMES
-from vcmix.separation.reverse_analyzer import ReverseMixAnalyzer, StemMixAnalysis
+from vcmix.ai.music_theory import detect_key as ks_detect_key
 from vcmix.engine.analyzer import Analyzer
-
+from vcmix.separation.reverse_analyzer import ReverseMixAnalyzer
 
 # ── Data structures ─────────────────────────────────────────────────────
 

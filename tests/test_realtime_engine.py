@@ -14,13 +14,16 @@ All tests run without actual audio hardware (using mock/offline mode).
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import numpy as np
 import pytest
 
+from vcmix.engine.audio_driver import (
+    DriverConfig,
+    DriverType,
+    MockDriver,
+    SoundDeviceDriver,
+    create_driver,
+)
 from vcmix.engine.realtime_engine import (
     EngineState,
     RealtimeEngine,
@@ -28,22 +31,11 @@ from vcmix.engine.realtime_engine import (
     TrackClip,
 )
 from vcmix.engine.transport import (
-    TempoEvent,
     TempoTrack,
     TimeSignature,
     Transport,
     TransportState,
 )
-from vcmix.engine.audio_driver import (
-    AudioDriverBase,
-    DriverConfig,
-    DriverInfo,
-    DriverType,
-    MockDriver,
-    SoundDeviceDriver,
-    create_driver,
-)
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # TrackClip Tests
@@ -767,7 +759,7 @@ class TestRealtimeIntegration:
 
     def test_engine_with_transport(self):
         engine = RealtimeEngine(sample_rate=44100)
-        transport = Transport(sample_rate=44100, tempo=120.0)
+        Transport(sample_rate=44100, tempo=120.0)
 
         # Add a track
         track = engine.add_track("drums")

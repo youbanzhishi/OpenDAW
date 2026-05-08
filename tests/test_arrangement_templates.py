@@ -11,22 +11,19 @@ Covers:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-import pytest
 import yaml
 
+from vcmix.arrangement.template_applier import TemplateApplier
 from vcmix.arrangement.templates import (
+    TEMPLATE_REGISTRY,
     ArrangementTemplate,
     Section,
     TrackSpec,
-    TEMPLATE_REGISTRY,
     get_template,
     list_templates,
     list_templates_by_genre,
 )
-from vcmix.arrangement.template_applier import TemplateApplier
-
 
 # ── TrackSpec Tests ─────────────────────────────────────────────────────
 
@@ -451,6 +448,7 @@ class TestTemplateApplier:
 class TestArrangementCLI:
     def test_templates_command(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
 
         runner = CliRunner()
@@ -460,6 +458,7 @@ class TestArrangementCLI:
 
     def test_templates_json_output(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
 
         runner = CliRunner()
@@ -471,6 +470,7 @@ class TestArrangementCLI:
 
     def test_templates_genre_filter(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
 
         runner = CliRunner()
@@ -480,6 +480,7 @@ class TestArrangementCLI:
 
     def test_apply_template_command(self, tmp_path):
         from click.testing import CliRunner
+
         from vcmix.cli import main
 
         runner = CliRunner()
@@ -497,6 +498,7 @@ class TestArrangementCLI:
 
     def test_apply_template_not_found(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
 
         runner = CliRunner()
@@ -505,6 +507,7 @@ class TestArrangementCLI:
 
     def test_mix_presets_command(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
 
         runner = CliRunner()
@@ -514,6 +517,7 @@ class TestArrangementCLI:
 
     def test_mix_presets_json_output(self):
         from click.testing import CliRunner
+
         from vcmix.cli import main
 
         runner = CliRunner()

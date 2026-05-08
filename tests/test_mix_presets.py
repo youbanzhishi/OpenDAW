@@ -11,10 +11,9 @@ Covers:
 
 from __future__ import annotations
 
-import json
-
 import pytest
 
+from vcmix.arrangement.templates import get_template
 from vcmix.presets.mix_presets import (
     MIX_PRESET_REGISTRY,
     EffectPreset,
@@ -26,8 +25,6 @@ from vcmix.presets.mix_presets import (
     list_mix_presets_by_genre,
     suggest_mix_preset,
 )
-from vcmix.arrangement.templates import get_template
-
 
 # ── EffectPreset Tests ──────────────────────────────────────────────────
 

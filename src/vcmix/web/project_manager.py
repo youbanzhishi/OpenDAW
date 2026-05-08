@@ -32,8 +32,6 @@ from typing import Any
 
 import yaml
 
-from vcmix.config.parser import parse_project
-
 # ── Default projects directory ──────────────────────────────────────────────
 
 _PROJECTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "projects"

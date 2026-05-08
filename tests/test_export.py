@@ -18,7 +18,6 @@ Tests cover:
 from __future__ import annotations
 
 import shutil
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +25,6 @@ import pytest
 import soundfile as sf
 
 from vcmix.export.exporter import AudioExporter
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -142,7 +140,7 @@ class TestWavExport:
 
     def test_export_wav_16bit(self, exporter, sample_wav, tmp_path):
         output = tmp_path / "output_16bit.wav"
-        result = exporter.export(
+        exporter.export(
             str(sample_wav), str(output), "wav",
             quality={"subtype": "PCM_16"},
         )
@@ -152,7 +150,7 @@ class TestWavExport:
 
     def test_export_wav_32bit_float(self, exporter, sample_wav, tmp_path):
         output = tmp_path / "output_float.wav"
-        result = exporter.export(
+        exporter.export(
             str(sample_wav), str(output), "wav",
             quality={"subtype": "FLOAT"},
         )
@@ -162,7 +160,7 @@ class TestWavExport:
 
     def test_export_wav_stereo(self, exporter, stereo_wav, tmp_path):
         output = tmp_path / "output_stereo.wav"
-        result = exporter.export(str(stereo_wav), str(output), "wav")
+        exporter.export(str(stereo_wav), str(output), "wav")
         data, sr = sf.read(str(output))
         assert data.ndim == 2  # Stereo
         assert data.shape[1] == 2
@@ -189,7 +187,7 @@ class TestFlacExport:
 
     def test_export_flac_stereo(self, exporter, stereo_wav, tmp_path):
         output = tmp_path / "output_stereo.flac"
-        result = exporter.export(str(stereo_wav), str(output), "flac")
+        exporter.export(str(stereo_wav), str(output), "flac")
         data, sr = sf.read(str(output))
         assert data.ndim == 2
         assert data.shape[1] == 2
@@ -317,7 +315,7 @@ class TestStemExport:
 
     def test_export_stems_creates_output_dir(self, exporter, project_yaml, tmp_path):
         output_dir = tmp_path / "new_stems_dir"
-        results = exporter.export_stems(str(project_yaml), str(output_dir), "wav")
+        exporter.export_stems(str(project_yaml), str(output_dir), "wav")
         assert output_dir.exists()
 
     def test_export_stems_wav(self, exporter, project_yaml, tmp_path):

@@ -1386,7 +1386,11 @@ def generate_config_cmd(
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def list_arrangement_templates(genre: str | None, as_json: bool) -> None:
     """List available arrangement templates (Phase 12)."""
-    from vcmix.arrangement.templates import TEMPLATE_REGISTRY, list_templates, list_templates_by_genre
+    from vcmix.arrangement.templates import (
+        TEMPLATE_REGISTRY,
+        list_templates,
+        list_templates_by_genre,
+    )
 
     keys = list_templates_by_genre(genre) if genre else list_templates()
 
@@ -1425,8 +1429,8 @@ def list_arrangement_templates(genre: str | None, as_json: bool) -> None:
 def apply_template(template_name: str, bpm: float, musical_key: str, output: Path | None) -> None:
     """Apply an arrangement template to generate a VCMix YAML project (Phase 12)."""
     import vcmix
-    from vcmix.arrangement.templates import get_template
     from vcmix.arrangement.template_applier import TemplateApplier
+    from vcmix.arrangement.templates import get_template
 
     template = get_template(template_name)
     if template is None:
@@ -1458,7 +1462,11 @@ def apply_template(template_name: str, bpm: float, musical_key: str, output: Pat
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def list_mix_presets_cmd(genre: str | None, as_json: bool) -> None:
     """List available mix presets (Phase 12)."""
-    from vcmix.presets.mix_presets import MIX_PRESET_REGISTRY, list_mix_presets, list_mix_presets_by_genre
+    from vcmix.presets.mix_presets import (
+        MIX_PRESET_REGISTRY,
+        list_mix_presets,
+        list_mix_presets_by_genre,
+    )
 
     keys = list_mix_presets_by_genre(genre) if genre else list_mix_presets()
 
@@ -1697,6 +1705,7 @@ def serve(host: str, port: int, reload: bool, profile: str) -> None:
     """
     try:
         import uvicorn
+
         from vcmix.web.app import create_app
     except ImportError:
         click.secho(
@@ -2089,8 +2098,9 @@ def snapshots_cmd(project: Path, as_json: bool) -> None:
         vcmix snapshots project.yaml
         vcmix snapshots project.yaml --json
     """
-    import vcmix
     import hashlib
+
+    import vcmix
     from vcmix.project.version_manager import ProjectVersionManager
 
     try:
@@ -2130,8 +2140,9 @@ def restore_cmd(project: Path, snapshot: str) -> None:
 
         vcmix restore project.yaml --snapshot snap_12345_abc12345
     """
-    import vcmix
     import hashlib
+
+    import vcmix
     from vcmix.project.version_manager import ProjectVersionManager
 
     try:

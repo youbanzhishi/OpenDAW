@@ -27,7 +27,6 @@ from typing import Any
 import numpy as np
 from scipy.signal import welch
 
-
 # Standard 1/3-octave center frequencies (ISO 266)
 THIRD_OCTAVE_CENTER_FREQS = [
     20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160,

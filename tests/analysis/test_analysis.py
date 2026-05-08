@@ -7,7 +7,6 @@ Each analysis module has at least 3 tests.
 import numpy as np
 import pytest
 
-
 # ── Helper ────────────────────────────────────────────────────────────────
 
 def _sine(freq: float, duration: float = 2.0, sr: int = 44100, amp: float = 0.1) -> np.ndarray:
@@ -284,6 +283,7 @@ class TestReport:
     def test_json_output_valid(self):
         """JSON output should be valid JSON."""
         import json
+
         from vcmix.analysis.report import ReportGenerator
         gen = ReportGenerator()
         result = {"file": "test.wav", "duration": 10.0, "sample_rate": 44100}

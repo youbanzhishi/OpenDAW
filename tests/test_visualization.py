@@ -13,10 +13,7 @@ At least 30 tests.
 
 from __future__ import annotations
 
-import math
 import uuid
-from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pytest
@@ -224,8 +221,9 @@ class TestMidiNoteData:
 
     def test_demo_midi_has_chord(self):
         """Demo MIDI should include a chord (multiple notes at same beat)."""
-        from vcmix.web.routes.piano_roll import _generate_demo_midi
         from collections import Counter
+
+        from vcmix.web.routes.piano_roll import _generate_demo_midi
         result = _generate_demo_midi()
         beat_counts = Counter(n["start_beat"] for n in result["notes"])
         assert any(c >= 3 for c in beat_counts.values())
@@ -262,6 +260,7 @@ class TestVisualizationAPI:
     def client(self):
         """Create a test client."""
         from fastapi.testclient import TestClient
+
         from vcmix.web.app import create_app
         app = create_app()
         return TestClient(app)

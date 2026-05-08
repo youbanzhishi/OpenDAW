@@ -12,9 +12,8 @@ All 40+ tests use synthetic audio (numpy-generated) — no real model downloads.
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -28,7 +27,7 @@ from vcmix.separation.arrangement_analyzer import (
     analyze_arrangement,
 )
 from vcmix.separation.config_generator import VCMixConfigGenerator
-from vcmix.separation.demucs_engine import DemucsEngine, DEFAULT_STEMS
+from vcmix.separation.demucs_engine import DEFAULT_STEMS, DemucsEngine
 from vcmix.separation.reverse_analyzer import (
     CompressionParams,
     DelayParams,
@@ -40,7 +39,6 @@ from vcmix.separation.reverse_analyzer import (
     StemMixAnalysis,
     analyze_stem_mix,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════
 # Helper: synthetic audio generators
@@ -353,7 +351,7 @@ class TestReverbAnalysis:
         sr = 44100
         duration = 4.0
         n = int(sr * duration)
-        t = np.linspace(0, duration, n, endpoint=False, dtype=np.float64)
+        np.linspace(0, duration, n, endpoint=False, dtype=np.float64)
         # Impulse + exponential decay
         audio = np.zeros(n, dtype=np.float64)
         burst_end = int(sr * 0.1)
@@ -847,9 +845,10 @@ class TestCLICommands:
 
     def test_generate_config_with_demucs_mock(self, runner, wav_file, tmp_path):
         """generate-config with mocked demucs should produce a YAML file."""
+        import soundfile as sf
+
         from vcmix.cli import main
         from vcmix.separation.demucs_engine import DemucsEngine
-        import soundfile as sf
 
         # Create mock stem files
         stems_dir = tmp_path / "stems"

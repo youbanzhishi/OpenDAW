@@ -13,16 +13,13 @@ Tests cover:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import time
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from vcmix.web.collaboration import CollaborationManager, Room, User
-
 
 # ── Room Tests ────────────────────────────────────────────────────────────
 

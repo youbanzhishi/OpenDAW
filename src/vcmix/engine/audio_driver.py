@@ -154,7 +154,6 @@ class SoundDeviceDriver(AudioDriverBase):
         output_latency = 0.0
         if self._stream is not None:
             try:
-                import sounddevice as sd
                 lat = self._stream.latency
                 input_latency = (lat[0] or 0) * 1000  # seconds to ms
                 output_latency = (lat[1] or 0) * 1000

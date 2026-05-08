@@ -13,10 +13,9 @@ Works on top of VST3HostBridge or VST3Proxy.
 from __future__ import annotations
 
 import copy
-import json
 import struct
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Optional

@@ -10,38 +10,30 @@ Tests cover:
 from __future__ import annotations
 
 import pytest
-import numpy as np
 
-from vcmix.ai.music_theory import (
-    NOTE_NAMES,
-    SCALE_INTERVALS,
-    CHORD_QUALITY_INTERVALS,
-    Scale,
-    Chord,
-    ChordProgression,
-    PROGRESSION_LIBRARY,
-    GENRE_SCALE_MAP,
-    MOOD_SCALE_MAP,
-    KS_MAJOR_PROFILE,
-    KS_MINOR_PROFILE,
-    _normalize_note,
-    note_to_midi,
-    midi_to_note,
-    midi_to_note_with_octave,
-    semitones_between,
-    detect_key,
-    transpose_progression,
-    modal_interchange_chords,
-    list_progressions,
-    get_progression,
-)
 from vcmix.ai.composer import (
-    AIComposer,
-    CompositionResult,
     DRUM_PATTERNS,
     GENRE_INSTRUMENTS,
+    AIComposer,
+    CompositionResult,
 )
-
+from vcmix.ai.music_theory import (
+    NOTE_NAMES,
+    PROGRESSION_LIBRARY,
+    Chord,
+    ChordProgression,
+    Scale,
+    _normalize_note,
+    detect_key,
+    get_progression,
+    list_progressions,
+    midi_to_note,
+    midi_to_note_with_octave,
+    modal_interchange_chords,
+    note_to_midi,
+    semitones_between,
+    transpose_progression,
+)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Music Theory: Note helpers

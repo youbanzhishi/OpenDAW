@@ -25,21 +25,18 @@ Dependencies: numpy, soundfile, vcmix.analysis.*
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Any, Sequence
 
-import numpy as np
 import soundfile as sf
 
-from vcmix.analysis.loudness import LoudnessAnalyzer
-from vcmix.analysis.spectrum import SpectrumAnalyzer
 from vcmix.analysis.bpm import BPMDetector
-from vcmix.analysis.key_detection import KeyDetector
-from vcmix.analysis.sibilance import SibilanceDetector
 from vcmix.analysis.dynamics import DynamicsAnalyzer
+from vcmix.analysis.key_detection import KeyDetector
+from vcmix.analysis.loudness import LoudnessAnalyzer
 from vcmix.analysis.report import ReportGenerator
-
+from vcmix.analysis.sibilance import SibilanceDetector
+from vcmix.analysis.spectrum import SpectrumAnalyzer
 
 # All available analysis items
 ALL_ITEMS = {"loudness", "spectrum", "bpm", "key", "sibilance", "dynamics"}

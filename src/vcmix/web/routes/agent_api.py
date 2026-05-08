@@ -21,9 +21,9 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from vcmix.web.project_manager import ProjectManager
-from vcmix.web.analysis_service import AnalysisService
 from vcmix.web.ai_engine import AIEngine
+from vcmix.web.analysis_service import AnalysisService
+from vcmix.web.project_manager import ProjectManager
 
 router = APIRouter()
 

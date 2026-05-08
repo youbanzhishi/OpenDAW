@@ -7,10 +7,10 @@ lists, effect chains, section markers, and automation.
 """
 
 from vcmix.arrangement.templates import (
+    TEMPLATE_REGISTRY,
     ArrangementTemplate,
     Section,
     TrackSpec,
-    TEMPLATE_REGISTRY,
     get_template,
     list_templates,
     list_templates_by_genre,

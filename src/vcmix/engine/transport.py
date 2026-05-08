@@ -11,11 +11,9 @@ Provides:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Callable, Optional
-
-import numpy as np
 
 
 class TransportState(Enum):
@@ -76,7 +74,7 @@ class TempoTrack:
     def get_tempo_at_sample(self, sample: int, sample_rate: int) -> float:
         """Get the tempo at a given sample position."""
         seconds = sample / sample_rate
-        beats = seconds * current / 60.0  # approximate
+        beats = seconds * self.default_tempo / 60.0  # approximate
         return self.get_tempo_at_beat(beats)
 
     def clear(self) -> None:

@@ -22,13 +22,13 @@ Dependencies: numpy, scipy, librosa, soundfile
 from __future__ import annotations
 
 from vcmix.analysis.analyzer import AudioAnalyzer
-from vcmix.analysis.loudness import LoudnessAnalyzer
-from vcmix.analysis.spectrum import SpectrumAnalyzer
 from vcmix.analysis.bpm import BPMDetector
-from vcmix.analysis.key_detection import KeyDetector
-from vcmix.analysis.sibilance import SibilanceDetector
 from vcmix.analysis.dynamics import DynamicsAnalyzer
+from vcmix.analysis.key_detection import KeyDetector
+from vcmix.analysis.loudness import LoudnessAnalyzer
 from vcmix.analysis.report import ReportGenerator
+from vcmix.analysis.sibilance import SibilanceDetector
+from vcmix.analysis.spectrum import SpectrumAnalyzer
 
 __all__ = [
     "AudioAnalyzer",

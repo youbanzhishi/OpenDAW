@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -384,7 +383,7 @@ class AudioExporter:
         config = yaml.safe_load(content)
 
         tracks = config.get("tracks", [])
-        sends_config = config.get("sends", [])
+        config.get("sends", [])
 
         # Build bus -> tracks mapping
         bus_tracks: dict[str, list[dict]] = {}

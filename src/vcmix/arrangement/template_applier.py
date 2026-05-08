@@ -26,8 +26,8 @@ from typing import Any
 
 import yaml
 
-from vcmix.arrangement.templates import ArrangementTemplate, Section, TrackSpec
-from vcmix.presets.mix_presets import get_mix_preset, list_mix_presets
+from vcmix.arrangement.templates import ArrangementTemplate, TrackSpec
+from vcmix.presets.mix_presets import get_mix_preset
 
 
 class TemplateApplier:
@@ -289,7 +289,6 @@ class TemplateApplier:
     @classmethod
     def _recommend_mix_preset_obj(cls, genre: str):
         """Get the MixPreset object for a genre."""
-        from vcmix.presets.mix_presets import MixPreset
         name = cls._recommend_mix_preset(genre)
         if name:
             return get_mix_preset(name)

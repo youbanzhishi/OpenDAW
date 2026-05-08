@@ -18,8 +18,6 @@ import json
 import os
 import tempfile
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -42,7 +40,6 @@ from vcmix.vst3.vst3_scanner_v2 import (
     ScanCache,
     VST3ScannerV2,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # VST3HostBridge Tests
@@ -207,7 +204,7 @@ class TestVST3HostBridge:
 
     def test_bridge_close(self):
         bridge = VST3HostBridge()
-        handle = bridge.load_plugin("/usr/lib/vst3/Test.vst3")
+        bridge.load_plugin("/usr/lib/vst3/Test.vst3")
         bridge.close()
         assert len(bridge.get_loaded_plugins()) == 0
 
@@ -626,7 +623,7 @@ class TestVST3ScannerV2:
                 # Second scan should be faster (from cache)
                 start = time.time()
                 plugins2 = scanner.scan()
-                elapsed = time.time() - start
+                time.time() - start
                 assert len(plugins1) == len(plugins2)
 
 

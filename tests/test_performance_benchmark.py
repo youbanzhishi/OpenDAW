@@ -20,14 +20,11 @@ Dependencies: pytest, numpy, soundfile, pyyaml
 
 from __future__ import annotations
 
-import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pytest
 import soundfile as sf
 import yaml
 
@@ -35,7 +32,6 @@ from vcmix.config.parser import parse_project
 from vcmix.engine.audio_cache import AudioCache
 from vcmix.engine.renderer import Renderer
 from vcmix.export.exporter import AudioExporter
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -137,12 +133,12 @@ class TestPerformanceBenchmark:
         # First read (miss)
         t0 = time.time()
         data1, sr1 = cache.load(wav_path)
-        miss_time = time.time() - t0
+        time.time() - t0
 
         # Second read (hit)
         t0 = time.time()
         data2, sr2 = cache.load(wav_path)
-        hit_time = time.time() - t0
+        time.time() - t0
 
         stats = cache.stats()
         assert stats["hits"] == 1
@@ -156,7 +152,7 @@ class TestPerformanceBenchmark:
         """AudioCache should have good hit rate for multi-track projects."""
         cfg = _create_benchmark_project(tmp_path, n_tracks=8, duration=2.0)
         renderer = Renderer(cfg, stream="none")
-        output = renderer.run()
+        renderer.run()
 
         stats = renderer.get_cache_stats()
         # All tracks should be loaded at least once
@@ -222,7 +218,7 @@ class TestPerformanceBenchmark:
         inc1 = IncrementalRenderer(renderer1)
         t0 = time.time()
         output1 = inc1.run()
-        first_time = time.time() - t0
+        time.time() - t0
 
         assert output1.exists()
 
@@ -231,7 +227,7 @@ class TestPerformanceBenchmark:
         inc2 = IncrementalRenderer(renderer2)
         t0 = time.time()
         output2 = inc2.run(changed_tracks=set())
-        second_time = time.time() - t0
+        time.time() - t0
 
         assert output2.exists()
         # Second run should be at least as fast (cache helps)

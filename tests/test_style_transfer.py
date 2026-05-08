@@ -14,7 +14,6 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 
 def _make_sine(freq=440.0, duration=5.0, sr=44100, amplitude=0.5):
@@ -266,7 +265,7 @@ class TestReferenceMatcherV2Detailed:
 class TestRemixEngineDetailed:
     def test_build_remix_config(self):
         from vcmix.ai.remix import RemixEngine
-        from vcmix.ai.transcription import TranscriptionResult, BPMInfo, KeyInfo
+        from vcmix.ai.transcription import BPMInfo, KeyInfo, TranscriptionResult
 
         engine = RemixEngine()
         transcription = TranscriptionResult(
@@ -294,7 +293,7 @@ class TestRemixEngineDetailed:
 
     def test_build_remix_config_new_stem_not_in_ref(self):
         from vcmix.ai.remix import RemixEngine
-        from vcmix.ai.transcription import TranscriptionResult, BPMInfo, KeyInfo
+        from vcmix.ai.transcription import BPMInfo, KeyInfo, TranscriptionResult
 
         engine = RemixEngine()
         transcription = TranscriptionResult(
@@ -377,7 +376,6 @@ class TestRemixEngineDetailed:
 class TestIntegration:
     def test_transcription_to_style_transfer(self):
         """Test that transcription results can feed into style transfer."""
-        from vcmix.ai.transcription import AITranscription
         from vcmix.ai.style_transfer import StyleTransfer
 
         # Generate synthetic audio

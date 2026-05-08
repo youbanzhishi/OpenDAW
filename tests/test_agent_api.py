@@ -21,11 +21,7 @@ Coverage:
 
 from __future__ import annotations
 
-import json
-import shutil
-import tempfile
 import uuid
-from pathlib import Path
 
 import pytest
 
@@ -33,6 +29,7 @@ import pytest
 
 try:
     from fastapi.testclient import TestClient
+
     from vcmix.web.app import app
     HAS_FASTAPI = True
 except ImportError:
@@ -1073,7 +1070,7 @@ class TestIntegration:
 
         resp = client.post(f"/api/v1/projects/{pid}/render", json={})
         assert resp.status_code == 200
-        job_id = resp.json()["job_id"]
+        resp.json()["job_id"]
 
         import time
         time.sleep(1)

@@ -14,7 +14,6 @@ Tests cover:
 from __future__ import annotations
 
 import hashlib
-import shutil
 import time
 from pathlib import Path
 
@@ -22,7 +21,6 @@ import pytest
 import yaml
 
 from vcmix.project.version_manager import ProjectVersionManager
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────
 
@@ -82,7 +80,7 @@ class TestVersionManagerInit:
 
     def test_creates_snapshot_dir(self, tmp_path):
         snapshot_dir = tmp_path / "new_snapshots"
-        vm = ProjectVersionManager(base_dir=snapshot_dir)
+        ProjectVersionManager(base_dir=snapshot_dir)
         assert snapshot_dir.exists()
 
     def test_default_base_dir(self):
@@ -154,9 +152,9 @@ class TestSnapshotListing:
         assert len(snapshots) == 2
 
     def test_list_snapshots_sorted_newest_first(self, vm, project_yaml, project_id):
-        id1 = vm.create_snapshot(str(project_yaml), "v1")
+        vm.create_snapshot(str(project_yaml), "v1")
         time.sleep(1.1)  # Ensure different timestamp (1s granularity)
-        id2 = vm.create_snapshot(str(project_yaml), "v2")
+        vm.create_snapshot(str(project_yaml), "v2")
         snapshots = vm.list_snapshots(project_id)
         assert len(snapshots) == 2
         assert snapshots[0]["timestamp"] >= snapshots[1]["timestamp"]  # Newest first

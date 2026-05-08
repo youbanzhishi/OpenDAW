@@ -21,9 +21,8 @@ from typing import Any
 import numpy as np
 import yaml
 
-from vcmix.separation.reverse_analyzer import StemMixAnalysis
 from vcmix.separation.arrangement_analyzer import ArrangementTimeline
-
+from vcmix.separation.reverse_analyzer import StemMixAnalysis
 
 # ── Default effect parameters per stem type ───────────────────────────
 

@@ -36,10 +36,9 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import json
-import time
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -122,7 +121,7 @@ class CollaborationManager:
             # Remove user from previous room if they were in one
             for pid, r in self.rooms.items():
                 if user_id in r.users and pid != project_id:
-                    old_ws = r.users[user_id].websocket
+                    r.users[user_id].websocket
                     del r.users[user_id]
                     # Schedule notification (don't await inside lock)
                     _notify_task = (pid, user_id, "user_left", r.user_ids)

@@ -14,12 +14,9 @@ Validates:
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path
-
-import pytest
 
 # Project root directory
 ROOT = Path(__file__).resolve().parent.parent

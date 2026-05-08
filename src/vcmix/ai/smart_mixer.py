@@ -29,9 +29,8 @@ from typing import Any
 
 import numpy as np
 
-from vcmix.engine.analyzer import Analyzer
 from vcmix.audio.meter import Meter
-
+from vcmix.engine.analyzer import Analyzer
 
 # ── Target thresholds ────────────────────────────────────────────────────
 
@@ -285,8 +284,9 @@ class SmartMixer:
 
     def _load_config(self, path: str) -> dict[str, Any]:
         """Load a VCMix YAML config from file path."""
-        import yaml
         from pathlib import Path
+
+        import yaml
         p = Path(path)
         if not p.exists():
             raise FileNotFoundError(f"Config not found: {path}")

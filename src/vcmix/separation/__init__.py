@@ -10,10 +10,10 @@ from vcmix.separation.config_generator import VCMixConfigGenerator
 from vcmix.separation.demucs_engine import DemucsEngine
 from vcmix.separation.demucs_wrapper import separate_stems
 from vcmix.separation.reverse_analyzer import (
-    EQBand,
-    EQCurve,
     CompressionParams,
     DelayParams,
+    EQBand,
+    EQCurve,
     PanParams,
     ReverbParams,
     ReverseMixAnalyzer,

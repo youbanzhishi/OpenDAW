@@ -38,7 +38,6 @@ from typing import Any
 
 import numpy as np
 
-
 # Krumhansl-Schmuckler key profiles (from VC-Tune KeyDetector)
 KS_MAJOR_PROFILE = np.array([
     6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88
@@ -66,7 +65,7 @@ class KeyDetector:
 
     Uses librosa CENS chroma features + HPSS harmonic separation
     for robust key identification.
-    
+
     CENS (Chroma Energy Normalized Statistics) is preferred over CQT
     for key detection because it normalizes energy across octaves,
     reducing the influence of harmonics that flatten the chroma profile.
