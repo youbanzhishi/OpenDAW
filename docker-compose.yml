@@ -1,28 +1,42 @@
 # ============================================================
-# VCMix Docker Compose 配置
+# VCMix Docker Compose 配置（双方案）
 # ============================================================
-# 使用方法：
+# 方案B（推荐，预构建镜像）：
 #   1. 复制 .env.example 为 .env，按需修改
 #   2. docker compose up -d
 #   3. 浏览器访问 http://你的IP:端口
 #
-# 只需3个文件即可部署：Dockerfile / docker-compose.yml / .env.example
-# 源码和CLI插件都在构建时自动从GitHub下载
+# 方案A（自建镜像）：
+#   1. 复制 .env.example 为 .env，按需修改
+#   2. docker compose up -d --build
+#   3. 需要 Dockerfile 在同目录，服务器至少2G内存
+#
+# 预构建方案只需2个文件：docker-compose.yml / .env
+# 自建方案需要3个文件：Dockerfile / docker-compose.yml / .env
 # ============================================================
 
 version: "3.8"
 
 services:
   vcmix:
-    # ── 镜像构建 ──────────────────────────────────────────
+    # ── 镜像（默认使用预构建镜像）──────────────────────────
+    # 方案B（推荐）：docker compose up -d          → 自动pull预构建镜像
+    # 方案A：       docker compose up -d --build   → 本地构建
+    #
+    # 预构建镜像地址：ghcr.io/youbanzhishi/vcmix
+    # 可用标签：core-latest / full-latest / core-v0.22.2 / full-v0.22.2
+    image: ghcr.io/youbanzhishi/vcmix:${VCMIX_PROFILE:-core}-${VCMIX_IMAGE_TAG:-latest}
+
+    # ── 自建镜像构建配置 ─────────────────────────────────
+    # 仅方案A需要，docker compose up -d --build 时生效
+    # 构建时自动从GitHub下载源码和CLI插件
     build:
       context: .
-      # 构建参数：从.env读取
       args:
         VCMIX_PROFILE: ${VCMIX_PROFILE:-core}
-        OPENDAW_VERSION: ${OPENDAW_VERSION:-v0.22.0}
-        AUDIOFX_RELEASE_VERSION: ${AUDIOFX_RELEASE_VERSION:-v2.7.0}
-    image: vcmix:${VCMIX_PROFILE:-core}
+        OPENDAW_VERSION: ${OPENDAW_VERSION:-v0.22.2}
+        AUDIOFX_RELEASE_VERSION: ${AUDIOFX_RELEASE_VERSION:-v2.8.0}
+
     container_name: vcmix-server
 
     # ── 端口映射 ──────────────────────────────────────────

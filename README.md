@@ -143,6 +143,33 @@ vcmix presets
 | 5 | Cache error |
 | 6 | Missing dependency |
 
+## Docker Deployment
+
+VCMix supports two Docker deployment approaches:
+
+### Quick Deploy (Pre-built Image, Recommended)
+
+```bash
+cp .env.example .env
+docker compose up -d
+# Visit http://your-server-ip:8000
+```
+
+No build required. Works on 1GB servers. See [DEPLOY.md](DEPLOY.md) for details.
+
+### Self-build
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+See [DEPLOY.md](DEPLOY.md) for full documentation including:
+- Pre-built vs self-build comparison
+- Core vs Full mode features
+- Environment variable reference
+- Troubleshooting (memory issues, network problems)
+
 ## Related Projects
 
 - [AudioFX](https://github.com/youbanzhishi/AudioFX) — VC Plugin Series (VST3 effects + CLI tools)
