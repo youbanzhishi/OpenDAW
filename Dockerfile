@@ -86,8 +86,15 @@ RUN set -eux; \
 RUN pip install --no-cache-dir ".[web]"
 
 # full模式：额外装AI依赖（Demucs/PyTorch，约1.5GB）
+# 策略：先单独装PyTorch CPU版（PyTorch官方源+超时重试），再装demucs
+# 避免aliyun镜像超时，PyTorch官方源更稳定
 RUN if [ "$VCMIX_PROFILE" = "full" ]; then \
-        pip install --no-cache-dir ".[ai]"; \
+        echo "Installing PyTorch CPU..."; \
+        pip install --no-cache-dir --timeout 300 --retries 5 \
+            --extra-index-url https://download.pytorch.org/whl/cpu \
+            torch torchaudio; \
+        echo "Installing Demucs..."; \
+        pip install --no-cache-dir --timeout 300 --retries 5 ".[ai]"; \
     fi
 
 # ── VC插件CLI二进制（24个，共~1.3MB）──────────────────────
