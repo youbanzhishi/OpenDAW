@@ -1054,6 +1054,7 @@ class TestIntegration:
         data = resp.json()
         assert data["status"] == "ok"
         assert data["version"] == "0.17.0"
+        assert data["profile"] in ("core", "full")
 
     def test_original_api_still_works(self, client):
         resp = client.get("/api/plugins")

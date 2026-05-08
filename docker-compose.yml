@@ -1,21 +1,41 @@
-version: '3.8'
+version: "3.8"
 
 services:
   vcmix:
-    build: .
+    build:
+      context: .
+      args:
+        VCMIX_PROFILE: ${VCMIX_PROFILE:-core}
+        AUDIOFX_RELEASE_VERSION: ${AUDIOFX_RELEASE_VERSION:-v2.6.0}
+    image: vcmix:${VCMIX_PROFILE:-core}
     container_name: vcmix-server
     ports:
-      - "8000:8000"
+      - "${VCMIX_PORT:-8000}:8000"
     volumes:
-      - ./projects:/app/projects
-      - ./output:/app/output
+      - ${VCMIX_PROJECTS_DIR:-./projects}:/app/projects
+      - ${VCMIX_OUTPUT_DIR:-./output}:/app/output
       - ./presets:/app/presets:ro
     environment:
-      - VCMIx_LOG_LEVEL=info
+      - VCMIX_PROFILE=${VCMIX_PROFILE:-core}
+      - VCMIX_LOG_LEVEL=${VCMIX_LOG_LEVEL:-info}
+      - VC_AUDIOFX_DIR=/app/plugins
+    deploy:
+      resources:
+        limits:
+          memory: ${VCMIX_MEMORY_LIMIT:-512M}
+          cpus: "${VCMIX_CPU_LIMIT:-1.0}"
+        reservations:
+          memory: 256M
+          cpus: "0.5"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/plugins')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

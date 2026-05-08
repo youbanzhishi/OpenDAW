@@ -1669,15 +1669,29 @@ def compose_and_mix_cmd(
 @click.option("--host", default="127.0.0.1", help="Bind host address")
 @click.option("--port", default=8000, type=int, help="Bind port number")
 @click.option("--reload", is_flag=True, help="Enable auto-reload (development)")
-def serve(host: str, port: int, reload: bool) -> None:
+@click.option(
+    "--profile", type=click.Choice(["core", "full"]), default="full",
+    help="Startup profile: core (lightweight, ~40% less memory) or full (all features)",
+)
+def serve(host: str, port: int, reload: bool, profile: str) -> None:
     """Start VCMix web UI server.
 
     Launches the FastAPI-based web interface, providing both REST API
     and WebSocket endpoints for AI Agent and human interaction.
 
+    Profiles:
+        core — Lightweight mode: render/plugins/presets/midi/automation/
+               arrangement/automix + agent_api basic endpoints.
+               No AI transcription, collaboration, or visualization routes.
+               Recommended for 1G memory servers.
+
+        full — All features including AI transcription, collaboration,
+               waveform/spectrum/piano-roll visualization. (default)
+
     Examples:
 
         vcmix serve
+        vcmix serve --profile core
         vcmix serve --host 0.0.0.0 --port 8080
         vcmix serve --reload
     """
@@ -1691,8 +1705,17 @@ def serve(host: str, port: int, reload: bool) -> None:
         )
         sys.exit(6)
 
-    app = create_app()
-    click.secho(f"♫ VCMix web UI → http://{host}:{port}", fg="cyan", bold=True)
+    # Set VCMIX_PROFILE env var so module-level app instance picks it up
+    import os
+    os.environ["VCMIX_PROFILE"] = profile
+
+    app = create_app(profile=profile)  # type: ignore[arg-type]
+
+    if profile == "core":
+        click.secho(f"♫ VCMix web UI (core profile) → http://{host}:{port}", fg="cyan", bold=True)
+        click.secho("  ⚡ Core mode: AI/collab/visualization endpoints disabled", fg="yellow")
+    else:
+        click.secho(f"♫ VCMix web UI → http://{host}:{port}", fg="cyan", bold=True)
 
     if reload:
         uvicorn.run(
