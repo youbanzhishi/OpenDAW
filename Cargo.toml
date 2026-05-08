@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "audio-engine",
+    "jsfx-engine",
+]
+exclude = [
+    "opendaw-extension",
+    "opendaw-core",
+    "plugin-host",
+]
+resolver = "2"

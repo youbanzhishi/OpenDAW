@@ -1,0 +1,19 @@
+[package]
+name = "audio-engine"
+version = "0.1.0"
+edition = "2021"
+description = "OpenDAW音频引擎核心 - CPAL实时音频I/O"
+
+[features]
+default = []
+audio = ["cpal"]
+
+[dependencies]
+cpal = { version = "0.15", optional = true }
+crossbeam-channel = "0.5"
+parking_lot = "0.12"
+thiserror = "1.0"
+
+[[example]]
+name = "play_sine"
+required-features = ["audio"]
