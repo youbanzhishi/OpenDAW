@@ -610,10 +610,15 @@ class TestVST3ScannerV2:
             f.write(b"test data for checksum")
             f.flush()
             fname = f.name
-        # Close file before unlink on Windows (file locking)
         checksum = VST3ScannerV2._compute_checksum(fname)
         assert len(checksum) == 32  # MD5 hex
-        os.unlink(fname)
+        # Windows: retry unlink to handle brief file lock after close
+        for _ in range(5):
+            try:
+                os.unlink(fname)
+                break
+            except PermissionError:
+                import time; time.sleep(0.1)
 
     def test_incremental_scan(self):
         """Test that unchanged plugins are served from cache."""
