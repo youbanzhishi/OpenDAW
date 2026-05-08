@@ -1753,7 +1753,7 @@ def serve(host: str, port: int, reload: bool, profile: str) -> None:
 def transcribe_cmd(
     reference: Path, output_dir: Path | None, as_json: bool,
 ) -> None:
-    """AI transcription --扒带 reference track into editable VCMix project (Phase 17).
+    """AI transcription --transcribe reference track into editable VCMix project (Phase 17).
 
     Analyzes a reference audio track and generates a complete VCMix project
     with separated stems, reverse mixing analysis, BPM/key detection,
@@ -1887,7 +1887,7 @@ def remix_cmd(
 ) -> None:
     """One-click Remix -- blend reference style with new stems (Phase 17).
 
-    Analyzes the reference track, replaces specified stems with new素材,
+    Analyzes the reference track, replaces specified stems with new stems,
     and auto-mixes everything in the reference's style.
     """
     import vcmix
