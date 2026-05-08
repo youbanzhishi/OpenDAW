@@ -1,0 +1,43 @@
+[package]
+name = "plugin-host"
+version = "0.1.0"
+edition = "2021"
+description = "OpenDAW 插件宿主 - 加载/管理/调度插件链，支持 VST3/CLAP/VC-Plugin 多格式"
+
+[dependencies]
+opendaw-extension = { path = "../opendaw-extension" }
+audio-engine = { path = "../audio-engine" }
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# WAV编码/解码（轻量，无外部C依赖）
+hound = "3.5"
+# 日志
+log = "0.4"
+
+# CLAP 插件支持 — 需要 Rust 1.85+ (clack-host 使用 edition 2024)
+clack-host = { version = "0.1", optional = true }
+
+# VST3 插件支持 — 预留，需要 FFI 绑定
+# vst3-sys = { version = "0.1", optional = true }
+
+[dev-dependencies]
+# 测试用临时目录
+tempfile = "3"
+# 日志输出
+env_logger = "0.11"
+
+[features]
+# 默认不启用 CLAP/VST3（需要 Rust 1.85+ / 特殊 FFI 依赖）
+default = []
+
+# CLAP 插件支持
+# 启用后需要 Rust 1.85+（clack-host 0.1 使用 edition 2024）
+clap = ["dep:clack-host"]
+
+# VST3 插件支持（预留）
+vst3 = []
+
+[[example]]
+name = "vc_plugin_demo"
+path = "examples/vc_plugin_demo.rs"

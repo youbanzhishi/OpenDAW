@@ -1,0 +1,21 @@
+desc:Simple Delay
+slider1:200<1,2000,1>Delay (ms)
+slider2:0.5<0,1,0.01>Feedback
+
+@init
+delay_pos = 0;
+delay_len = srate * 2;
+memory(0, delay_len);
+
+@slider
+// 参数更新在运行时自动读取slider值
+
+@sample
+rdpos = delay_pos - (slider1/1000 * srate);
+rdpos < 0 ? rdpos += delay_len;
+d = mem_get(rdpos);
+spl0 = spl0 + d;
+spl1 = spl1 + d;
+mem_set(delay_pos, spl0 * slider2);
+delay_pos += 1;
+delay_pos >= delay_len ? delay_pos = 0;

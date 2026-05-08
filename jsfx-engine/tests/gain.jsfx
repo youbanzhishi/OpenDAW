@@ -1,0 +1,9 @@
+desc:Simple Gain
+slider1:0<-150,150,0.1>Gain (dB)
+
+@slider
+gain = 2^(slider1/6);
+
+@sample
+spl0 *= gain;
+spl1 *= gain;
