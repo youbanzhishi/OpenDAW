@@ -24,7 +24,7 @@ pub struct AnalysisResult {
     pub project: String,
     pub bpm: f64,
     pub sample_rate: u32,
-    pub tracks: Vec<PresetInfo>,
+    pub tracks: Vec<serde_json::Value>,
     pub master: serde_json::Value,
 }
 
@@ -59,7 +59,7 @@ pub struct SpectrumData {
 
 #[derive(Debug, Serialize)]
 pub struct MidiNoteData {
-    pub notes: Vec<PresetInfo>,
+    pub notes: Vec<serde_json::Value>,
     pub note_count: usize,
     pub bpm: f64,
     pub total_beats: f64,
