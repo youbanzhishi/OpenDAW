@@ -549,7 +549,8 @@ class TestPerformanceBenchmark:
         cache.load(wav_path)
         hit_time = time.time() - t0
 
-        # Cache hit should be faster
-        assert hit_time <= miss_time * 2  # generous bound
+        # Cache hit should be faster (skip if miss_time too small to measure)
+        if miss_time > 1e-6:
+            assert hit_time <= miss_time * 2  # generous bound
         stats = cache.stats()
         assert stats["hit_rate"] > 0
