@@ -618,7 +618,7 @@ class TestVST3ScannerV2:
                 os.unlink(fname)
                 break
             except PermissionError:
-                import time; time.sleep(0.1)
+                time.sleep(0.1)
 
     def test_incremental_scan(self):
         """Test that unchanged plugins are served from cache."""
