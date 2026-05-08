@@ -65,3 +65,9 @@ desktop/src-tauri/frontend/
 # OS
 .DS_Store
 Thumbs.db
+
+# Desktop / Tauri
+desktop/node_modules/
+desktop/src-tauri/target/
+desktop/src-tauri/WixTools/
+desktop/src-tauri/Cargo.lock

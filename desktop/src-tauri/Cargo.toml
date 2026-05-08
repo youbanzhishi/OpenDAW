@@ -20,4 +20,8 @@ urlencoding = "2"
 
 [lib]
 name = "vcmix_desktop_lib"
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "vcmix-desktop"
+path = "src/main.rs"
