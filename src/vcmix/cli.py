@@ -320,6 +320,9 @@ def analyze(audio_file: Path, items: str | None, output_format: str, duration: f
     """Analyze audio file: loudness, spectrum, BPM, key, sibilance, dynamics."""
 
     import vcmix
+    import warnings
+    # Suppress librosa UserWarnings about n_fft being too large for short signals
+    warnings.filterwarnings("ignore", message=".*n_fft.*is too large.*")
 
     try:
         from vcmix.analysis import AudioAnalyzer

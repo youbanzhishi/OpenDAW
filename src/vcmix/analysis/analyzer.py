@@ -141,28 +141,46 @@ class AudioAnalyzer:
         }
 
         if "loudness" in active_items:
-            loudness_result = self._loudness.analyze(audio)
-            result["loudness"] = self._loudness.to_dict(loudness_result)
+            try:
+                loudness_result = self._loudness.analyze(audio)
+                result["loudness"] = self._loudness.to_dict(loudness_result)
+            except Exception as exc:
+                result["loudness"] = {"error": str(exc)}
 
         if "spectrum" in active_items:
-            spectrum_result = self._spectrum.analyze(audio)
-            result["spectrum"] = self._spectrum.to_dict(spectrum_result)
+            try:
+                spectrum_result = self._spectrum.analyze(audio)
+                result["spectrum"] = self._spectrum.to_dict(spectrum_result)
+            except Exception as exc:
+                result["spectrum"] = {"error": str(exc)}
 
         if "bpm" in active_items:
-            bpm_result = self._bpm.analyze(audio, sample_rate=actual_sr)
-            result["bpm"] = self._bpm.to_dict(bpm_result)
+            try:
+                bpm_result = self._bpm.analyze(audio, sample_rate=actual_sr)
+                result["bpm"] = self._bpm.to_dict(bpm_result)
+            except Exception as exc:
+                result["bpm"] = {"error": str(exc)}
 
         if "key" in active_items:
-            key_result = self._key.analyze(audio, sample_rate=actual_sr)
-            result["key"] = self._key.to_dict(key_result)
+            try:
+                key_result = self._key.analyze(audio, sample_rate=actual_sr)
+                result["key"] = self._key.to_dict(key_result)
+            except Exception as exc:
+                result["key"] = {"error": str(exc)}
 
         if "sibilance" in active_items:
-            sibilance_result = self._sibilance.analyze(audio)
-            result["sibilance"] = self._sibilance.to_dict(sibilance_result)
+            try:
+                sibilance_result = self._sibilance.analyze(audio)
+                result["sibilance"] = self._sibilance.to_dict(sibilance_result)
+            except Exception as exc:
+                result["sibilance"] = {"error": str(exc)}
 
         if "dynamics" in active_items:
-            dynamics_result = self._dynamics.analyze(audio)
-            result["dynamics"] = self._dynamics.to_dict(dynamics_result)
+            try:
+                dynamics_result = self._dynamics.analyze(audio)
+                result["dynamics"] = self._dynamics.to_dict(dynamics_result)
+            except Exception as exc:
+                result["dynamics"] = {"error": str(exc)}
 
         return result
 

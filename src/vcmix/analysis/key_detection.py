@@ -36,6 +36,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import warnings
+
 import numpy as np
 
 # Krumhansl-Schmuckler key profiles (from VC-Tune KeyDetector)
@@ -84,6 +86,7 @@ class KeyDetector:
         """
         try:
             import librosa
+            warnings.filterwarnings("ignore", message=".*n_fft.*is too large.*")
         except ImportError:
             raise ImportError(
                 "librosa is required for key detection. "

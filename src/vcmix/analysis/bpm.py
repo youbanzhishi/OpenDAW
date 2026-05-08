@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import warnings
+
 import numpy as np
 
 
@@ -48,6 +50,7 @@ class BPMDetector:
         """
         try:
             import librosa
+            warnings.filterwarnings("ignore", message=".*n_fft.*is too large.*")
         except ImportError:
             raise ImportError(
                 "librosa is required for BPM detection. "
@@ -103,6 +106,7 @@ class BPMDetector:
         """
         try:
             import librosa
+            warnings.filterwarnings("ignore", message=".*n_fft.*is too large.*")
         except ImportError:
             return 0.5
 
