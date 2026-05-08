@@ -35,11 +35,15 @@ static BACKEND_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
 // ── Backend Management ───────────────────────────────────────────────────
 
 pub fn spawn_backend() -> Result<u32, String> {
-    let (cmd, args) = if cfg!(debug_assertions) {
-        ("python".to_string(), vec!["-m".to_string(), BACKEND_MODULE.to_string()])
+    let cmd: String;
+    let args: Vec<String>;
+
+    if cfg!(debug_assertions) {
+        cmd = "python".to_string();
+        args = vec!["-m".to_string(), BACKEND_MODULE.to_string()];
     } else {
-        let binary_path = get_bundled_backend_path();
-        (binary_path, vec![])
+        cmd = get_bundled_backend_path();
+        args = vec![];
     };
 
     println!("[VCMix] Spawning backend: {} {}", cmd, args.join(" "));

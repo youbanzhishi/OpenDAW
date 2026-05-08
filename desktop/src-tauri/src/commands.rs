@@ -157,7 +157,7 @@ pub async fn list_presets(state: State<'_, BackendState>) -> Result<PresetList, 
     let url = format!("{}/api/presets", state.base_url);
     let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
-    let presets: Vec<_> = data.get("presets").and_then(|v| v.as_array()).cloned().unwrap_or_default()
+    let presets: Vec<serde_json::Value> = data.get("presets").and_then(|v| v.as_array()).cloned().unwrap_or_default()
         .iter().map(|p| PresetInfo {
             name: p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
             description: p.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
