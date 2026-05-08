@@ -18,6 +18,7 @@ import json
 import os
 import tempfile
 import time
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -591,7 +592,7 @@ class TestVST3ScannerV2:
         scanner = VST3ScannerV2(extra_paths=["/custom/vst3"])
         paths = scanner.get_all_search_paths()
         assert len(paths) > 0
-        has_custom = any(str(p) == "/custom/vst3" for p in paths)
+        has_custom = any(p == Path("/custom/vst3") for p in paths)
         assert has_custom
 
     def test_scan_with_extra_paths(self):
