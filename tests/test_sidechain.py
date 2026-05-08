@@ -140,7 +140,29 @@ class TestSidechainProcessing:
     def test_sidechain_simulation_modifies_gain(self):
         """Sidechain simulation should apply gain envelope from sidechain."""
         adapter = VCPluginAdapter("vc-comp")
-        # Create a main signal and a sidechain with varying level
+
+        # Mock process to simulate compression (since VC CLI is not available in CI)
+        def mock_compress(audio, params, sample_rate=44100):
+            threshold_db = params.get("threshold", -20)
+            ratio = params.get("ratio", 4)
+            threshold_lin = 10 ** (threshold_db / 20)
+            audio_f = audio.flatten().astype(np.float64)
+            # Per-block RMS compression (50ms blocks)
+            block_size = max(1, int(sample_rate * 0.05))
+            n_blocks = len(audio_f) // block_size
+            for i in range(n_blocks):
+                start = i * block_size
+                end = start + block_size
+                rms = np.sqrt(np.mean(audio_f[start:end] ** 2))
+                if rms > threshold_lin:
+                    over_db = 20 * np.log10(rms / threshold_lin)
+                    reduced_db = over_db / ratio
+                    gain = 10 ** ((reduced_db - over_db) / 20)
+                    audio_f[start:end] *= gain
+            return audio_f.reshape(audio.shape).astype(np.float32)
+
+        adapter.process = mock_compress
+
         sr = 44100
         main_audio = np.ones(sr, dtype=np.float32) * 0.5
         # Sidechain with a transient spike
