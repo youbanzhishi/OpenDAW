@@ -402,30 +402,32 @@ tracks:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(yaml_content)
             f.flush()
+            tmp_name = f.name
 
-            from vcmix.config.parser import parse_project
-            config = parse_project(f.name)
+        # File is now closed (exited the with block), safe to parse on Windows
+        from vcmix.config.parser import parse_project
+        config = parse_project(tmp_name)
 
-            # Build engine from parsed config
-            track_dicts = [
-                {
-                    "name": t.name,
-                    "file": t.file,
-                    "automation": t.automation,
-                }
-                for t in config.tracks
-                if t.automation
-            ]
-            engine = AutomationEngine.from_config(track_dicts, bpm=config.bpm)
+        # Build engine from parsed config
+        track_dicts = [
+            {
+                "name": t.name,
+                "file": t.file,
+                "automation": t.automation,
+            }
+            for t in config.tracks
+            if t.automation
+        ]
+        engine = AutomationEngine.from_config(track_dicts, bpm=config.bpm)
 
-            # Verify gain automation
-            params = engine.get_params_at_beat("vocal", 4.0)
-            assert "gain" in params
-            assert abs(params["gain"] - (-3.0)) < 0.01
+        # Verify gain automation
+        params = engine.get_params_at_beat("vocal", 4.0)
+        assert "gain" in params
+        assert abs(params["gain"] - (-3.0)) < 0.01
 
-            # Verify plugin automation
-            reverb_params = engine.get_plugin_params_at_beat("vocal", "vc-reverb", 8.0)
-            assert "wet" in reverb_params
-            assert abs(reverb_params["wet"] - 0.35) < 0.01
+        # Verify plugin automation
+        reverb_params = engine.get_plugin_params_at_beat("vocal", "vc-reverb", 8.0)
+        assert "wet" in reverb_params
+        assert abs(reverb_params["wet"] - 0.35) < 0.01
 
-            Path(f.name).unlink(missing_ok=True)
+        Path(tmp_name).unlink(missing_ok=True)
