@@ -7,9 +7,6 @@ on:
       - 'v*'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   build:
     name: Build Desktop (${{ matrix.target }})
@@ -70,8 +67,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: desktop
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          releaseName: ${{ github.ref_type == 'tag' && format('VCMix Desktop {0}', github.ref_name) || '' }}
+          tagName: ${{ github.ref_name }}
+          releaseName: 'VCMix Desktop ${{ github.ref_name }}'
           releaseBody: 'Cross-platform desktop build for ${{ matrix.target }}'
           releaseDraft: true
           prerelease: false
