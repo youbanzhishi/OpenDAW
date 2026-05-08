@@ -1,24 +1,53 @@
+# ============================================================
+# VCMix Docker Compose 配置
+# ============================================================
+# 使用方法：
+#   1. 复制 .env.example 为 .env，按需修改
+#   2. docker compose up -d
+#   3. 浏览器访问 http://你的IP:端口
+#
+# 只需3个文件即可部署：Dockerfile / docker-compose.yml / .env.example
+# 源码和CLI插件都在构建时自动从GitHub下载
+# ============================================================
+
 version: "3.8"
 
 services:
   vcmix:
+    # ── 镜像构建 ──────────────────────────────────────────
     build:
       context: .
+      # 构建参数：从.env读取
       args:
         VCMIX_PROFILE: ${VCMIX_PROFILE:-core}
-        AUDIOFX_RELEASE_VERSION: ${AUDIOFX_RELEASE_VERSION:-v2.6.0}
+        OPENDAW_VERSION: ${OPENDAW_VERSION:-v0.22.0}
+        AUDIOFX_RELEASE_VERSION: ${AUDIOFX_RELEASE_VERSION:-v2.7.0}
     image: vcmix:${VCMIX_PROFILE:-core}
     container_name: vcmix-server
+
+    # ── 端口映射 ──────────────────────────────────────────
+    # 左边是宿主机端口（改这个），右边是容器内端口（别动）
+    # 改端口方法：在.env里设置 VCMIX_PORT=9000
     ports:
       - "${VCMIX_PORT:-8000}:8000"
+
+    # ── 数据卷挂载 ────────────────────────────────────────
+    # 项目文件目录（YAML混音工程文件存放处）
+    # 渲染输出目录（混音完成的MP3/WAV存放处）
+    # 支持相对路径(./)和绝对路径(/data/vcmix/)
     volumes:
       - ${VCMIX_PROJECTS_DIR:-./projects}:/app/projects
       - ${VCMIX_OUTPUT_DIR:-./output}:/app/output
-      - ./presets:/app/presets:ro
+
+    # ── 环境变量 ──────────────────────────────────────────
     environment:
-      - VCMIX_PROFILE=${VCMIX_PROFILE:-core}
-      - VCMIX_LOG_LEVEL=${VCMIX_LOG_LEVEL:-info}
-      - VC_AUDIOFX_DIR=/app/plugins
+      - VCMIX_PROFILE=${VCMIX_PROFILE:-core}     # 运行模式
+      - VCMIX_LOG_LEVEL=${VCMIX_LOG_LEVEL:-info}  # 日志级别
+      - VC_AUDIOFX_DIR=/app/plugins               # 插件路径（容器内固定）
+
+    # ── 资源限制 ──────────────────────────────────────────
+    # 1G服务器建议：内存512M（留给OS+其他服务），CPU 1核
+    # 4G+服务器可以放开：内存2G，CPU 2核
     deploy:
       resources:
         limits:
@@ -27,13 +56,23 @@ services:
         reservations:
           memory: 256M
           cpus: "0.5"
+
+    # ── 重启策略 ──────────────────────────────────────────
+    # 崩溃/服务器重启后自动拉起
     restart: unless-stopped
+
+    # ── 健康检查 ──────────────────────────────────────────
+    # 每30秒检查一次/api/health，启动后等15秒再开始检查
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+
+    # ── 日志配置 ──────────────────────────────────────────
+    # 限制日志文件大小，防止撑爆磁盘
+    # 最多3个文件，每个最大10MB
     logging:
       driver: json-file
       options:
