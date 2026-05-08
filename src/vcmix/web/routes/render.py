@@ -10,7 +10,7 @@ from __future__ import annotations
 import threading
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
@@ -53,10 +53,10 @@ class RenderStatusResponse(BaseModel):
     """Response for render job status."""
     job_id: str
     status: str  # pending | running | completed | failed
-    output_path: str | None = None
-    elapsed_s: float | None = None
+    output_path: Optional[str] = None
+    elapsed_s: Optional[float] = None
     events: list[dict[str, Any]] = []
-    error: str | None = None
+    error: Optional[str] = None
 
 
 # ── Background render task ───────────────────────────────────────────────

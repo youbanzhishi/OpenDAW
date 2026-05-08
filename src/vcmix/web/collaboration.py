@@ -41,7 +41,7 @@ import json
 import time
 import threading
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional, Union
 
 from fastapi import WebSocket
 
@@ -50,7 +50,7 @@ from fastapi import WebSocket
 class User:
     """Represents a connected user in a collaboration room."""
     user_id: str
-    websocket: WebSocket | None = None
+    websocket: Optional[WebSocket] = None
     joined_at: float = field(default_factory=time.time)
 
 
@@ -441,7 +441,7 @@ class CollaborationManager:
         self,
         project_id: str,
         message: dict[str, Any],
-        exclude_user: str | None = None,
+        exclude_user: Optional[str] = None,
     ) -> None:
         """Broadcast a message to all users in a room.
 
