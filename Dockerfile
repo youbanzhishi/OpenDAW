@@ -23,14 +23,27 @@ ARG VCMIX_PROFILE=core
 # OpenDAW源码版本（tag或branch）
 ARG OPENDAW_VERSION=v0.22.0
 # AudioFX CLI插件版本（tag）
-ARG AUDIOFX_RELEASE_VERSION=v2.6.0
+ARG AUDIOFX_RELEASE_VERSION=v2.7.0
+
+# ── 换国内源 ──────────────────────────────────────────────
+# apt换阿里云镜像（解决国内服务器apt慢/超时）
+RUN sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null; \
+    sed -i 's|deb.debian.org|mirrors.aliyun.com|g' /etc/apt/sources.list 2>/dev/null; \
+    true
+
+# pip换阿里云镜像
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip config set global.trusted-host mirrors.aliyun.com
 
 # ── 系统依赖 ──────────────────────────────────────────────
 # libsndfile1: 读写WAV/FLAC音频文件
 # ffmpeg: MP3/FLAC格式导出（必须有）
 # git: 克隆源码用
 # curl: 下载CLI二进制用
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 修复apt Post-Invoke脚本报错：删掉docker-clean配置
+RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
+    apt-get update || apt-get update && \
+    apt-get install -y --no-install-recommends \
     libsndfile1 \
     ffmpeg \
     git \
