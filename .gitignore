@@ -41,3 +41,27 @@ output/
 # Backups
 .backups/
 *.backup
+
+# Node
+node_modules/
+
+# VCMix temp projects
+projects/test_*
+projects/dup_*
+projects/fields_*
+projects/json_*
+projects/list_*
+projects/norender_*
+projects/pipe_*
+projects/render_*
+projects/viz_*
+projects/yaml_*
+projects/.recycle/
+
+# Tauri build
+desktop/src-tauri/target/
+desktop/src-tauri/frontend/
+
+# OS
+.DS_Store
+Thumbs.db

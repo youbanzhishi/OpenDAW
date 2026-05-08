@@ -1,8 +1,0 @@
-bpm: 100
-master:
-  effects: []
-  levels: {}
-  output: out.wav
-name: JsonUpdated
-sample_rate: 44100
-tracks: []
