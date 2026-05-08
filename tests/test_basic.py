@@ -138,7 +138,7 @@ bpm: 120
 sample_rate: 44100
 tracks:
   - name: vocal
-    file: "{sample_wav}"
+    file: "{sample_wav.as_posix()}"
     effects:
       - name: vc-delay
         params:

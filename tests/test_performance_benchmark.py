@@ -275,8 +275,8 @@ class TestPerformanceBenchmark:
         assert output1.exists()
         assert output2.exists()
         # Streaming overhead should be less than 3x (CI environments have variable performance)
-        assert stream_time < no_stream_time * 3.0  # CI environments have variable performance, (
-            f"Streaming ({stream_time:.2f}s) > 1.5x non-streaming ({no_stream_time:.2f}s)"
+        assert stream_time < no_stream_time * 3.0, (
+            f"Streaming ({stream_time:.2f}s) > 3x non-streaming ({no_stream_time:.2f}s)"
         )
 
     def test_large_project_render(self, tmp_path: Path) -> None:
