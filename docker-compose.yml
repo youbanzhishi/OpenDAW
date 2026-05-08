@@ -60,15 +60,16 @@ services:
       - VC_AUDIOFX_DIR=/app/plugins               # 插件路径（容器内固定）
 
     # ── 资源限制 ──────────────────────────────────────────
-    # 1G服务器建议：内存512M（留给OS+其他服务），CPU 1核
-    # 4G+服务器可以放开：内存2G，CPU 2核
+    # core模式：内存512M起步，1G服务器可用
+    # full模式：内存2G起步，4G+服务器推荐
+    # 修改方式：在.env里设置 VCMIX_MEMORY_LIMIT=2G
     deploy:
       resources:
         limits:
           memory: ${VCMIX_MEMORY_LIMIT:-512M}
           cpus: "${VCMIX_CPU_LIMIT:-1.0}"
         reservations:
-          memory: 256M
+          memory: ${VCMIX_MEMORY_RESERVATION:-256M}
           cpus: "0.5"
 
     # ── 重启策略 ──────────────────────────────────────────
