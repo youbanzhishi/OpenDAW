@@ -31,11 +31,11 @@ jobs:
       fail-fast: false
     runs-on: ubuntu-latest
 
-    # 手动触发时，如果选了core或full，只构建对应的
+    # 手动触发时可选只构建某一个profile；tag push时两个都构建
     if: |
       github.event_name == 'push' ||
-      inputs.profile == 'both' ||
-      inputs.profile == matrix.profile
+      github.event.inputs.profile == 'both' ||
+      github.event.inputs.profile == matrix.profile
 
     steps:
       - uses: actions/checkout@v4
@@ -77,6 +77,3 @@ jobs:
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=${{ matrix.profile }}
           cache-to: type=gha,mode=max,scope=${{ matrix.profile }}
-          # core模式限制内存使用
-          options: |
-            --memory=6g
