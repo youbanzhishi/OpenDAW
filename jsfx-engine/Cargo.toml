@@ -1,0 +1,13 @@
+[package]
+name = "jsfx-engine"
+version = "0.1.0"
+edition = "2021"
+description = "JSFX解释器 — 兼容Reaper自定义效果器的EEL2脚本引擎"
+
+
+[dependencies]
+
+[dev-dependencies]
+
+[[example]]
+name = "run_jsfx"

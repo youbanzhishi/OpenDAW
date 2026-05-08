@@ -20,7 +20,7 @@ Usage:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -43,7 +43,7 @@ class AnalysisService:
         self._analyzer = Analyzer()
         self._meter = Meter()
 
-    def analyze_project(self, yaml_path: Path | str) -> dict[str, Any]:
+    def analyze_project(self, yaml_path: Union[Path, str]) -> dict[str, Any]:
         """
         Analyze all tracks in a project.
 

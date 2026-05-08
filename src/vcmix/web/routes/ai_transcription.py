@@ -12,7 +12,7 @@ Endpoints:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -25,7 +25,7 @@ router = APIRouter()
 class TranscribeRequest(BaseModel):
     """Request body for AI transcription."""
     reference_path: str = Field(..., description="Path to reference audio file")
-    output_dir: str | None = Field(default=None, description="Output directory")
+    output_dir: Optional[str] = Field(default=None, description="Output directory")
 
 
 class TranscribeResponse(BaseModel):
@@ -64,7 +64,7 @@ class StyleTransferRequest(BaseModel):
     """Request body for style transfer."""
     reference_path: str = Field(..., description="Path to reference audio file")
     project_path: str = Field(..., description="Path to target project YAML")
-    output_path: str | None = Field(default=None, description="Output YAML path")
+    output_path: Optional[str] = Field(default=None, description="Output YAML path")
 
 
 class StyleTransferResponse(BaseModel):
@@ -85,9 +85,9 @@ class RemixRequest(BaseModel):
         default_factory=dict,
         description="Mapping of stem names to audio file paths"
     )
-    genre: str | None = Field(default=None, description="Override genre")
-    bpm: float | None = Field(default=None, description="Override BPM")
-    output_dir: str | None = Field(default=None, description="Output directory")
+    genre: Optional[str] = Field(default=None, description="Override genre")
+    bpm: Optional[float] = Field(default=None, description="Override BPM")
+    output_dir: Optional[str] = Field(default=None, description="Output directory")
 
 
 class RemixResponse(BaseModel):

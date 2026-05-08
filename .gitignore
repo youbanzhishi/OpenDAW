@@ -1,74 +1,67 @@
-# Python
-__pycache__/
-*.py[cod]
+
+*~
 *$py.class
-*.so
-*.egg-info/
-dist/
-build/
-.eggs/
-
-# Virtual environments
-.venv/
-venv/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-
-# OS
-.DS_Store
-Thumbs.db
-
 # Audio output (generated)
-output/
-*.wav
-!tests/fixtures/*.wav
-
-# Temp files
-*.tmp
-*.bak
-
-# Backups
-.backups/
 *.backup
-
+.backups/
+# Backups
+*.bak
+build/
+Cargo.lock
+.coverage
+desktop/node_modules/
+desktop/src-tauri/Cargo.lock
+desktop/src-tauri/frontend/
+desktop/src-tauri/target/
+desktop/src-tauri/WixTools/
+# Desktop / Tauri
+dist/
+.DS_Store
+*.egg-info/
+.eggs/
+env/
+htmlcov/
+# IDE
+.idea/
+.mypy_cache/
 # Node
 node_modules/
-
-# VCMix temp projects
-projects/test_*
+# OS
+output/
 projects/dup_*
 projects/fields_*
 projects/json_*
 projects/list_*
 projects/norender_*
 projects/pipe_*
+projects/.recycle/
 projects/render_*
+projects/test_*
 projects/viz_*
 projects/yaml_*
-projects/.recycle/
-
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Python
+*.so
+*.swo
+*.swp
+target/
 # Tauri build
-desktop/src-tauri/target/
-desktop/src-tauri/frontend/
-
-# OS
-.DS_Store
+# Temp files
+# Testing
+!tests/fixtures/*.wav
 Thumbs.db
-
 # Desktop / Tauri
 desktop/node_modules/
 desktop/src-tauri/target/
 desktop/src-tauri/WixTools/
 desktop/src-tauri/Cargo.lock
 Cargo.lock
+*.tmp
+# VCMix temp projects
+.venv/
+venv/
+# Virtual environments
+.vscode/
+*.wav

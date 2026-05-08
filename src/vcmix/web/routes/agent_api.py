@@ -16,7 +16,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -106,14 +106,14 @@ _ai_ws = AIDecisionManager()
 class ProjectCreate(BaseModel):
     """Request body for creating a project."""
     name: str = Field(..., min_length=1, max_length=100, description="Project name")
-    yaml_content: str | None = Field(default=None, description="YAML content string")
-    json_data: dict[str, Any] | None = Field(default=None, description="Project config as JSON dict")
+    yaml_content: Optional[str] = Field(default=None, description="YAML content string")
+    json_data: Optional[dict[str, Any]] = Field(default=None, description="Project config as JSON dict")
 
 
 class ProjectUpdate(BaseModel):
     """Request body for updating a project."""
-    yaml_content: str | None = Field(default=None, description="New YAML content")
-    json_data: dict[str, Any] | None = Field(default=None, description="New config as JSON dict")
+    yaml_content: Optional[str] = Field(default=None, description="New YAML content")
+    json_data: Optional[dict[str, Any]] = Field(default=None, description="New config as JSON dict")
 
 
 class TrackCreate(BaseModel):
@@ -129,12 +129,12 @@ class TrackCreate(BaseModel):
 
 class TrackUpdate(BaseModel):
     """Request body for updating a track."""
-    file: str | None = None
-    type: str | None = None
+    file: Optional[str] = None
+    type: Optional[str] = None
     effects: list[dict[str, Any]] | None = None
-    volume: float | None = None
-    mute: bool | None = None
-    solo: bool | None = None
+    volume: Optional[float] = None
+    mute: Optional[bool] = None
+    solo: Optional[bool] = None
 
 
 class EffectCreate(BaseModel):
@@ -437,7 +437,7 @@ async def get_analysis(project_id: str):
 # ── AI Mixing ────────────────────────────────────────────────────────────────
 
 @router.post("/ai/mix")
-async def ai_mix(request: AIMixRequest, project_id: str | None = None):
+async def ai_mix(request: AIMixRequest, project_id: Optional[str] = None):
     """
     Generate AI mixing suggestions.
 
@@ -445,7 +445,7 @@ async def ai_mix(request: AIMixRequest, project_id: str | None = None):
     Otherwise, requires analysis data in request body.
     """
     analysis_data: dict[str, Any] = {}
-    config_data: dict[str, Any] | None = None
+    config_data: Optional[dict[str, Any]] = None
 
     if project_id:
         filepath = _pm.get_filepath(project_id)
@@ -504,7 +504,7 @@ async def ai_mix_project(project_id: str, request: AIMixRequest):
 
 
 @router.post("/ai/master")
-async def ai_master(request: AIMasterRequest, project_id: str | None = None):
+async def ai_master(request: AIMasterRequest, project_id: Optional[str] = None):
     """
     Generate AI mastering suggestions.
 
@@ -512,7 +512,7 @@ async def ai_master(request: AIMasterRequest, project_id: str | None = None):
     Otherwise, returns generic mastering guidelines.
     """
     analysis_data: dict[str, Any] = {}
-    config_data: dict[str, Any] | None = None
+    config_data: Optional[dict[str, Any]] = None
 
     if project_id:
         filepath = _pm.get_filepath(project_id)
@@ -746,14 +746,14 @@ async def ws_ai_decisions(websocket: WebSocket, project_id: str):
 class ArrangementSuggestRequest(BaseModel):
     """Request body for AI arrangement suggestions."""
     genre: str = Field(default="pop", description="Target genre")
-    duration: float | None = Field(default=None, description="Target duration in seconds")
+    duration: Optional[float] = Field(default=None, description="Target duration in seconds")
     mood: str = Field(default="neutral", description="Mood: neutral/upbeat/mellow/dark/epic")
 
 
 class MixPresetSuggestRequest(BaseModel):
     """Request body for mix preset suggestions."""
     genre: str = Field(default="pop", description="Target genre")
-    track_types: list[str] | None = Field(default=None, description="Track types present")
+    track_types: Optional[list[str]] = Field(default=None, description="Track types present")
 
 
 @router.post("/ai/arrangement")
@@ -874,7 +874,7 @@ class ComposeRequest(BaseModel):
     bpm: float = Field(default=120.0, ge=40.0, le=300.0, description="Tempo in BPM")
     key: str = Field(default="C", description="Musical key (e.g. C, Am, D Major)")
     mood: str = Field(default="happy", description="Mood: happy/sad/energetic/calm/dark/bright")
-    reference: str | None = Field(default=None, description="Reference track path")
+    reference: Optional[str] = Field(default=None, description="Reference track path")
 
 
 class AutoMixRequest(BaseModel):

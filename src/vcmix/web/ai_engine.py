@@ -24,7 +24,7 @@ from __future__ import annotations
 import copy
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Union
 
 from vcmix.audio.meter import Meter
 from vcmix.engine.analyzer import Analyzer
@@ -64,7 +64,7 @@ class MixResult:
     decision_log: list[dict[str, Any]]
     summary: str
     applied: bool = False
-    updated_config: dict[str, Any] | None = None
+    updated_config: Optional[dict[str, Any]] = None
 
 
 class AIEngine:
@@ -87,7 +87,7 @@ class AIEngine:
         self,
         analysis: dict[str, Any],
         mode: str = "step",
-        config: dict[str, Any] | None = None,
+        config: Optional[dict[str, Any]] = None,
     ) -> MixResult:
         """
         Generate AI mixing suggestions based on analysis data.
@@ -167,7 +167,7 @@ class AIEngine:
         self,
         analysis: dict[str, Any],
         mode: str = "step",
-        config: dict[str, Any] | None = None,
+        config: Optional[dict[str, Any]] = None,
     ) -> MixResult:
         """
         Generate AI mastering suggestions.
@@ -634,7 +634,7 @@ class AIEngine:
     def suggest_arrangement(
         self,
         genre: str,
-        duration: float | None = None,
+        duration: Optional[float] = None,
         mood: str = "neutral",
     ) -> dict[str, Any]:
         """Suggest an arrangement template based on genre, duration, and mood.
@@ -721,7 +721,7 @@ class AIEngine:
     def suggest_mix_preset(
         self,
         genre: str,
-        track_types: list[str] | None = None,
+        track_types: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         """Suggest a mix preset based on genre and track types.
 

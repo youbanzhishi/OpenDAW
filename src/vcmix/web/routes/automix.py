@@ -8,7 +8,7 @@ parameter adjustment suggestions. Uses the same AutoMixer as the CLI.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -24,7 +24,7 @@ class AutomixRequest(BaseModel):
     """Request body for auto-mixing."""
     project_path: str = Field(..., description="Path to YAML project file")
     dry_run: bool = Field(default=True, description="Show suggestions without writing")
-    reference_path: str | None = Field(
+    reference_path: Optional[str] = Field(
         default=None, description="Path to reference audio for matching"
     )
 
@@ -47,7 +47,7 @@ class AutomixResponse(BaseModel):
     has_low_snr: bool
     has_sibilance: bool
     suggestions: list[AutomixSuggestion]
-    output_path: str | None = None
+    output_path: Optional[str] = None
 
 
 @router.post("/automix")

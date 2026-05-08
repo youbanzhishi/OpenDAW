@@ -28,7 +28,7 @@ import shutil
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 import yaml
 
@@ -45,7 +45,7 @@ class ProjectManager:
         projects_dir: Directory to store project YAML files.
     """
 
-    def __init__(self, projects_dir: Path | str | None = None) -> None:
+    def __init__(self, projects_dir: Union[Path, str, None] = None) -> None:
         if projects_dir is None:
             self._dir = _PROJECTS_DIR
         else:
@@ -65,8 +65,8 @@ class ProjectManager:
     def create(
         self,
         name: str,
-        yaml_content: str | None = None,
-        json_data: dict[str, Any] | None = None,
+        yaml_content: Optional[str] = None,
+        json_data: Optional[dict[str, Any]] = None,
     ) -> str:
         """
         Create a new project.
@@ -141,8 +141,8 @@ class ProjectManager:
     def update(
         self,
         project_id: str,
-        yaml_content: str | None = None,
-        json_data: dict[str, Any] | None = None,
+        yaml_content: Optional[str] = None,
+        json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         """
         Update an existing project.

@@ -1,0 +1,13 @@
+[package]
+name = "opendaw-core"
+version = "0.1.0"
+edition = "2021"
+description = "OpenDAW 核心胶水层 - 统一入口，组合所有crate"
+
+[dependencies]
+opendaw-extension = { path = "../opendaw-extension" }
+audio-engine = { path = "../audio-engine" }
+plugin-host = { path = "../plugin-host" }
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Union
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -39,15 +39,15 @@ _vm = ProjectVersionManager()
 class ExportRequest(BaseModel):
     """Request body for project audio export."""
     format: str = Field(default="wav", description="Output format: wav/mp3/flac/ogg")
-    quality: dict[str, Any] | None = Field(default=None, description="Quality settings")
-    output_path: str | None = Field(default=None, description="Output file path")
+    quality: Optional[dict[str, Any]] = Field(default=None, description="Quality settings")
+    output_path: Optional[str] = Field(default=None, description="Output file path")
 
 
 class ExportStemsRequest(BaseModel):
     """Request body for stem export."""
     format: str = Field(default="wav", description="Output format: wav/mp3/flac/ogg")
-    quality: dict[str, Any] | None = Field(default=None, description="Quality settings")
-    output_dir: str | None = Field(default=None, description="Output directory")
+    quality: Optional[dict[str, Any]] = Field(default=None, description="Quality settings")
+    output_dir: Optional[str] = Field(default=None, description="Output directory")
     by_bus: bool = Field(default=False, description="Group by bus instead of per-track")
 
 
