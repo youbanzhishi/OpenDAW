@@ -150,18 +150,17 @@ impl PluginChain {
         // 通过插件链处理
         self.process(&ext_input, &mut ext_output);
 
-        // 确保 output 大小匹配
-        if output.channels != input.channels || output.frames != input.frames {
-            output.channels = input.channels;
-            output.frames = input.frames;
-            output.sample_rate = input.sample_rate;
-            output.data.resize(input.data.len(), 0.0);
+        // 确保 output 大小匹配 — 用公开API（EngineAudioBuffer.data是私有字段）
+        if output.len() != input.len() {
+            // 重新创建output（EngineAudioBuffer没有公开resize方法，通过赋值替换）
+            *output = EngineAudioBuffer::zeros(input.channels, input.frames, input.sample_rate);
         }
 
         // extension f64 → engine f32
+        let out_slice = output.as_mut_slice();
         for (i, &v) in ext_output.data.iter().enumerate() {
-            if i < output.as_mut_slice().len() {
-                output.as_mut_slice()[i] = v as f32;
+            if i < out_slice.len() {
+                out_slice[i] = v as f32;
             }
         }
     }
