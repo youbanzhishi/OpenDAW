@@ -50,6 +50,15 @@ Phase 13 — Visualization API (heavy, lazy-loaded in core profile):
     GET  /api/v1/spectrum/{project_id}/{track}  — FFT spectrum data
     GET  /api/v1/midi/{project_id}/{track}      — MIDI note data
 
+Phase 22a — Agent Chat + MCP API:
+    POST /api/v1/agent/chat       — Chat with VCMix Agent
+    POST /api/v1/agent/config     — Configure Agent (model/persona/mode)
+    GET  /api/v1/agent/personas   — List available personas
+    GET  /api/v1/agent/status     — Agent status
+    POST /api/v1/agent/mcp/message — MCP JSON-RPC endpoint
+    GET  /api/v1/agent/mcp/sse    — MCP SSE stream endpoint
+    GET  /api/v1/agent/mcp/tools  — List MCP tools (debug)
+
 Phase 17 — AI Transcription API (heavy, lazy-loaded in core profile):
     POST /api/v1/ai/transcribe    — AI transcription
     POST /api/v1/ai/style-match   — Reference style matching
@@ -90,6 +99,7 @@ from fastapi.staticfiles import StaticFiles
 # ── Lightweight routes: always imported ───────────────────────────────────
 from vcmix.web.routes import arrangement, automation, automix, midi, plugins, presets, render
 from vcmix.web.routes.agent_api import router as agent_router
+from vcmix.web.routes.agent_chat import router as agent_chat_router
 from vcmix.web.websocket import router as ws_router
 
 # ── Heavy routes: only imported when profile="full" ──────────────────────
@@ -126,7 +136,7 @@ def create_app(
             f"Phase 18: Collaboration, multi-format export, stem export, and project versioning. "
             f"[Profile: {profile}]"
         ),
-        version="0.18.0",
+        version="0.22.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
     )
@@ -146,6 +156,9 @@ def create_app(
 
     # ── Register Phase 11 AI Agent API — always loaded ──
     app.include_router(agent_router, prefix="/api/v1", tags=["agent-api"])
+
+    # ── Register Phase 22a Agent Chat + MCP API ──
+    app.include_router(agent_chat_router, prefix="/api/v1/agent", tags=["agent-chat"])
 
     # ── Register heavy routes — only in full profile ──
     if profile == "full":
