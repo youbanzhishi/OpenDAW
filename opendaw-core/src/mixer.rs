@@ -113,20 +113,24 @@ impl Mixer {
             let left_gain = volume * theta.cos();
             let right_gain = volume * theta.sin();
 
-            // 混合到输出（用索引直接访问避免双重可变借用E0499）
+            // 混合到输出（用get_sample/set_sample避免访问私有字段E0616）
             let frames = buffer.frames.min(output.frames);
             if buffer.channels >= 2 && output.channels >= 2 {
                 for i in 0..frames {
-                    let in_l = buffer.data[i];
-                    let in_r = buffer.data[buffer.frames + i];
-                    output.data[i] += in_l * left_gain as f32;
-                    output.data[output.frames + i] += in_r * right_gain as f32;
+                    let in_l = buffer.get_sample(0, i);
+                    let in_r = buffer.get_sample(1, i);
+                    let out_l = output.get_sample(0, i) + in_l * left_gain as f32;
+                    let out_r = output.get_sample(1, i) + in_r * right_gain as f32;
+                    output.set_sample(0, i, out_l);
+                    output.set_sample(1, i, out_r);
                 }
             } else if buffer.channels == 1 && output.channels >= 2 {
                 for i in 0..frames {
-                    let in_m = buffer.data[i];
-                    output.data[i] += in_m * left_gain as f32;
-                    output.data[output.frames + i] += in_m * right_gain as f32;
+                    let in_m = buffer.get_sample(0, i);
+                    let out_l = output.get_sample(0, i) + in_m * left_gain as f32;
+                    let out_r = output.get_sample(1, i) + in_m * right_gain as f32;
+                    output.set_sample(0, i, out_l);
+                    output.set_sample(1, i, out_r);
                 }
             }
         }
