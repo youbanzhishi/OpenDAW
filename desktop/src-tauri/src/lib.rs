@@ -1,4 +1,4 @@
-//! VCMix Desktop — Tauri Shell (Phase 14)
+//! VCMix Desktop — Tauri Shell (v0.24.0)
 //!
 //! Tauri v2 desktop app for VCMix. Modular structure:
 //!   - backend.rs  → BackendState, spawn/kill/wait backend
@@ -7,7 +7,7 @@
 //!   - lib.rs      → Module declarations + run() entry point
 //!   - main.rs     → fn main() { vcmix_desktop_lib::run() }
 //!
-//! Phase 14 additions:
+//! v0.24.0 additions:
 //!   - transport_play / transport_stop / list_projects / get_project
 //!   - create_project / add_track / delete_track / agent_chat / automix_project
 
@@ -21,7 +21,7 @@ pub use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("╔══════════════════════════════════════════╗");
-    println!("║   VCMix Desktop — Tauri Shell (Phase 14) ║");
+    println!("║   VCMix Desktop — Tauri Shell (v0.24.0) ║");
     println!("╚══════════════════════════════════════════╝");
 
     // Spawn Python backend
@@ -67,7 +67,7 @@ pub fn run() {
             commands::get_waveform,
             commands::get_spectrum,
             commands::get_midi_notes,
-            // Phase 14 commands
+            // v0.24.0 commands
             commands::transport_play,
             commands::transport_stop,
             commands::list_projects,
@@ -77,6 +77,21 @@ pub fn run() {
             commands::delete_track,
             commands::agent_chat,
             commands::automix_project,
+            // v0.24.0 Engine Commands
+            commands::engine_get_state,
+            commands::engine_start,
+            commands::engine_stop,
+            commands::engine_pause,
+            commands::engine_get_position,
+            commands::engine_set_position,
+            commands::engine_register_track,
+            commands::engine_load_wav,
+            commands::engine_track_count,
+            commands::engine_set_track_volume,
+            commands::engine_set_master_volume,
+            commands::engine_toggle_track_mute,
+            // v0.24.0 Registry Commands
+            commands::registry_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

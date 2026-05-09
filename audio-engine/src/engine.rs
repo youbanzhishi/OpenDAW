@@ -36,6 +36,8 @@ struct SharedState {
     channels: usize,
     /// 引擎状态
     engine_state: EngineState,
+    /// 主音量（dB），0dB = 无增益
+    master_volume: f64,
 }
 
 /// 音轨渲染参数（预计算，避免每帧重复计算）
@@ -144,6 +146,7 @@ impl AudioEngine {
                 sample_rate: 44100.0,
                 channels: 2,
                 engine_state: EngineState::Stopped,
+            master_volume: 0.0,
             })),
             buffer_size: 256,
             scheduler: None,
@@ -317,6 +320,95 @@ impl AudioEngine {
         }
     }
 
+
+    // ==================== 音轨控制 ====================
+
+    /// 设置音轨音量
+    ///
+    /// - `track_id`: 音轨ID
+    /// - `volume_db`: 音量（dB），范围 -60.0 ~ 12.0
+    pub fn set_track_volume(&mut self, track_id: &str, volume_db: f64) -> Result<(), EngineError> {
+        let mut state = self.shared.lock();
+        if let Some(track) = state.tracks.get_mut(track_id) {
+            track.set_volume(volume_db.clamp(-60.0, 12.0));
+            Ok(())
+        } else {
+            Err(EngineError::TrackNotFound(track_id.to_string()))
+        }
+    }
+
+    /// 切换音轨静音状态
+    ///
+    /// 返回静音后的状态（true=静音，false=非静音）
+    pub fn toggle_track_mute(&mut self, track_id: &str) -> Result<bool, EngineError> {
+        let mut state = self.shared.lock();
+        if let Some(track) = state.tracks.get_mut(track_id) {
+            track.toggle_mute();
+            Ok(track.muted)
+        } else {
+            Err(EngineError::TrackNotFound(track_id.to_string()))
+        }
+    }
+
+    // ==================== 主音量控制 ====================
+
+    /// 设置主音量
+    ///
+    /// - `volume_db`: 音量（dB），范围 -60.0 ~ 12.0
+    pub fn set_master_volume(&mut self, volume_db: f64) {
+        let mut state = self.shared.lock();
+        state.master_volume = volume_db.clamp(-60.0, 12.0);
+    }
+
+    /// 获取主音量
+    pub fn get_master_volume(&self) -> f64 {
+        self.shared.lock().master_volume
+    }
+
+    // ==================== WAV 文件加载 ====================
+
+    /// 从 WAV 文件加载音频数据到指定音轨
+    ///
+    /// 支持 16bit PCM 立体声 WAV 文件。
+    pub fn load_wav(&mut self, track_id: &str, file_path: &str) -> Result<(), EngineError> {
+        use std::fs;
+        use std::path::Path;
+
+        // 确保音轨存在
+        {
+            let state = self.shared.lock();
+            if !state.tracks.contains_key(track_id) {
+                return Err(EngineError::TrackNotFound(track_id.to_string()));
+            }
+        }
+
+        // 读取文件
+        let path = Path::new(file_path);
+        if !path.exists() {
+            return Err(EngineError::BufferError(format!("文件不存在: {}", file_path)));
+        }
+
+        let wav_data = fs::read(path)
+            .map_err(|e| EngineError::BufferError(format!("读取WAV文件失败: {}", e)))?;
+
+        // 解析 WAV
+        let buffer = AudioBuffer::from_wav_bytes(&wav_data)?;
+
+        // 获取采样率用于更新
+        let sample_rate = buffer.sample_rate;
+
+        // 注入缓冲区
+        let mut state = self.shared.lock();
+        if let Some(track) = state.tracks.get_mut(track_id) {
+            track.buffer = buffer;
+            // 更新音轨采样率
+            track.buffer.sample_rate = sample_rate;
+            Ok(())
+        } else {
+            Err(EngineError::TrackNotFound(track_id.to_string()))
+        }
+    }
+
     // ==================== 辅助方法 ====================
 
     /// 获取采样率
@@ -368,6 +460,13 @@ impl AudioEngine {
         let mut state = self.shared.lock();
         let channels = state.channels.max(1);
 
+        // 预计算主音量增益
+        let master_gain = if state.master_volume <= -60.0 {
+            0.0f32
+        } else {
+            (10.0_f64.powf(state.master_volume / 20.0)) as f32
+        };
+
         // 预计算所有音轨的渲染参数（避免每帧重复计算）
         let track_params: Vec<_> = state
             .tracks
@@ -402,6 +501,8 @@ impl AudioEngine {
                     }
                 }
 
+                // 应用主音量增益
+                mixed *= master_gain;
                 // 硬限幅，防止削波
                 output[frame_idx * channels + ch] = mixed.clamp(-1.0, 1.0);
             }
@@ -522,6 +623,13 @@ fn audio_callback(output: &mut [f32], shared: &Arc<Mutex<SharedState>>) {
     let channels = state.channels.max(1);
     let frames = output.len() / channels;
 
+    // 预计算主音量增益
+    let master_gain = if state.master_volume <= -60.0 {
+        0.0f32
+    } else {
+        (10.0_f64.powf(state.master_volume / 20.0)) as f32
+    };
+
     // 预计算所有音轨的渲染参数（避免每帧重复计算）
     let track_params: Vec<_> = state
         .tracks
@@ -551,6 +659,8 @@ fn audio_callback(output: &mut [f32], shared: &Arc<Mutex<SharedState>>) {
                 }
             }
 
+            // 应用主音量增益
+            mixed *= master_gain;
             // 硬限幅，防止削波
             output[frame_idx * channels + ch] = mixed.clamp(-1.0, 1.0);
         }
@@ -856,6 +966,115 @@ mod tests {
         assert!(all_zero, "缓冲区结束后应输出静音");
 
         engine.stop().unwrap();
+    }
+
+
+    // ==================== v0.24.0 Engine Commands 测试 ====================
+
+    #[test]
+    fn test_set_track_volume() {
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 设置音量
+        engine.set_track_volume("test", -6.0).unwrap();
+        {
+            let state = engine.shared.lock();
+            assert!((state.tracks.get("test").unwrap().volume - (-6.0)).abs() < 0.001);
+        }
+
+        // 超出范围应被钳制
+        engine.set_track_volume("test", 100.0).unwrap();
+        {
+            let state = engine.shared.lock();
+            assert!((state.tracks.get("test").unwrap().volume - 12.0).abs() < 0.001);
+        }
+
+        // 不存在的音轨应报错
+        assert!(engine.set_track_volume("missing", 0.0).is_err());
+    }
+
+    #[test]
+    fn test_toggle_track_mute() {
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 初始为非静音
+        assert_eq!(engine.toggle_track_mute("test").unwrap(), true);
+
+        // 再次切换
+        assert_eq!(engine.toggle_track_mute("test").unwrap(), false);
+
+        // 不存在的音轨应报错
+        assert!(engine.toggle_track_mute("missing").is_err());
+    }
+
+    #[test]
+    fn test_master_volume() {
+        let mut engine = AudioEngine::new();
+
+        // 默认 0dB
+        assert_eq!(engine.get_master_volume(), 0.0);
+
+        // 设置主音量
+        engine.set_master_volume(-6.0);
+        assert_eq!(engine.get_master_volume(), -6.0);
+
+        // 超出范围应被钳制
+        engine.set_master_volume(100.0);
+        assert_eq!(engine.get_master_volume(), 12.0);
+
+        engine.set_master_volume(-100.0);
+        assert_eq!(engine.get_master_volume(), -60.0);
+    }
+
+    #[test]
+    fn test_master_volume_affects_output() {
+        let sample_rate = 44100.0;
+        let frames = 256;
+
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        let mut buf = AudioBuffer::new(2, frames, sample_rate);
+        buf.fill(1.0); // 全音量
+        engine.inject_buffer("test", buf).unwrap();
+
+        engine.start(sample_rate, 256).unwrap();
+
+        // 默认主音量 0dB
+        let mut output1 = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output1, frames);
+        let level1 = output1.iter().map(|&s| s.abs()).sum::<f32>() / (frames * 2) as f32;
+
+        // 降低主音量 -6dB
+        engine.set_master_volume(-6.0);
+        let mut output2 = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output2, frames);
+        let level2 = output2.iter().map(|&s| s.abs()).sum::<f32>() / (frames * 2) as f32;
+
+        // -6dB 约等于 0.501 线性增益
+        assert!(level2 < level1, "降低主音量后输出应减小");
+        assert!((level1 / level2 - 2.0).abs() < 0.2, "比例应约为2");
+
+        engine.stop().unwrap();
+    }
+
+    #[test]
+    fn test_load_wav_invalid_path() {
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        let result = engine.load_wav("test", "/nonexistent/path.wav");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_wav_nonexistent_track() {
+        let mut engine = AudioEngine::new();
+
+        let result = engine.load_wav("missing", "/tmp/test.wav");
+        assert!(result.is_err());
     }
 
     // ==================== TrackRenderParams 测试 ====================

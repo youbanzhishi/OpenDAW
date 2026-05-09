@@ -431,3 +431,204 @@ pub async fn automix_project(
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(data)
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// v0.24.0 — Engine & Registry Commands
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Engine State Response
+#[derive(Debug, Serialize)]
+pub struct EngineStateResponse {
+    pub state: String,
+}
+
+impl From<audio_engine::state::EngineState> for EngineStateResponse {
+    fn from(s: audio_engine::state::EngineState) -> Self {
+        let state_str = match s {
+            audio_engine::state::EngineState::Stopped => "Stopped",
+            audio_engine::state::EngineState::Playing => "Playing",
+            audio_engine::state::EngineState::Paused => "Paused",
+            audio_engine::state::EngineState::Recording => "Recording",
+        };
+        Self {
+            state: state_str.to_string(),
+        }
+    }
+}
+
+/// Registry Stats Response
+#[derive(Debug, Serialize)]
+pub struct RegistryStatsResponse {
+    pub plugins: usize,
+    pub scripts: usize,
+    pub models: usize,
+    pub hook_events: usize,
+}
+
+impl From<opendaw_extension::registry::RegistryStats> for RegistryStatsResponse {
+    fn from(s: opendaw_extension::registry::RegistryStats) -> Self {
+        Self {
+            plugins: s.plugins,
+            scripts: s.scripts,
+            models: s.models,
+            hook_events: s.hook_events,
+        }
+    }
+}
+
+// ── Engine基础命令 ──────────────────────────────────────────────────────
+
+/// 获取引擎当前状态
+#[tauri::command]
+pub fn engine_get_state(state: State<'_, AppState>) -> Result<EngineStateResponse, String> {
+    let engine = state.engine.lock();
+    Ok(engine.get_state().into())
+}
+
+/// 启动音频引擎
+#[tauri::command]
+pub fn engine_start(
+    state: State<'_, AppState>,
+    sample_rate: f64,
+    buffer_size: usize,
+) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine
+        .start(sample_rate, buffer_size)
+        .map_err(|e| e.to_string())
+}
+
+/// 停止音频引擎
+#[tauri::command]
+pub fn engine_stop(state: State<'_, AppState>) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine.stop().map_err(|e| e.to_string())
+}
+
+/// 暂停音频引擎
+#[tauri::command]
+pub fn engine_pause(state: State<'_, AppState>) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine.pause().map_err(|e| e.to_string())
+}
+
+/// 获取当前播放位置（秒）
+#[tauri::command]
+pub fn engine_get_position(state: State<'_, AppState>) -> Result<f64, String> {
+    let engine = state.engine.lock();
+    Ok(engine.get_position())
+}
+
+/// 设置播放位置（秒）
+#[tauri::command]
+pub fn engine_set_position(state: State<'_, AppState>, pos: f64) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine.set_position(pos);
+    Ok(())
+}
+
+/// 注册新音轨
+#[tauri::command]
+pub fn engine_register_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine
+        .register_track(&track_id)
+        .map_err(|e| e.to_string())
+}
+
+/// 从WAV文件加载音频到指定音轨
+#[tauri::command]
+pub fn engine_load_wav(
+    state: State<'_, AppState>,
+    track_id: String,
+    file_path: String,
+) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine
+        .load_wav(&track_id, &file_path)
+        .map_err(|e| e.to_string())
+}
+
+/// 获取音轨数量
+#[tauri::command]
+pub fn engine_track_count(state: State<'_, AppState>) -> Result<usize, String> {
+    let engine = state.engine.lock();
+    Ok(engine.track_count())
+}
+
+// ── Engine音频控制 ─────────────────────────────────────────────────────
+
+/// 设置音轨音量
+#[tauri::command]
+pub fn engine_set_track_volume(
+    state: State<'_, AppState>,
+    track_id: String,
+    volume_db: f64,
+) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine
+        .set_track_volume(&track_id, volume_db)
+        .map_err(|e| e.to_string())
+}
+
+/// 设置主音量
+#[tauri::command]
+pub fn engine_set_master_volume(state: State<'_, AppState>, volume_db: f64) -> Result<(), String> {
+    let mut engine = state.engine.lock();
+    engine.set_master_volume(volume_db);
+    Ok(())
+}
+
+/// 切换音轨静音状态
+#[tauri::command]
+pub fn engine_toggle_track_mute(state: State<'_, AppState>, track_id: String) -> Result<bool, String> {
+    let mut engine = state.engine.lock();
+    engine
+        .toggle_track_mute(&track_id)
+        .map_err(|e| e.to_string())
+}
+
+// ── Registry命令 ───────────────────────────────────────────────────────
+
+/// 获取扩展注册中心统计信息
+#[tauri::command]
+pub fn registry_stats(state: State<'_, AppState>) -> Result<RegistryStatsResponse, String> {
+    let registry = state.registry.lock();
+    Ok(registry.stats().into())
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 单元测试
+// ═══════════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_engine_state_response_conversion() {
+        use audio_engine::state::EngineState;
+        
+        assert_eq!(EngineStateResponse::from(EngineState::Stopped).state, "Stopped");
+        assert_eq!(EngineStateResponse::from(EngineState::Playing).state, "Playing");
+        assert_eq!(EngineStateResponse::from(EngineState::Paused).state, "Paused");
+        assert_eq!(EngineStateResponse::from(EngineState::Recording).state, "Recording");
+    }
+
+    #[test]
+    fn test_registry_stats_response_conversion() {
+        use opendaw_extension::registry::RegistryStats;
+        
+        let stats = RegistryStats {
+            plugins: 5,
+            scripts: 3,
+            models: 2,
+            hook_events: 10,
+        };
+        let resp: RegistryStatsResponse = stats.into();
+        assert_eq!(resp.plugins, 5);
+        assert_eq!(resp.scripts, 3);
+        assert_eq!(resp.models, 2);
+        assert_eq!(resp.hook_events, 10);
+    }
+}
