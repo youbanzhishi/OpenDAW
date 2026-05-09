@@ -1,0 +1,15 @@
+name: Agent演示
+bpm: 120
+sample_rate: 44100
+tracks:
+  - name: vocal
+    file: vocal.wav
+    effects:
+      - plugin: vc-deesser
+        params:
+          threshold: -30
+          frequency: 6000
+      - plugin: vc-eq
+        params:
+          low_gain: 2
+          high_gain: 3

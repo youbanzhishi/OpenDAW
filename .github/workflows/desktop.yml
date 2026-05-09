@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: ubuntu-22.04
+          - platform: ubuntu-latest
             target: linux
           - platform: macos-latest
             target: macos
