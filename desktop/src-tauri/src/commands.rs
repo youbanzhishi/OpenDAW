@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::backend::BackendState;
+use crate::state::AppState;
 
 // ── Response Types ───────────────────────────────────────────────────────
 
@@ -103,26 +103,26 @@ pub async fn check_backend_health(port: u16) -> Result<HealthStatus, String> {
 }
 
 #[tauri::command]
-pub fn set_backend_pid(state: State<'_, BackendState>, pid: u32) -> Result<(), String> {
-    let mut guard = state.pid.lock().map_err(|e| e.to_string())?;
+pub fn set_backend_pid(state: State<'_, AppState>, pid: u32) -> Result<(), String> {
+    let mut guard = state.backend.pid.lock().map_err(|e| e.to_string())?;
     *guard = Some(pid);
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_backend_pid(state: State<'_, BackendState>) -> Result<Option<u32>, String> {
-    let guard = state.pid.lock().map_err(|e| e.to_string())?;
+pub fn get_backend_pid(state: State<'_, AppState>) -> Result<Option<u32>, String> {
+    let guard = state.backend.pid.lock().map_err(|e| e.to_string())?;
     Ok(*guard)
 }
 
 #[tauri::command]
 pub async fn render_project(
-    state: State<'_, BackendState>,
+    state: State<'_, AppState>,
     yaml_path: String,
 ) -> Result<RenderResult, String> {
     let url = format!(
         "{}/api/render/file?project_path={}",
-        state.base_url,
+        state.backend.base_url,
         urlencoding::encode(&yaml_path)
     );
     let client = reqwest::Client::new();
@@ -137,10 +137,10 @@ pub async fn render_project(
 
 #[tauri::command]
 pub async fn get_analysis(
-    state: State<'_, BackendState>,
+    state: State<'_, AppState>,
     project_id: String,
 ) -> Result<AnalysisResult, String> {
-    let url = format!("{}/api/v1/projects/{}/analysis", state.base_url, project_id);
+    let url = format!("{}/api/v1/projects/{}/analysis", state.backend.base_url, project_id);
     let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(AnalysisResult {
@@ -153,8 +153,8 @@ pub async fn get_analysis(
 }
 
 #[tauri::command]
-pub async fn list_presets(state: State<'_, BackendState>) -> Result<PresetList, String> {
-    let url = format!("{}/api/presets", state.base_url);
+pub async fn list_presets(state: State<'_, AppState>) -> Result<PresetList, String> {
+    let url = format!("{}/api/presets", state.backend.base_url);
     let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
     let presets: Vec<PresetInfo> = data.get("presets").and_then(|v| v.as_array()).cloned().unwrap_or_default()
@@ -172,9 +172,9 @@ pub async fn open_file_dialog(_title: String, _filters: Vec<Vec<String>>) -> Res
 
 #[tauri::command]
 pub async fn get_waveform(
-    state: State<'_, BackendState>, project_id: String, track: String,
+    state: State<'_, AppState>, project_id: String, track: String,
 ) -> Result<WaveformData, String> {
-    let url = format!("{}/api/v1/waveform/{}/{}", state.base_url, project_id, track);
+    let url = format!("{}/api/v1/waveform/{}/{}", state.backend.base_url, project_id, track);
     let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(WaveformData {
@@ -188,9 +188,9 @@ pub async fn get_waveform(
 
 #[tauri::command]
 pub async fn get_spectrum(
-    state: State<'_, BackendState>, project_id: String, track: String,
+    state: State<'_, AppState>, project_id: String, track: String,
 ) -> Result<SpectrumData, String> {
-    let url = format!("{}/api/v1/spectrum/{}/{}", state.base_url, project_id, track);
+    let url = format!("{}/api/v1/spectrum/{}/{}", state.backend.base_url, project_id, track);
     let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(SpectrumData {
@@ -203,9 +203,9 @@ pub async fn get_spectrum(
 
 #[tauri::command]
 pub async fn get_midi_notes(
-    state: State<'_, BackendState>, project_id: String, track: String,
+    state: State<'_, AppState>, project_id: String, track: String,
 ) -> Result<MidiNoteData, String> {
-    let url = format!("{}/api/v1/midi/{}/{}", state.base_url, project_id, track);
+    let url = format!("{}/api/v1/midi/{}/{}", state.backend.base_url, project_id, track);
     let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
     let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(MidiNoteData {

@@ -1,6 +1,6 @@
 [package]
 name = "vcmix-desktop"
-version = "0.13.0"
+version = "0.23.0"
 description = "VCMix — AI-native open-source DAW (Tauri desktop shell)"
 authors = ["OpenDAW Team"]
 edition = "2021"
@@ -17,6 +17,9 @@ reqwest = { version = "0.12", features = ["blocking", "json"] }
 tokio = { version = "1", features = ["full"] }
 ctrlc = "3"
 urlencoding = "2"
+opendaw-core = { path = "../../opendaw-core" }
+audio-engine = { path = "../../audio-engine", features = ["audio"] }
+parking_lot = "0.12"
 
 [lib]
 name = "vcmix_desktop_lib"

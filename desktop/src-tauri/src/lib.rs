@@ -2,14 +2,17 @@
 //!
 //! Tauri v2 desktop app for VCMix. Modular structure:
 //!   - backend.rs  → BackendState, spawn/kill/wait backend
+//!   - state.rs    → AppState, Rust engine + Python backend unified state
 //!   - commands.rs → All #[tauri::command] functions
 //!   - lib.rs      → Module declarations + run() entry point
 //!   - main.rs     → fn main() { vcmix_desktop_lib::run() }
 
 mod backend;
 mod commands;
+mod state;
 
 pub use backend::BackendState;
+pub use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -47,7 +50,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(BackendState::default())
+        .manage(state::AppState::new())
         .invoke_handler(tauri::generate_handler![
             commands::check_backend_health,
             commands::set_backend_pid,
