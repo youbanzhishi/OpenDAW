@@ -93,6 +93,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     needs: [build-and-publish-pypi, build-and-push-docker]
+    if: always() && needs.build-and-push-docker.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
