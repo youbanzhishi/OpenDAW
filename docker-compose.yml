@@ -34,7 +34,7 @@ services:
       context: .
       args:
         VCMIX_PROFILE: ${VCMIX_PROFILE:-core}
-        OPENDAW_VERSION: ${OPENDAW_VERSION:-v0.22.2}
+        OPENDAW_VERSION: ${OPENDAW_VERSION:-v0.23.0}
         AUDIOFX_RELEASE_VERSION: ${AUDIOFX_RELEASE_VERSION:-v2.7.0}
 
     container_name: vcmix-server

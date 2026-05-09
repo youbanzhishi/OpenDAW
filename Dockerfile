@@ -24,7 +24,7 @@ FROM python:3.11-slim AS base
 # VCMIX_PROFILE: 启动模式，core=轻量 / full=完整
 ARG VCMIX_PROFILE=core
 # OpenDAW源码版本（tag或branch）
-ARG OPENDAW_VERSION=v0.22.2
+ARG OPENDAW_VERSION=v0.23.0
 # AudioFX CLI插件版本（tag）
 ARG AUDIOFX_RELEASE_VERSION=v2.7.0
 
