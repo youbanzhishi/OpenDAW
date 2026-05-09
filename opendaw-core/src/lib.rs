@@ -13,6 +13,10 @@
 pub mod project;
 pub mod mixer;
 pub mod render;
+pub mod bridge;
+
+// 桥接函数重导出
+pub use bridge::{engine_to_ext, ext_to_engine};
 
 // 重导出核心类型
 pub use opendaw_extension::{
