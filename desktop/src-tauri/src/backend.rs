@@ -57,10 +57,7 @@ pub fn spawn_backend() -> Result<u32, String> {
     let pid = child.id();
 
     {
-        let mut guard = BACKEND_PROCESS
-            .lock()
-            .map_err(|e| format!("Lock poisoned: {}", e))?;
-        *guard = Some(child);
+        *BACKEND_PROCESS.lock() = Some(child);
     }
 
     println!("[VCMix] Backend spawned with PID {}", pid);
@@ -108,13 +105,7 @@ pub fn wait_for_backend(port: u16) -> Result<(), String> {
 }
 
 pub fn kill_backend() {
-    let mut guard = match BACKEND_PROCESS.lock() {
-        Ok(g) => g,
-        Err(_) => {
-            eprintln!("[VCMix] Failed to acquire lock for backend cleanup");
-            return;
-        }
-    };
+    let mut guard = BACKEND_PROCESS.lock();
     if let Some(ref mut child) = *guard {
         match child.kill() {
             Ok(_) => println!("[VCMix] Backend process killed"),
