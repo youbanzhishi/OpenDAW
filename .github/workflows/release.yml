@@ -27,6 +27,8 @@ jobs:
     name: Build & Publish to PyPI
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # OIDC trusted publishing
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,10 +48,9 @@ jobs:
       - name: Check package
         run: twine check dist/*
 
-      - name: Publish to PyPI
+      - name: Publish to PyPI (Trusted Publisher)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
           attestations: false
         continue-on-error: true
 
