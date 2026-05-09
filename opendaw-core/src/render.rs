@@ -160,7 +160,7 @@ impl OfflineRenderer {
         let total_frames = (self.sample_rate * duration_secs) as usize;
         let mut pcm_data = Vec::new();
 
-        let mut buffer = EngineAudioBuffer::new(self.channels, self.buffer_size);
+        let mut buffer = EngineAudioBuffer::new(self.channels, self.buffer_size, self.sample_rate);
         let mut frames_rendered = 0;
 
         while frames_rendered < total_frames {
