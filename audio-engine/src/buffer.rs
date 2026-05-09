@@ -258,6 +258,11 @@ impl AudioBuffer {
         self.data.fill(0.0);
     }
 
+    /// 用指定值填充所有样本
+    pub fn fill(&mut self, value: f32) {
+        self.data.fill(value);
+    }
+
     /// 获取指定声道的数据切片（别名，兼容旧代码）
     pub fn channel_slice(&self, channel: usize) -> &[f32] {
         self.channel(channel)
