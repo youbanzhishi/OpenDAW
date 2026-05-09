@@ -4,11 +4,17 @@ version = "0.1.0"
 edition = "2021"
 description = "JSFX解释器 — 兼容Reaper自定义效果器的EEL2脚本引擎"
 
-
 [dependencies]
 opendaw-extension = { path = "../opendaw-extension" }
 
 [dev-dependencies]
+log = "0.4"
+env_logger = "0.11"
 
 [[example]]
 name = "run_jsfx"
+path = "examples/run_jsfx.rs"
+
+[[example]]
+name = "jsfx_adapter_demo"
+path = "examples/jsfx_adapter_demo.rs"
