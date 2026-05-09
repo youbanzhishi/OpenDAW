@@ -50,6 +50,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          attestations: false
+        continue-on-error: true
 
   build-and-push-docker:
     name: Build & Push Docker Image
