@@ -16,6 +16,8 @@ import threading
 import time
 import uuid
 from pathlib import Path
+from vcmix.web.websocket import emit_stream_event_sync
+from vcmix.web.websocket import (EVENT_PROJECT_CREATED, EVENT_PROJECT_UPDATED, EVENT_PROJECT_DELETED, EVENT_TRACK_ADDED, EVENT_TRACK_UPDATED, EVENT_TRACK_REMOVED, EVENT_EFFECT_ADDED, EVENT_EFFECT_UPDATED, EVENT_EFFECT_REMOVED, EVENT_AI_MIX_APPLIED, EVENT_AI_MASTER_APPLIED)
 from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
@@ -187,6 +189,16 @@ async def create_project(request: ProjectCreate):
             json_data=request.json_data,
         )
         project = _pm.read(pid)
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_PROJECT_CREATED,
+                "project_id": pid,
+                "action": "project_created",
+                "detail": {"name": request.name},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"id": pid, "name": request.name, "status": "created", "project": project}
     except ValueError as e:
         if "already exists" in str(e):
@@ -212,6 +224,16 @@ async def update_project(project_id: str, request: ProjectUpdate):
             yaml_content=request.yaml_content,
             json_data=request.json_data,
         )
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_PROJECT_UPDATED,
+                "project_id": project_id,
+                "action": "project_updated",
+                "detail": {"project_id": project_id},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"id": project_id, "status": "updated", "project": result}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
@@ -225,6 +247,16 @@ async def delete_project(project_id: str):
     deleted = _pm.delete(project_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Project not found: {project_id}")
+    try:
+        emit_stream_event_sync({
+            "type": EVENT_PROJECT_DELETED,
+            "project_id": project_id,
+            "action": "project_deleted",
+            "detail": {"project_id": project_id},
+            "ts": time.time() * 1000,
+        })
+    except Exception:
+        pass
     return {"id": project_id, "status": "deleted"}
 
 
@@ -244,6 +276,16 @@ async def add_track(project_id: str, request: TrackCreate):
     }
     try:
         result = _pm.add_track(project_id, track_data)
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_TRACK_ADDED,
+                "project_id": project_id,
+                "action": "track_added",
+                "detail": {"track": request.name},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"status": "added", "track": request.name, "project": result}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -259,6 +301,16 @@ async def update_track(project_id: str, track_name: str, request: TrackUpdate):
         raise HTTPException(status_code=400, detail="No fields to update")
     try:
         result = _pm.update_track(project_id, track_name, updates)
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_TRACK_UPDATED,
+                "project_id": project_id,
+                "action": "track_updated",
+                "detail": {"track": track_name},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"status": "updated", "track": track_name, "project": result}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -269,6 +321,16 @@ async def delete_track(project_id: str, track_name: str):
     """Delete a track from a project."""
     try:
         result = _pm.delete_track(project_id, track_name)
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_TRACK_REMOVED,
+                "project_id": project_id,
+                "action": "track_removed",
+                "detail": {"track": track_name},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"status": "deleted", "track": track_name, "project": result}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -282,6 +344,16 @@ async def add_effect(project_id: str, track_name: str, request: EffectCreate):
     effect_data = {"name": request.name, "params": request.params}
     try:
         result = _pm.add_effect(project_id, track_name, effect_data)
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_EFFECT_ADDED,
+                "project_id": project_id,
+                "action": "effect_added",
+                "detail": {"track": track_name, "effect": request.name},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"status": "added", "effect": request.name, "track": track_name, "project": result}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -292,6 +364,16 @@ async def update_effect(project_id: str, track_name: str, fx_idx: int, request: 
     """Update an effect's parameters."""
     try:
         result = _pm.update_effect(project_id, track_name, fx_idx, request.params)
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_EFFECT_UPDATED,
+                "project_id": project_id,
+                "action": "effect_updated",
+                "detail": {"track": track_name, "effect_idx": fx_idx},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"status": "updated", "effect_idx": fx_idx, "track": track_name, "project": result}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -304,6 +386,16 @@ async def delete_effect(project_id: str, track_name: str, fx_idx: int):
     """Delete an effect from a track's insert chain."""
     try:
         result = _pm.delete_effect(project_id, track_name, fx_idx)
+        try:
+            emit_stream_event_sync({
+                "type": EVENT_EFFECT_REMOVED,
+                "project_id": project_id,
+                "action": "effect_removed",
+                "detail": {"track": track_name, "effect_idx": fx_idx},
+                "ts": time.time() * 1000,
+            })
+        except Exception:
+            pass
         return {"status": "deleted", "effect_idx": fx_idx, "track": track_name, "project": result}
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -492,6 +584,17 @@ async def ai_mix_project(project_id: str, request: AIMixRequest):
     mode = "one_click" if request.apply else request.mode
     result = _ai.mix(analysis_data, mode=mode, config=config_data)
 
+    try:
+        emit_stream_event_sync({
+            "type": EVENT_AI_MIX_APPLIED,
+            "project_id": project_id,
+            "action": "ai_mix_applied",
+            "detail": {"mode": mode, "applied": result.applied},
+            "ts": time.time() * 1000,
+        })
+    except Exception:
+        pass
+
     return {
         "project_id": project_id,
         "mode": result.mode,
@@ -558,6 +661,17 @@ async def ai_master_project(project_id: str, request: AIMasterRequest):
 
     mode = "one_click" if request.apply else request.mode
     result = _ai.master(analysis_data, mode=mode, config=config_data)
+
+    try:
+        emit_stream_event_sync({
+            "type": EVENT_AI_MASTER_APPLIED,
+            "project_id": project_id,
+            "action": "ai_master_applied",
+            "detail": {"mode": mode, "applied": result.applied},
+            "ts": time.time() * 1000,
+        })
+    except Exception:
+        pass
 
     return {
         "project_id": project_id,
