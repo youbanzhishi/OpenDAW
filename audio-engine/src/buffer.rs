@@ -55,6 +55,22 @@ impl AudioBuffer {
         self.data[channel * self.frames + frame] = value;
     }
 
+
+    /// 按线性索引获取样本值
+    ///
+    /// 索引按平面格式排列：先声道0的所有帧，再声道1的所有帧...
+    pub fn get(&self, index: usize) -> Option<f32> {
+        self.data.get(index).copied()
+    }
+
+    /// 按线性索引设置样本值
+    ///
+    /// 索引按平面格式排列：先声道0的所有帧，再声道1的所有帧...
+    pub fn set(&mut self, index: usize, value: f32) {
+        if index < self.data.len() {
+            self.data[index] = value;
+        }
+    }
     /// 获取指定声道的数据切片（平面格式）
     pub fn channel(&self, channel: usize) -> &[f32] {
         debug_assert!(channel < self.channels, "声道索引越界");

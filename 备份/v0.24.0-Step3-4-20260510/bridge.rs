@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn test_ext_to_engine_basic() {
         // 创建 f64 缓冲区
-        let mut ext = ExtAudioBuffer::new(2, 4);
+        let ext = ExtAudioBuffer::new(2, 4);
         for i in 0..8 {
             // [L0, L1, L2, L3, R0, R1, R2, R3]
             ext.data[i] = (i as f64) * 0.5;
@@ -206,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_single_channel() {
-        let mut ext = ExtAudioBuffer::new(1, 100);
+        let ext = ExtAudioBuffer::new(1, 100);
         for i in 0..100 {
             ext.data[i] = (i as f64) * 0.01;
         }
@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn test_mono_stereo_conversion() {
         // 单声道 → 双声道
-        let mut ext = ExtAudioBuffer::new(1, 100);
+        let ext = ExtAudioBuffer::new(1, 100);
         for i in 0..100 {
             ext.data[i] = i as f64;
         }

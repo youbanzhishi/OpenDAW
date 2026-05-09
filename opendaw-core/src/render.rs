@@ -260,7 +260,7 @@ mod tests {
         let stats = renderer.render_with_callback(0.5, &tmp, |buf| {
             // 生成440Hz正弦波
             for frame in 0..buf.frames {
-                let value = (2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() * 0.3;
+                let value = ((2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() * 0.3) as f32;
                 buf.set_sample(0, frame, value);
                 buf.set_sample(1, frame, value);
             }
@@ -316,7 +316,7 @@ mod tests {
         let amplitude = 0.8;
         let stats = renderer.render_with_callback(0.1, &tmp, |buf| {
             for frame in 0..buf.frames {
-                let value = (2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() * amplitude;
+                let value = ((2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() * amplitude) as f32;
                 buf.set_sample(0, frame, value);
                 buf.set_sample(1, frame, value);
             }
