@@ -100,6 +100,7 @@ from fastapi.staticfiles import StaticFiles
 from vcmix.web.routes import arrangement, automation, automix, midi, plugins, presets, render
 from vcmix.web.routes.agent_api import router as agent_router
 from vcmix.web.routes.agent_chat import router as agent_chat_router
+from vcmix.web.routes.chain_api import router as chain_router
 from vcmix.web.websocket import router as ws_router
 
 # ── Heavy routes: only imported when profile="full" ──────────────────────
@@ -159,6 +160,9 @@ def create_app(
 
     # ── Register Phase 22a Agent Chat + MCP API ──
     app.include_router(agent_chat_router, prefix="/api/v1/agent", tags=["agent-chat"])
+
+    # ── Register Phase VC-Chain API ──
+    app.include_router(chain_router, prefix="/api/v1", tags=["vc-chain"])
 
     # ── Register heavy routes — only in full profile ──
     if profile == "full":
