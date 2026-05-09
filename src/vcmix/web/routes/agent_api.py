@@ -16,9 +16,15 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from vcmix.web.websocket import emit_stream_event_sync
-from vcmix.web.websocket import (EVENT_PROJECT_CREATED, EVENT_PROJECT_UPDATED, EVENT_PROJECT_DELETED, EVENT_TRACK_ADDED, EVENT_TRACK_UPDATED, EVENT_TRACK_REMOVED, EVENT_EFFECT_ADDED, EVENT_EFFECT_UPDATED, EVENT_EFFECT_REMOVED, EVENT_AI_MIX_APPLIED, EVENT_AI_MASTER_APPLIED)
 from typing import Any, Optional
+
+from vcmix.web.websocket import emit_stream_event_sync
+from vcmix.web.websocket import (
+    EVENT_PROJECT_CREATED, EVENT_PROJECT_UPDATED, EVENT_PROJECT_DELETED,
+    EVENT_TRACK_ADDED, EVENT_TRACK_UPDATED, EVENT_TRACK_REMOVED,
+    EVENT_EFFECT_ADDED, EVENT_EFFECT_UPDATED, EVENT_EFFECT_REMOVED,
+    EVENT_AI_MIX_APPLIED, EVENT_AI_MASTER_APPLIED,
+)
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
