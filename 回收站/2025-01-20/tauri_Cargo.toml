@@ -1,0 +1,27 @@
+[package]
+name = "vcmix-desktop"
+version = "0.13.0"
+description = "VCMix — AI-native open-source DAW (Tauri desktop shell)"
+authors = ["OpenDAW Team"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+tokio = { version = "1", features = ["full"] }
+ctrlc = "3"
+urlencoding = "2"
+
+[lib]
+name = "vcmix_desktop_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "vcmix-desktop"
+path = "src/main.rs"

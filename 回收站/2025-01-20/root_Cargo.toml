@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "audio-engine",
+    "jsfx-engine",
+    "opendaw-extension",
+    "opendaw-core",
+    "plugin-host",
+]
+exclude = [
+    "desktop/src-tauri",
+]
+resolver = "2"
