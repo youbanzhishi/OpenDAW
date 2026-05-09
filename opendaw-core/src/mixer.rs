@@ -171,8 +171,8 @@ mod tests {
         // 两个轨道混合
         let buf1 = EngineAudioBuffer::new(2, 256, 44100.0);
         let mut buf2 = EngineAudioBuffer::new(2, 256, 44100.0);
-        buf2.data[0] = 0.5; // 左声道
-        buf2.data[256] = 0.5; // 右声道
+        buf2.set(0, 0.5); // 左声道
+        buf2.set(256, 0.5); // 右声道
 
         let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
         mixer.mix(
@@ -184,14 +184,14 @@ mod tests {
         );
 
         // 应该有来自buf2的信号
-        assert!(output.data[0].abs() > 0.0);
+        assert!(output.get(0).unwrap_or(0.0).abs() > 0.0);
     }
 
     #[test]
     fn test_mixer_mute() {
         let mixer = Mixer::new(44100.0, 256, 2);
         let mut buf = EngineAudioBuffer::new(2, 256, 44100.0);
-        buf.data[0] = 1.0;
+        buf.set(0, 1.0);
 
         let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
         mixer.mix(
@@ -200,7 +200,7 @@ mod tests {
         );
 
         // 静音轨道不应输出
-        assert!(output.data[0].abs() < 1e-10);
+        assert!(output.get(0).unwrap_or(0.0).abs() < 1e-10);
     }
 
     #[test]
@@ -209,7 +209,7 @@ mod tests {
         mixer.set_master_volume(0.5);
 
         let mut buf = EngineAudioBuffer::new(2, 256, 44100.0);
-        buf.data[0] = 1.0;
+        buf.set(0, 1.0);
 
         let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
         mixer.mix(
@@ -218,6 +218,6 @@ mod tests {
         );
 
         // master音量0.5
-        assert!((output.data[0] - 0.5).abs() < 0.01);
+        assert!((output.get(0).unwrap_or(0.0) - 0.5).abs() < 0.01);
     }
 }

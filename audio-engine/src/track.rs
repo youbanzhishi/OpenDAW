@@ -54,6 +54,16 @@ impl Track {
         }
     }
 
+    /// 创建立体声音轨（2声道, 44100Hz）
+    pub fn stereo(id: &str) -> Self {
+        Self::with_channels(id, 2, 44100.0)
+    }
+
+    /// 创建单声道音轨（1声道, 44100Hz）
+    pub fn mono(id: &str) -> Self {
+        Self::with_channels(id, 1, 44100.0)
+    }
+
     /// 获取音轨时长（秒）
     pub fn duration(&self) -> f64 {
         if self.sample_rate() > 0.0 {
