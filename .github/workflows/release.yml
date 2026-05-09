@@ -1,3 +1,12 @@
+# ============================================================================
+# release.yml - OpenDAW Release 工作流
+#
+# 参考: 共享知识/CI模式库/rust-ci.md Release流程
+# 流程: tag v* → 多平台构建 → Docker推GHCR → GitHub Release
+# Docker缓存: GHA原生 cache-from: type=gha, cache-to: type=gha,mode=max
+# Release: softprops/action-gh-release@v2 + generate_release_notes: true
+# ============================================================================
+
 name: Release
 
 on:
@@ -10,25 +19,74 @@ permissions:
   packages: write
 
 jobs:
-  test:
-    name: Test before release
-    runs-on: ubuntu-latest
+  # ========== Rust Release 二进制构建 ==========
+  build-binary:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: vcmix
+            asset_name: vcmix-linux-amd64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: vcmix
+            asset_name: vcmix-macos-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: vcmix
+            asset_name: vcmix-macos-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: vcmix.exe
+            asset_name: vcmix-windows-amd64.exe
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install and test
-        run: |
-          pip install -e ".[dev]"
-          pytest --tb=short -q
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          key: ${{ matrix.target }}
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          7z a ../../../${{ matrix.asset_name }}.zip ${{ matrix.artifact_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: |
+            ${{ matrix.asset_name }}.tar.gz
+            ${{ matrix.asset_name }}.zip
+
+  # ========== Python 测试 + PyPI 发布 ==========
   build-and-publish-pypi:
     name: Build & Publish to PyPI
-    needs: test
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # OIDC trusted publishing
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,6 +96,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Install and test
+        run: |
+          pip install -e ".[dev]"
+          pytest --tb=short -q
 
       - name: Install build tools
         run: pip install build twine
@@ -54,17 +117,18 @@ jobs:
           attestations: false
         continue-on-error: true
 
-  build-and-push-docker:
-    name: Build & Push Docker Image
-    needs: test
+  # ========== Docker 镜像构建 + 推 GHCR ==========
+  docker:
+    name: Build & Push Docker
     runs-on: ubuntu-latest
+    needs: [build-binary, build-and-publish-pypi]
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -93,32 +157,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  create-release:
+  # ========== 创建 GitHub Release ==========
+  release:
     name: Create GitHub Release
-    needs: [build-and-publish-pypi, build-and-push-docker]
-    if: always() && needs.build-and-push-docker.result == 'success'
     runs-on: ubuntu-latest
+    needs: [build-binary, docker]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Generate changelog
-        id: changelog
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)" --reverse)
-          else
-            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --reverse)
-          fi
-          echo "$COMMITS" > /tmp/changelog.txt
-          echo "prev_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          body_path: /tmp/changelog.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: artifacts/**/*
