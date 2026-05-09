@@ -14,8 +14,6 @@ serde_json = "1"
 hound = "3.5"
 # 日志
 log = "0.4"
-# 临时目录（vc_adapter需要）
-tempfile = "3"
 
 # CLAP 插件支持 — 需要 Rust 1.85+ (clack-host 使用 edition 2024)
 clack-host = { version = "0.1", optional = true }
@@ -24,6 +22,8 @@ clack-host = { version = "0.1", optional = true }
 # vst3-sys = { version = "0.1", optional = true }
 
 [dev-dependencies]
+# 测试用临时目录
+tempfile = "3"
 # 日志输出
 env_logger = "0.11"
 
