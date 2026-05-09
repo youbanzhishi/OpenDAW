@@ -9,6 +9,23 @@ use crate::error::JsfxError;
 /// JSFX解析器
 pub struct JsfxParser;
 
+
+/// 简化的token类型
+#[derive(Debug, Clone, PartialEq)]
+enum Token {
+    Number(f64),
+    Ident(String),
+    Op(String),
+    LParen,
+    RParen,
+    LBracket,
+    RBracket,
+    Comma,
+    Question,
+    Colon,
+    Dollar,  // $ prefix
+}
+
 impl JsfxParser {
     /// 解析JSFX文本为AST
     pub fn parse(source: &str) -> Result<JsfxProgram, JsfxError> {
@@ -600,21 +617,6 @@ impl JsfxParser {
         Ok(expr)
     }
 
-    /// 简化的token类型
-    #[derive(Debug, Clone, PartialEq)]
-    enum Token {
-        Number(f64),
-        Ident(String),
-        Op(String),
-        LParen,
-        RParen,
-        LBracket,
-        RBracket,
-        Comma,
-        Question,
-        Colon,
-        Dollar,  // $ prefix
-    }
 
     /// 将代码字符串token化
     fn tokenize(code: &str) -> Vec<Token> {
