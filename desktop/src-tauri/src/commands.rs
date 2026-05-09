@@ -104,15 +104,13 @@ pub async fn check_backend_health(port: u16) -> Result<HealthStatus, String> {
 
 #[tauri::command]
 pub fn set_backend_pid(state: State<'_, AppState>, pid: u32) -> Result<(), String> {
-    let mut guard = state.backend.pid.lock().map_err(|e| e.to_string())?;
-    *guard = Some(pid);
+    *state.backend.pid.lock() = Some(pid);
     Ok(())
 }
 
 #[tauri::command]
 pub fn get_backend_pid(state: State<'_, AppState>) -> Result<Option<u32>, String> {
-    let guard = state.backend.pid.lock().map_err(|e| e.to_string())?;
-    Ok(*guard)
+    Ok(*state.backend.pid.lock())
 }
 
 #[tauri::command]
