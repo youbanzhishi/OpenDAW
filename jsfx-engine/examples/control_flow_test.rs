@@ -61,17 +61,14 @@ spl1 = tmp;
     assert!((out1 - 0.7).abs() < 0.001);
     println!("  ✓ 通过\n");
     
-    // 测试 while 循环
-    println!("测试 4: while 循环");
+    // 测试 while 循环 - 单行格式
+    println!("测试 4: while 循环 (单行)");
     let source = r#"
 desc:While Test
 @init
-i = 0;
 sum = 0;
-while(i < 10,
-  sum += i;
-  i += 1;
-);
+i = 0;
+while(i < 10, sum += i; i += 1;);
 "#;
     let program = JsfxParser::parse(source).unwrap();
     let mut vm = JsfxVm::new();

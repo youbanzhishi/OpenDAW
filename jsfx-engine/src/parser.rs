@@ -260,6 +260,25 @@ impl JsfxParser {
 
         Ok(statements)
     }
+    /// 解析一行中的多个分号分隔语句
+    fn parse_semicolon_statements(code: &str, line_num: usize) -> Result<StatementBlock, JsfxError> {
+        let code = code.trim();
+        if code.is_empty() {
+            return Ok(Vec::new());
+        }
+        
+        let parts: Vec<&str> = code.split(';')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
+        
+        let mut statements = Vec::new();
+        for part in parts {
+            let stmt = Self::parse_simple_statement(part, line_num)?;
+            statements.push(stmt);
+        }
+        Ok(statements)
+    }
 
     /// 解析一条语句
     fn parse_one_statement(lines: &[String], offset: usize) -> Result<(Statement, usize), JsfxError> {
@@ -390,26 +409,31 @@ impl JsfxParser {
         let line = Self::strip_comment(lines[offset].trim());
         let line_lower = line.to_lowercase();
 
-        let cond_start = if line_lower.starts_with("while(") { 5 } else { 6 };
-        let (condition, body_start) = Self::extract_paren_or_expr(&line[cond_start..]);
-
-        let cond_expr = Self::parse_expression(&condition, offset + 1)?;
-
-        let mut body_lines = Vec::new();
-        if !body_start.is_empty() {
-            // 单行情况: while(cond, body_statement)
-            body_lines.push(body_start.to_string());
-        }
-
-        if body_lines.is_empty() && offset + 1 < lines.len() {
-            let next = Self::strip_comment(lines[offset + 1].trim());
-            if !next.is_empty() && !next.starts_with('@') {
-                body_lines.push(next.to_string());
-            }
-        }
+        // 找第一个 (
+        let paren_start = line_lower.find("while(").map(|p| p + 6).unwrap_or(
+            line_lower.find("while (").map(|p| p + 7).unwrap_or(6)
+        );
         
-        let body = Self::parse_statement_block(&body_lines)?;
-        Ok((Statement::While(cond_expr, body), 1 + if body_start.is_empty() && !body_lines.is_empty() { 1 } else { 0 }))
+        // 找匹配的 )
+        if let Some(paren_end) = Self::find_matching_paren(&line, paren_start - 1) {
+            let inner = &line[paren_start..paren_end];
+            
+            // 找逗号分隔参数
+            let comma_pos = inner.find(',').ok_or_else(|| 
+                JsfxError::parse(offset + 1, "while缺少逗号分隔condition和body")
+            )?;
+            
+            let condition = inner[..comma_pos].trim();
+            let body_start = inner[comma_pos + 1..].trim();
+            
+            let cond_expr = Self::parse_expression(condition, offset + 1)?;
+            
+            // 使用辅助函数解析分号分隔的语句
+            let body = Self::parse_semicolon_statements(body_start, offset + 1)?;
+            Ok((Statement::While(cond_expr, body), 1))
+        } else {
+            Err(JsfxError::parse(offset + 1, "while缺少)"))
+        }
     }
 
     /// 解析loop语句
@@ -432,23 +456,9 @@ impl JsfxParser {
         
         let count_expr = Self::parse_expression(count_expr_str, offset + 1)?;
         
-        let mut body_lines = Vec::new();
-        
-        if !after_paren.is_empty() {
-            // 单行情况: loop(5, sum += 1;)
-            body_lines.push(after_paren.to_string());
-        }
-        
-        // 检查下一行（可能是多行 loop）
-        if offset + 1 < lines.len() {
-            let next = Self::strip_comment(lines[offset + 1].trim());
-            if !next.is_empty() && !next.starts_with('@') && body_lines.is_empty() {
-                body_lines.push(next.to_string());
-            }
-        }
-        
-        let body = Self::parse_statement_block(&body_lines)?;
-        Ok((Statement::Loop(count_expr, body), 1 + if after_paren.is_empty() && !body_lines.is_empty() { 1 } else { 0 }))
+        // 使用辅助函数解析分号分隔的语句
+        let body = Self::parse_semicolon_statements(after_paren, offset + 1)?;
+        Ok((Statement::Loop(count_expr, body), 1))
     }
     /// 解析loop语句
     fn extract_paren_or_expr(s: &str) -> (String, String) {
