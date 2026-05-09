@@ -10,7 +10,6 @@ build/
 Cargo.lock
 .coverage
 desktop/node_modules/
-desktop/src-tauri/Cargo.lock
 desktop/src-tauri/frontend/
 desktop/src-tauri/target/
 desktop/src-tauri/WixTools/
@@ -56,8 +55,7 @@ Thumbs.db
 desktop/node_modules/
 desktop/src-tauri/target/
 desktop/src-tauri/WixTools/
-desktop/src-tauri/Cargo.lock
-Cargo.lock
+!desktop/src-tauri/Cargo.lock
 *.tmp
 # VCMix temp projects
 .venv/
