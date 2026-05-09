@@ -1,4 +1,4 @@
-//! 统一插件扫描器 — 发现和加载 VST3/CLAP/VC-CLI 插件
+//! 统一插件扫描器 — 发现和加载 VST3/CLAP/VC-CLI/JSFX 插件
 //!
 //! `PluginScanner` 负责在系统标准路径和用户指定路径中
 //! 搜索所有支持格式的插件，并返回扫描结果。
@@ -6,24 +6,13 @@
 //!
 //! # 支持的插件格式
 //!
-//! | 格式     | 扩展名      | 说明                          |
-//! |----------|-------------|-------------------------------|
-//! | VST3     | .vst3       | Steinberg VST3 标准           |
-//! | CLAP     | .clap       | CLAP 开放插件标准             |
-//! | VC-CLI   | (可执行文件) | OpenDAW VC-Plugin CLI 协议    |
-//! | LV2      | .lv2        | LV2 开放标准（预留）          |
-//!
-//! # 标准系统路径
-//!
-//! - **macOS**:
-//!   - VST3: `/Library/Audio/Plug-Ins/VST3`, `~/Library/Audio/Plug-Ins/VST3`
-//!   - CLAP: `/Library/Audio/Plug-Ins/CLAP`, `~/Library/Audio/Plug-Ins/CLAP`
-//! - **Windows**:
-//!   - VST3: `C:\Program Files\Common Files\VST3`
-//!   - CLAP: `C:\Program Files\Common Files\CLAP`
-//! - **Linux**:
-//!   - VST3: `/usr/lib/vst3`, `~/.vst3`
-//!   - CLAP: `/usr/lib/clap`, `~/.clap`
+//! | 格式     | 扩展名/标识      | 说明                          |
+//! |----------|------------------|-------------------------------|
+//! | VST3     | .vst3            | Steinberg VST3 标准           |
+//! | CLAP     | .clap            | CLAP 开放插件标准             |
+//! | VC-CLI   | (可执行文件)      | OpenDAW VC-Plugin CLI 协议    |
+//! | JSFX     | .jsfx            | Reaper JSFX EEL2 脚本         |
+//! | LV2      | .lv2             | LV2 开放标准（预留）          |
 
 use std::path::{Path, PathBuf};
 
@@ -49,6 +38,8 @@ pub enum PluginFormat {
     Clap,
     /// OpenDAW VC-Plugin CLI
     VcCli,
+    /// Reaper JSFX EEL2 脚本
+    Jsfx,
     /// LV2 开放标准（预留）
     Lv2,
 }
@@ -59,6 +50,7 @@ impl std::fmt::Display for PluginFormat {
             PluginFormat::Vst3 => write!(f, "VST3"),
             PluginFormat::Clap => write!(f, "CLAP"),
             PluginFormat::VcCli => write!(f, "VC-CLI"),
+            PluginFormat::Jsfx => write!(f, "JSFX"),
             PluginFormat::Lv2 => write!(f, "LV2"),
         }
     }
@@ -75,7 +67,7 @@ pub struct ScannedPlugin {
     pub name: String,
     /// 插件格式
     pub format: PluginFormat,
-    /// 插件文件路径
+    /// 插件文件路径（对于 JSFX 是 .jsfx 文件路径，对于 VC-CLI 是目录路径）
     pub path: PathBuf,
 }
 
@@ -132,13 +124,15 @@ impl std::fmt::Display for ScanStats {
 /// scanner.add_path(PathBuf::from("/my/custom/plugins"));
 ///
 /// let results = scanner.scan().unwrap();
-/// for plugin in &results {
+/// for plugin in &results.0 {
 ///     println!("{} [{}]: {}", plugin.name, plugin.format, plugin.path.display());
 /// }
 /// ```
 pub struct PluginScanner {
     /// 搜索路径列表
     search_paths: Vec<PathBuf>,
+    /// 是否启用 JSFX 扫描
+    include_jsfx: bool,
 }
 
 impl PluginScanner {
@@ -146,6 +140,15 @@ impl PluginScanner {
     pub fn new() -> Self {
         Self {
             search_paths: Vec::new(),
+            include_jsfx: true,
+        }
+    }
+
+    /// 创建新的插件扫描器（可配置 JSFX）
+    pub fn new_with_jsfx(include_jsfx: bool) -> Self {
+        Self {
+            search_paths: Vec::new(),
+            include_jsfx,
         }
     }
 
@@ -154,6 +157,11 @@ impl PluginScanner {
         if !self.search_paths.contains(&path) {
             self.search_paths.push(path);
         }
+    }
+
+    /// 启用/禁用 JSFX 扫描
+    pub fn set_jsfx_scan(&mut self, enabled: bool) {
+        self.include_jsfx = enabled;
     }
 
     /// 添加标准系统插件路径
@@ -177,6 +185,11 @@ impl PluginScanner {
             if let Some(ref h) = home {
                 self.add_path(PathBuf::from(h).join("Library/Audio/Plug-Ins/CLAP"));
             }
+
+            // macOS JSFX 路径
+            if let Some(ref h) = home {
+                self.add_path(PathBuf::from(h).join("Library/Application Support/REAPER/Effects"));
+            }
         }
 
         #[cfg(target_os = "linux")]
@@ -194,6 +207,11 @@ impl PluginScanner {
             if let Some(ref h) = home {
                 self.add_path(PathBuf::from(h).join(".clap"));
             }
+
+            // Linux JSFX 路径
+            if let Some(ref h) = home {
+                self.add_path(PathBuf::from(h).join(".REAPER/Effects"));
+            }
         }
 
         #[cfg(target_os = "windows")]
@@ -209,6 +227,11 @@ impl PluginScanner {
             if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
                 self.add_path(PathBuf::from(local_app_data).join("Programs\\Common\\VST3"));
             }
+
+            // Windows JSFX 路径
+            if let Ok(app_data) = std::env::var("APPDATA") {
+                self.add_path(PathBuf::from(app_data).join("REAPER\\Effects"));
+            }
         }
 
         // VC-CLI 插件搜索路径
@@ -216,6 +239,10 @@ impl PluginScanner {
             self.add_path(PathBuf::from(vc_dir));
         }
         self.add_path(PathBuf::from("/tmp/AudioFX"));
+
+        // JSFX 默认搜索路径
+        self.add_path(PathBuf::from("/tmp/OpenDAW/jsfx-engine/tests"));
+        self.add_path(PathBuf::from("."));
     }
 
     /// 扫描所有路径，返回发现的插件列表
@@ -284,6 +311,11 @@ impl PluginScanner {
             // 扫描 VC-CLI 插件（始终可用）
             Self::scan_vc_cli_directory(dir, &mut results, &mut stats);
 
+            // 扫描 JSFX 插件
+            if self.include_jsfx {
+                Self::scan_jsfx_directory(dir, &mut results, &mut stats);
+            }
+
             // 扫描 VST3 文件（非 feature 门控的文件发现）
             #[cfg(not(feature = "vst3"))]
             {
@@ -337,6 +369,22 @@ impl PluginScanner {
                 let adapter = VcPluginAdapter::from_binary(&info.path)?;
                 Ok(Box::new(adapter))
             }
+            PluginFormat::Jsfx => {
+                // 动态加载 jsfx-engine
+                #[cfg(feature = "jsfx")]
+                {
+                    use jsfx_engine::JsfxPlugin;
+                    let plugin = JsfxPlugin::from_file(&info.path)
+                        .map_err(|e| PluginError::InitFailed(format!("JSFX 加载失败: {}", e)))?;
+                    Ok(Box::new(plugin))
+                }
+                #[cfg(not(feature = "jsfx"))]
+                {
+                    Err(PluginError::InitFailed(
+                        format!("JSFX 支持未启用，请启用 'jsfx' feature: {}", info.path.display())
+                    ))
+                }
+            }
             PluginFormat::Lv2 => {
                 Err(PluginError::InitFailed(
                     "LV2 格式暂不支持".to_string()
@@ -383,7 +431,7 @@ impl PluginScanner {
                 let binary_name = format!("{}-CLI-Standalone", dir_name);
                 let binary_path = path.join(&binary_name);
 
-                if binary_path.exists() || path.join(&binary_name).exists() {
+                if binary_path.exists() {
                     let id = dir_name.to_lowercase().replace(' ', "-");
                     results.push(ScannedPlugin::new(
                         &id,
@@ -393,6 +441,47 @@ impl PluginScanner {
                     ));
                     *stats.by_format.entry("VC-CLI".to_string()).or_insert(0) += 1;
                     stats.plugins_found += 1;
+                }
+            }
+        }
+    }
+
+    /// 扫描 JSFX 目录
+    fn scan_jsfx_directory(
+        dir: &Path,
+        results: &mut Vec<ScannedPlugin>,
+        stats: &mut ScanStats,
+    ) {
+        if !dir.exists() {
+            return;
+        }
+
+        let entries = match std::fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => return,
+        };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            
+            // 检查是否是 .jsfx 文件
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "jsfx" {
+                        let name = path.file_stem()
+                            .map(|s| s.to_string_lossy().to_string())
+                            .unwrap_or_default();
+                        let id = format!("jsfx-{}", name.to_lowercase().replace(' ', "-"));
+                        
+                        results.push(ScannedPlugin::new(
+                            &id,
+                            &name,
+                            PluginFormat::Jsfx,
+                            path,
+                        ));
+                        *stats.by_format.entry("JSFX".to_string()).or_insert(0) += 1;
+                        stats.plugins_found += 1;
+                    }
                 }
             }
         }
@@ -487,7 +576,7 @@ impl Default for PluginScanner {
     }
 }
 
-// ── 单元测试 ──────────────────────────────────────────────────────────────
+// ── 单元测试 ─────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -497,6 +586,7 @@ mod tests {
     fn test_scanner_new() {
         let scanner = PluginScanner::new();
         assert!(scanner.search_paths().is_empty());
+        assert!(scanner.include_jsfx);
     }
 
     #[test]
@@ -508,6 +598,18 @@ mod tests {
         // 重复路径不应添加
         scanner.add_path(PathBuf::from("/test/path"));
         assert_eq!(scanner.search_paths().len(), 1);
+    }
+
+    #[test]
+    fn test_scanner_jsfx_toggle() {
+        let mut scanner = PluginScanner::new();
+        assert!(scanner.include_jsfx);
+        
+        scanner.set_jsfx_scan(false);
+        assert!(!scanner.include_jsfx);
+        
+        scanner.set_jsfx_scan(true);
+        assert!(scanner.include_jsfx);
     }
 
     #[test]
@@ -524,10 +626,23 @@ mod tests {
     }
 
     #[test]
+    fn test_scanned_plugin_jsfx() {
+        let plugin = ScannedPlugin::new(
+            "jsfx-my-effect",
+            "My Effect",
+            PluginFormat::Jsfx,
+            PathBuf::from("/path/to/effect.jsfx"),
+        );
+        assert_eq!(plugin.id, "jsfx-my-effect");
+        assert_eq!(plugin.format, PluginFormat::Jsfx);
+    }
+
+    #[test]
     fn test_plugin_format_display() {
         assert_eq!(format!("{}", PluginFormat::Vst3), "VST3");
         assert_eq!(format!("{}", PluginFormat::Clap), "CLAP");
         assert_eq!(format!("{}", PluginFormat::VcCli), "VC-CLI");
+        assert_eq!(format!("{}", PluginFormat::Jsfx), "JSFX");
         assert_eq!(format!("{}", PluginFormat::Lv2), "LV2");
     }
 
