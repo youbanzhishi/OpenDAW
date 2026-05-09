@@ -48,7 +48,11 @@ impl PluginChain {
 
     /// 移除指定位置的插件
     pub fn remove(&mut self, index: usize) -> Option<Box<dyn VcPlugin>> {
-        self.nodes.remove(index).map(|n| n.plugin)
+        if index < self.nodes.len() {
+            Some(self.nodes.remove(index).plugin)
+        } else {
+            None
+        }
     }
 
     /// 处理信号链
@@ -133,7 +137,7 @@ impl PluginChain {
     }
 
     /// 获取指定位置插件的可变引用
-    pub fn get_plugin_mut(&mut self, index: usize) -> Option<&mut dyn VcPlugin> {
+    pub fn get_plugin_mut(&mut self, index: usize) -> Option<&mut (dyn VcPlugin + '_')> {
         self.nodes.get_mut(index).map(|n| n.plugin.as_mut())
     }
 
