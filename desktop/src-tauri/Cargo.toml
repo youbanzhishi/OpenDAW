@@ -19,6 +19,7 @@ ctrlc = "3"
 urlencoding = "2"
 opendaw-core = { path = "../../opendaw-core" }
 audio-engine = { path = "../../audio-engine" }
+opendaw-extension = { path = "../../opendaw-extension" }
 parking_lot = "0.12"
 
 [lib]
