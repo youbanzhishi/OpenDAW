@@ -79,18 +79,7 @@
   },
   "plugins": {
     "shell": {
-      "scope": [
-        {
-          "name": "python",
-          "cmd": "python",
-          "args": true
-        },
-        {
-          "name": "vcmix",
-          "cmd": "vcmix",
-          "args": true
-        }
-      ]
+      "open": true
     },
     "updater": {
       "active": false
