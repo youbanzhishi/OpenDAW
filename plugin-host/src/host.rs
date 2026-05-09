@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 
 use opendaw_extension::{AudioBuffer, VcPlugin, PluginError, PluginType};
+use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
 use crate::chain::PluginChain;
 use crate::param::ParamManager;
 use crate::preset::PresetManager;
@@ -79,17 +80,41 @@ impl PluginHost {
 
     /// 将已加载的插件添加到信号链
     ///
-    /// 注意：由于Rust的借用规则，这里通过克隆插件ID来管理
-    /// 实际信号链处理时会直接使用链中的插件
-    pub fn add_to_chain(&mut self, _plugin_id: &str) {
-        // 在实际实现中，需要通过Arc<Mutex<>>或其他机制
-        // 将插件从pool移到chain，或使用共享引用
-        // 此处为简化实现，用户可以直接使用chain.push()
+    /// 插件会从插件池中移出并追加到信号链末尾。
+    /// 添加后插件的process()将参与chain.process()的调度。
+    pub fn add_to_chain(&mut self, plugin_id: &str) -> Result<(), PluginError> {
+        let plugin = self.plugins.remove(plugin_id)
+            .ok_or_else(|| PluginError::ProcessFailed(format!("插件未找到: {}", plugin_id)))?;
+        self.chain.push(plugin);
+        Ok(())
     }
 
-    /// 处理音频
+    /// 将已加载的插件插入到信号链的指定位置
+    pub fn insert_to_chain(&mut self, index: usize, plugin_id: &str) -> Result<(), PluginError> {
+        let plugin = self.plugins.remove(plugin_id)
+            .ok_or_else(|| PluginError::ProcessFailed(format!("插件未找到: {}", plugin_id)))?;
+        self.chain.insert(index, plugin);
+        Ok(())
+    }
+
+    /// 从信号链中移除指定位置的插件（移回插件池）
+    pub fn remove_from_chain(&mut self, index: usize) -> Result<String, PluginError> {
+        let plugin = self.chain.remove(index)
+            .ok_or_else(|| PluginError::ProcessFailed(format!("链索引越界: {}", index)))?;
+        let id = plugin.plugin_id().to_string();
+        // 插件移回插件池
+        self.plugins.insert(id.clone(), plugin);
+        Ok(id)
+    }
+
+    /// 处理音频（opendaw-extension AudioBuffer）
     pub fn process(&mut self, input: &AudioBuffer, output: &mut AudioBuffer) {
         self.chain.process(input, output);
+    }
+
+    /// 处理音频（audio-engine AudioBuffer，自动桥接转换）
+    pub fn process_engine(&mut self, input: &EngineAudioBuffer, output: &mut EngineAudioBuffer) {
+        self.chain.process_engine(input, output);
     }
 
     /// 设置插件参数
@@ -192,5 +217,36 @@ mod tests {
         host.load_plugin(Box::new(PassthroughPlugin)).unwrap();
         host.unload_plugin("passthrough").unwrap();
         assert_eq!(host.plugin_count(), 0);
+    }
+
+    #[test]
+    fn test_add_to_chain() {
+        let mut host = PluginHost::new(44100.0, 256, 2);
+        host.load_plugin(Box::new(PassthroughPlugin)).unwrap();
+        assert_eq!(host.plugin_count(), 1);
+        assert_eq!(host.chain_length(), 0);
+
+        // 添加到信号链
+        host.add_to_chain("passthrough").unwrap();
+        assert_eq!(host.plugin_count(), 0); // 从插件池移出
+        assert_eq!(host.chain_length(), 1); // 添加到链中
+
+        // 重复添加应失败（已不在插件池中）
+        assert!(host.add_to_chain("passthrough").is_err());
+    }
+
+    #[test]
+    fn test_chain_process_after_add() {
+        let mut host = PluginHost::new(44100.0, 256, 2);
+        host.load_plugin(Box::new(PassthroughPlugin)).unwrap();
+        host.add_to_chain("passthrough").unwrap();
+
+        let input = AudioBuffer::new(2, 256);
+        let mut output = AudioBuffer::new(2, 256);
+        // 在输入中写入一些数据
+        output.data[0] = 0.0;
+        host.process(&input, &mut output);
+        // 直通插件应该复制input到output
+        assert_eq!(output.data[0], input.data[0]);
     }
 }

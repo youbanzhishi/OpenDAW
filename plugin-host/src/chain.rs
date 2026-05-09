@@ -3,6 +3,7 @@
 //! input -> plugin1 -> plugin2 -> ... -> output
 
 use opendaw_extension::{AudioBuffer, VcPlugin, PluginError};
+use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
 
 /// 信号链节点
 struct ChainNode {
@@ -79,6 +80,34 @@ impl PluginChain {
         }
 
         output.data.copy_from_slice(&src_data);
+    }
+
+    /// 使用audio-engine AudioBuffer处理信号链
+    ///
+    /// 将engine AudioBuffer(f32 planar)转换为extension AudioBuffer(f64)，
+    /// 通过链中所有插件处理后，再转换回engine AudioBuffer。
+    pub fn process_engine(
+        &mut self,
+        input: &EngineAudioBuffer,
+        output: &mut EngineAudioBuffer,
+    ) {
+        // engine f32 → extension f64
+        let ext_input = AudioBuffer {
+            channels: input.channels,
+            frames: input.frames,
+            data: input.as_slice().iter().map(|&s| s as f64).collect(),
+        };
+        let mut ext_output = AudioBuffer::new(output.channels, output.frames);
+
+        // 通过插件链处理
+        self.process(&ext_input, &mut ext_output);
+
+        // extension f64 → engine f32
+        for (i, &v) in ext_output.data.iter().enumerate() {
+            if i < output.as_mut_slice().len() {
+                output.as_mut_slice()[i] = v as f32;
+            }
+        }
     }
 
     /// 获取链中插件数量
