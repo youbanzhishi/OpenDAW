@@ -7,6 +7,7 @@
 
 // ── API Base URL ────────────────────────────────────────────────────────
 const API = '/api';
+const API_V1 = '/api/v1';
 
 // ── Tab Navigation ──────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -390,33 +391,132 @@ async function loadSynths() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ── Phase 9: Chain Presets Tab ─────────────────────────────────────────
+// ── VC-Chain: Enhanced Chain Editor ───────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
 
 let selectedChainName = null;
+let selectedChainData = null;
 
+// ── Load VC-Chains (new API) ────────────────────────────────────────
 async function loadChainPresets() {
     try {
-        const resp = await fetch(`${API}/presets/chains`);
+        const resp = await fetch(`${API_V1}/chains`);
         const data = await resp.json();
         const grid = document.getElementById('chains-list');
-        grid.innerHTML = data.chains.map(c => `
-            <div class="card" onclick="showChainDetail('${c.name}')">
-                <h3>🔗 ${c.name}</h3>
-                <p>${c.description || c.effect_count + ' effects'}</p>
-                <div class="chain-routing">Routing: ${c.routing}</div>
-                <div class="chain-tags">
-                    ${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+        grid.innerHTML = data.chains.map(c => {
+            const badges = [];
+            if (c.has_parallel) badges.push('⟷ Parallel');
+            if (c.has_multiband) badges.push('📊 Multiband');
+            if (c.macro_count > 0) badges.push(`🎛️ ${c.macro_count} Macros`);
+            const sourceIcon = c.source === 'builtin' ? '📦' : '👤';
+            return `
+                <div class="card" onclick="showVCChainDetail('${c.name}')">
+                    <h3>${sourceIcon} ${c.name}</h3>
+                    <p>${c.description || c.step_count + ' steps'}</p>
+                    <div style="font-size:0.8rem;color:var(--text-secondary)">
+                        Steps: ${c.step_count} | ${badges.join(' | ')}
+                    </div>
+                    <div class="chain-tags">
+                        ${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (err) {
-        document.getElementById('chains-list').innerHTML =
-            `<p style="color:var(--error)">Failed to load chains: ${err.message}</p>`;
+        // Fallback to old API
+        try {
+            const resp = await fetch(`${API}/presets/chains`);
+            const data = await resp.json();
+            const grid = document.getElementById('chains-list');
+            grid.innerHTML = data.chains.map(c => `
+                <div class="card" onclick="showChainDetailLegacy('${c.name}')">
+                    <h3>🔗 ${c.name}</h3>
+                    <p>${c.description || c.effect_count + ' effects'}</p>
+                    <div class="chain-tags">
+                        ${c.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        } catch (err2) {
+            document.getElementById('chains-list').innerHTML =
+                `<p style="color:var(--error)">Failed to load chains: ${err2.message}</p>`;
+        }
     }
 }
 
-async function showChainDetail(name) {
+// ── Show VC-Chain Detail ─────────────────────────────────────────────
+async function showVCChainDetail(name) {
+    selectedChainName = name;
+    document.getElementById('btn-chain-apply').disabled = false;
+    document.getElementById('btn-xps-export').disabled = false;
+    document.getElementById('btn-chainverse-upload').disabled = false;
+
+    try {
+        const resp = await fetch(`${API_V1}/chains/${name}`);
+        const data = await resp.json();
+        selectedChainData = data;
+
+        // Build detail text
+        let info = `🔗 VC-Chain: ${data.name}`;
+        if (data.author) info += `\nAuthor: ${data.author}`;
+        if (data.description) info += `\n${data.description}`;
+        info += `\nVersion: ${data.version || '1.0'}`;
+
+        // Serial chain
+        if (data.chain && data.chain.serial) {
+            info += `\n\n▶ Serial Chain:`;
+            data.chain.serial.forEach((s, i) => {
+                const params = s.params ? Object.entries(s.params).map(([k,v]) => `${k}=${v}`).join(', ') : '';
+                info += `\n  ${i+1}. ${s.plugin}${params ? ' (' + params + ')' : ''}`;
+            });
+        }
+
+        // Parallel branches
+        if (data.chain && data.chain.parallel && data.chain.parallel.length > 0) {
+            info += `\n\n⟷ Parallel Branches:`;
+            data.chain.parallel.forEach((b, i) => {
+                info += `\n  Branch ${i+1} (mix=${b.mix}):`;
+                if (b.chain) {
+                    b.chain.forEach((s, j) => {
+                        const params = s.params ? Object.entries(s.params).map(([k,v]) => `${k}=${v}`).join(', ') : '';
+                        info += `\n    ${j+1}. ${s.plugin}${params ? ' (' + params + ')' : ''}`;
+                    });
+                }
+            });
+        }
+
+        // Multiband
+        if (data.chain && data.chain.multiband) {
+            const mb = data.chain.multiband;
+            info += `\n\n📊 Multiband:`;
+            if (mb.crossover) info += `\n  Crossover: ${mb.crossover.join(', ')} Hz`;
+            if (mb.bands) {
+                mb.bands.forEach((b, i) => {
+                    info += `\n  Band ${i+1} (${b.range[0]}-${b.range[1]} Hz):`;
+                    if (b.chain) {
+                        b.chain.forEach((s, j) => {
+                            info += `\n    ${j+1}. ${s.plugin}`;
+                        });
+                    }
+                });
+            }
+        }
+
+        showResult('chain-detail', info, 'info');
+
+        // Render Macro knobs
+        renderMacroKnobs(data.macro || []);
+
+        // Render signal flow
+        renderSignalFlow(data.signal_flow);
+
+    } catch (err) {
+        showResult('chain-detail', `Failed: ${err.message}`, 'invalid');
+    }
+}
+
+// ── Legacy chain detail (old API fallback) ──────────────────────────
+async function showChainDetailLegacy(name) {
     selectedChainName = name;
     document.getElementById('btn-chain-apply').disabled = false;
 
@@ -428,23 +528,96 @@ async function showChainDetail(name) {
             const params = Object.entries(e.params || {})
                 .map(([k, v]) => `${k}=${v}`)
                 .join(', ');
-            return `  ${i + 1}. ${e.name} (${params})${e.enabled === false ? ' [DISABLED]' : ''}`;
+            return `  ${i + 1}. ${e.name} (${params})`;
         }).join('\n');
 
-        const info = `🔗 Chain: ${data.name}
-${data.description}
-Routing: ${data.routing}
-Input Gain: ${data.input_gain_db} dB | Output Gain: ${data.output_gain_db} dB
-Effects (${data.effect_count}):
-${effects}`;
-
+        const info = `🔗 Chain: ${data.name}\n${data.description}\nEffects (${data.effect_count}):\n${effects}`;
         showResult('chain-detail', info, 'info');
     } catch (err) {
         showResult('chain-detail', `Failed: ${err.message}`, 'invalid');
     }
 }
 
-// ── Apply Chain Preset ──────────────────────────────────────────────────
+// ── Render Macro Knobs ──────────────────────────────────────────────
+function renderMacroKnobs(macros) {
+    const panel = document.getElementById('macro-panel');
+    const container = document.getElementById('macro-knobs');
+
+    if (!macros || macros.length === 0) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    container.innerHTML = macros.map((m, i) => `
+        <div style="text-align:center;min-width:80px">
+            <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:4px">${m.name}</div>
+            <input type="range" min="0" max="100" value="50"
+                id="macro-${i}" data-macro-name="${m.name}"
+                style="writing-mode:vertical-lr;height:80px;cursor:pointer"
+                oninput="onMacroChange(${i}, this.value)">
+            <div id="macro-value-${i}" style="font-size:0.7rem;color:var(--text-secondary)">0.50</div>
+        </div>
+    `).join('');
+}
+
+function onMacroChange(index, value) {
+    const normalized = value / 100;
+    document.getElementById(`macro-value-${index}`).textContent = normalized.toFixed(2);
+}
+
+function getMacroValues() {
+    if (!selectedChainData || !selectedChainData.macro) return {};
+    const values = {};
+    selectedChainData.macro.forEach((m, i) => {
+        const slider = document.getElementById(`macro-${i}`);
+        if (slider) {
+            values[m.name] = slider.value / 100;
+        }
+    });
+    return values;
+}
+
+// ── Render Signal Flow ──────────────────────────────────────────────
+function renderSignalFlow(flow) {
+    const panel = document.getElementById('signal-flow-panel');
+    const container = document.getElementById('signal-flow');
+
+    if (!flow || !flow.stages || flow.stages.length === 0) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    let text = '';
+
+    flow.stages.forEach(stage => {
+        if (stage.type === 'serial') {
+            text += '▶ SERIAL: ';
+            text += stage.steps.map(s => `[${s.plugin}]`).join(' → ');
+            text += '\n';
+        } else if (stage.type === 'parallel') {
+            text += '⟷ PARALLEL:\n';
+            stage.branches.forEach((b, i) => {
+                text += `  Branch ${i+1} (mix=${b.mix}): `;
+                text += b.chain.map(s => `[${s.plugin}]`).join(' → ');
+                text += '\n';
+            });
+        } else if (stage.type === 'multiband') {
+            text += '📊 MULTIBAND:\n';
+            if (stage.crossover) text += `  Crossover: ${stage.crossover.join(', ')} Hz\n`;
+            stage.bands.forEach((b, i) => {
+                text += `  Band ${i+1}: `;
+                text += b.chain.map(s => `[${s.plugin}]`).join(' → ');
+                text += '\n';
+            });
+        }
+    });
+
+    container.textContent = text.trim();
+}
+
+// ── Apply Chain ──────────────────────────────────────────────────────
 document.getElementById('btn-chain-apply').addEventListener('click', async () => {
     if (!selectedChainName) {
         showResult('chain-apply-result', 'Select a chain preset first', 'invalid');
@@ -460,7 +633,8 @@ document.getElementById('btn-chain-apply').addEventListener('click', async () =>
     }
 
     try {
-        const resp = await fetch(`${API}/presets/chains/${selectedChainName}/apply`, {
+        const macroValues = getMacroValues();
+        const resp = await fetch(`${API_V1}/chains/${selectedChainName}/apply`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -470,13 +644,14 @@ document.getElementById('btn-chain-apply').addEventListener('click', async () =>
                     file: trackFile || `${trackName}.wav`,
                     effects: [],
                 },
+                macro_values: Object.keys(macroValues).length > 0 ? macroValues : undefined,
             }),
         });
         const data = await resp.json();
 
         if (data.applied) {
             showResult('chain-apply-result',
-                `✅ Chain "${data.chain_name}" applied to track "${data.track_name}"\n${data.effect_count} effects configured`,
+                `✅ Chain "${data.chain_name}" applied to track "${data.track_name}"\n${data.effect_count} effects configured${data.macro_values_applied ? '\n🎛️ Macros applied' : ''}`,
                 'valid'
             );
         } else {
@@ -484,6 +659,128 @@ document.getElementById('btn-chain-apply').addEventListener('click', async () =>
         }
     } catch (err) {
         showResult('chain-apply-result', `Apply failed: ${err.message}`, 'invalid');
+    }
+});
+
+// ── .xps Import ─────────────────────────────────────────────────────
+document.getElementById('btn-xps-import').addEventListener('click', async () => {
+    const fileInput = document.getElementById('xps-import-file');
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showResult('xps-result', 'Please select a .xps file', 'invalid');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        const resp = await fetch(`${API_V1}/chains/import/xps`, {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await resp.json();
+
+        if (data.imported) {
+            showResult('xps-result',
+                `✅ Imported "${data.name}" from .xps\n${data.step_count} steps, ${data.macro_count} macros\nAuthor: ${data.author || 'unknown'}`,
+                'valid'
+            );
+            loadChainPresets(); // Refresh list
+        } else {
+            showResult('xps-result', `❌ Import failed: ${JSON.stringify(data.detail || data)}`, 'invalid');
+        }
+    } catch (err) {
+        showResult('xps-result', `Import failed: ${err.message}`, 'invalid');
+    }
+});
+
+// ── .xps Export ──────────────────────────────────────────────────────
+document.getElementById('btn-xps-export').addEventListener('click', async () => {
+    if (!selectedChainName) {
+        showResult('xps-result', 'Select a chain first', 'invalid');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${API_V1}/chains/${selectedChainName}/export/xps`, {
+            method: 'POST',
+        });
+        const data = await resp.json();
+
+        if (data.exported) {
+            showResult('xps-result',
+                `✅ Exported "${data.name}" as .xps\nPath: ${data.xps_path}\n⚠️ Note: ${data.note}`,
+                'valid'
+            );
+        } else {
+            showResult('xps-result', `❌ Export failed: ${JSON.stringify(data.detail || data)}`, 'invalid');
+        }
+    } catch (err) {
+        showResult('xps-result', `Export failed: ${err.message}`, 'invalid');
+    }
+});
+
+// ── ChainVerse Search ───────────────────────────────────────────────
+document.getElementById('btn-chainverse-search').addEventListener('click', async () => {
+    const query = document.getElementById('chainverse-search').value.trim();
+    if (!query) {
+        document.getElementById('chainverse-results').innerHTML = '<p style="color:var(--text-secondary)">Enter a search query</p>';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${API_V1}/chainverse/search?q=${encodeURIComponent(query)}`);
+        const data = await resp.json();
+        const grid = document.getElementById('chainverse-results');
+
+        if (data.count === 0) {
+            grid.innerHTML = '<p style="color:var(--text-secondary)">No chains found. Try different keywords or upload one!</p>';
+            return;
+        }
+
+        grid.innerHTML = data.results.map(e => `
+            <div class="card">
+                <h3>🌐 ${e.name}</h3>
+                <p>by ${e.author || 'unknown'} | ⭐ ${e.rating.toFixed(1)} (${e.rating_count} ratings) | 📥 ${e.downloads}</p>
+                <div class="chain-tags">
+                    ${e.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        document.getElementById('chainverse-results').innerHTML =
+            `<p style="color:var(--error)">Search failed: ${err.message}</p>`;
+    }
+});
+
+// ── ChainVerse Upload ───────────────────────────────────────────────
+document.getElementById('btn-chainverse-upload').addEventListener('click', async () => {
+    if (!selectedChainName) {
+        showResult('chainverse-result', 'Select a chain first', 'invalid');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${API_V1}/chainverse/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chain_name: selectedChainName,
+                author: selectedChainData?.author || 'anonymous',
+            }),
+        });
+        const data = await resp.json();
+
+        if (data.uploaded) {
+            showResult('chainverse-result',
+                `✅ Uploaded "${data.name}" to ChainVerse\nID: ${data.id}\nTags: ${data.tags.join(', ')}`,
+                'valid'
+            );
+        } else {
+            showResult('chainverse-result', `❌ Upload failed: ${JSON.stringify(data.detail || data)}`, 'invalid');
+        }
+    } catch (err) {
+        showResult('chainverse-result', `Upload failed: ${err.message}`, 'invalid');
     }
 });
 

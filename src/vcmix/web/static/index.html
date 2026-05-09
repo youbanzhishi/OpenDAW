@@ -124,13 +124,31 @@
             </div>
         </section>
 
-        <!-- Chains Tab (Phase 9) -->
+        <!-- Chains Tab (Phase 9 → VC-Chain Enhanced) -->
         <section id="tab-chains" class="tab-content">
             <div class="panel">
-                <h2>🔗 Plugin Chain Presets</h2>
-                <p class="section-desc">Complete signal processing chains with routing and gain staging.</p>
+                <h2>🔗 VC-Chain Editor</h2>
+                <p class="section-desc">Waves StudioRack-compatible mixing chain system with Macro controls, parallel processing, and community sharing.</p>
+
+                <!-- Chain List -->
                 <div id="chains-list" class="card-grid"></div>
+
+                <!-- Chain Detail / Editor -->
                 <div id="chain-detail" class="result-box hidden"></div>
+
+                <!-- Macro Controls -->
+                <div id="macro-panel" class="hidden" style="margin-top:1rem">
+                    <h3>🎛️ Macro Controls</h3>
+                    <div id="macro-knobs" style="display:flex;flex-wrap:wrap;gap:1rem;"></div>
+                </div>
+
+                <!-- Signal Flow Visualization -->
+                <div id="signal-flow-panel" class="hidden" style="margin-top:1rem">
+                    <h3>📊 Signal Flow</h3>
+                    <div id="signal-flow" style="font-family:monospace;white-space:pre;padding:0.5rem;background:var(--bg-secondary);border-radius:6px;"></div>
+                </div>
+
+                <!-- Apply Chain -->
                 <div class="form-group" style="margin-top:1rem">
                     <label>Apply Chain to Track:</label>
                     <div class="form-row">
@@ -142,6 +160,37 @@
                     </div>
                 </div>
                 <div id="chain-apply-result" class="result-box hidden"></div>
+
+                <!-- .xps Import/Export -->
+                <div class="form-group" style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem">
+                    <h3>📦 Waves .xps Compatibility</h3>
+                    <div class="form-row">
+                        <div>
+                            <label>Import .xps:</label>
+                            <input type="file" id="xps-import-file" accept=".xps" class="input-field">
+                            <button id="btn-xps-import" class="btn btn-secondary" style="margin-top:0.5rem">Import .xps</button>
+                        </div>
+                        <div>
+                            <label>Export .xps:</label>
+                            <button id="btn-xps-export" class="btn btn-secondary" disabled>Export Current Chain</button>
+                        </div>
+                    </div>
+                    <div id="xps-result" class="result-box hidden"></div>
+                </div>
+
+                <!-- ChainVerse Community -->
+                <div class="form-group" style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem">
+                    <h3>🌐 ChainVerse Community</h3>
+                    <div class="form-row">
+                        <input type="text" id="chainverse-search" placeholder="Search chains (e.g. vocal pop bright)" class="input-field" style="flex:1">
+                        <button id="btn-chainverse-search" class="btn btn-secondary">🔍 Search</button>
+                    </div>
+                    <div id="chainverse-results" class="card-grid" style="margin-top:0.5rem"></div>
+                    <div class="editor-toolbar" style="margin-top:0.5rem">
+                        <button id="btn-chainverse-upload" class="btn btn-secondary" disabled>📤 Upload Current Chain</button>
+                    </div>
+                    <div id="chainverse-result" class="result-box hidden"></div>
+                </div>
             </div>
         </section>
 

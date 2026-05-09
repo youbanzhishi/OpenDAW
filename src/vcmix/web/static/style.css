@@ -671,3 +671,41 @@ footer a:hover { text-decoration: underline; }
 .chat-input {
     flex: 1;
 }
+
+/* ── VC-Chain Styles ─────────────────────────────────────────────── */
+
+.chain-routing {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0;
+}
+
+.chain-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+}
+
+.tag {
+    font-size: 0.7rem;
+    background: var(--accent);
+    color: var(--bg-primary);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+}
+
+#macro-knobs input[type="range"] {
+    accent-color: var(--accent);
+}
+
+#signal-flow {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+#signal-flow-panel h3,
+#macro-panel h3 {
+    margin-bottom: 0.5rem;
+    color: var(--accent);
+}
