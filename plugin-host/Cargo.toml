@@ -23,12 +23,15 @@ clack-host = { version = "0.1", optional = true }
 # VST3 插件支持 — 预留，需要 FFI 绑定
 # vst3-sys = { version = "0.1", optional = true }
 
+# JSFX 插件支持
+jsfx-engine = { path = "../jsfx-engine", optional = true }
+
 [dev-dependencies]
 # 日志输出
 env_logger = "0.11"
 
 [features]
-# 默认不启用 CLAP/VST3（需要 Rust 1.85+ / 特殊 FFI 依赖）
+# 默认不启用 CLAP/VST3/JSFX（需要特殊依赖）
 default = []
 
 # CLAP 插件支持
@@ -37,6 +40,9 @@ clap = ["dep:clack-host"]
 
 # VST3 插件支持（预留）
 vst3 = []
+
+# JSFX 插件支持
+jsfx = ["dep:jsfx-engine"]
 
 [[example]]
 name = "vc_plugin_demo"
