@@ -24,9 +24,9 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
-from vcmix.agent.toolbox import ToolExecutor, AGENT_TOOLS
+from vcmix.agent.toolbox import AGENT_TOOLS, ToolExecutor
 
 logger = logging.getLogger("vcmix.agent.mcp_server")
 

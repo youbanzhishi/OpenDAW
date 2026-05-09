@@ -15,12 +15,12 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from vcmix.agent.memory import ShortTermMemory
-from vcmix.agent.modelbus import ModelBus, ModelConfig, Message
-from vcmix.agent.persona import Persona, BUILTIN_PERSONAS
-from vcmix.agent.toolbox import ToolExecutor, AGENT_TOOLS
+from vcmix.agent.modelbus import ModelBus, ModelConfig
+from vcmix.agent.persona import BUILTIN_PERSONAS, Persona
+from vcmix.agent.toolbox import AGENT_TOOLS, ToolExecutor
 
 logger = logging.getLogger("vcmix.agent.runtime")
 

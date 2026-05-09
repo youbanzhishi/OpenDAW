@@ -15,17 +15,15 @@ Phase 22a uses a global _agent instance for simplicity.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import time
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from vcmix.agent.mcp_server import MCPSession, VCMixMCPServer
 from vcmix.agent.modelbus import ModelConfig
-from vcmix.agent.mcp_server import VCMixMCPServer, MCPSession
 from vcmix.agent.persona import BUILTIN_PERSONAS
 from vcmix.agent.runtime import AgentRuntime
 

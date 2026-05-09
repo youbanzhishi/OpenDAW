@@ -7,7 +7,6 @@ ToolExecutor translates tool calls into HTTP requests against the local API.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 

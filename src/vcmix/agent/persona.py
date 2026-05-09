@@ -9,7 +9,6 @@ from professional mix engineers to beginner-friendly coaches.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass

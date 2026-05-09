@@ -13,12 +13,12 @@ Modules:
     mcp_server  — MCP Server for external Agent integration
 """
 
-from vcmix.agent.modelbus import ModelBus, ModelConfig, Message
-from vcmix.agent.toolbox import ToolExecutor, AGENT_TOOLS
-from vcmix.agent.runtime import AgentRuntime, AgentResponse, AgentAction
+from vcmix.agent.mcp_server import MCPResult, MCPTool, VCMixMCPServer
 from vcmix.agent.memory import ShortTermMemory
-from vcmix.agent.persona import Persona, BUILTIN_PERSONAS
-from vcmix.agent.mcp_server import VCMixMCPServer, MCPTool, MCPResult
+from vcmix.agent.modelbus import Message, ModelBus, ModelConfig
+from vcmix.agent.persona import BUILTIN_PERSONAS, Persona
+from vcmix.agent.runtime import AgentAction, AgentResponse, AgentRuntime
+from vcmix.agent.toolbox import AGENT_TOOLS, ToolExecutor
 
 __all__ = [
     "ModelBus",
