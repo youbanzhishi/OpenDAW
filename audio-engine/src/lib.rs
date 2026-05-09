@@ -46,3 +46,6 @@ pub use engine::AudioEngine;
 pub use scheduler::{ProcessCallback, Scheduler};
 pub use state::{EngineError, EngineState};
 pub use track::Track;
+
+/// 兼容别名（opendaw-core 使用此名称）
+pub type EngineAudioBuffer = AudioBuffer;
