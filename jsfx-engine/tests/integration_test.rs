@@ -1,7 +1,8 @@
 //! 集成测试 — 加载JSFX文件并验证处理结果
 
 use jsfx_engine::parser::JsfxParser;
-use jsfx_engine::vm::{AudioBuffer, JsfxVm};
+use jsfx_engine::vm::JsfxVm;
+use jsfx_engine::AudioBuffer;
 use jsfx_engine::JsfxPlugin;
 use jsfx_engine::VcPlugin;
 use std::path::Path;
@@ -228,7 +229,7 @@ spl1 *= gain;
     plugin.set_param("slider1", 0.0).unwrap();
     assert!((plugin.get_param("slider1").unwrap() - 0.0).abs() < 0.001);
 
-    // 处理音频
+    // 处理音频（使用扩展层AudioBuffer，与VcPlugin接口一致）
     let input = AudioBuffer::new(2, 256);
     let mut output = AudioBuffer::new(2, 256);
     plugin.process(&input, &mut output);

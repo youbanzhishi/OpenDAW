@@ -4,56 +4,12 @@
 
 use std::path::Path;
 
+use opendaw_extension::{VcPlugin, PluginType, ParamInfo, PluginError, AudioBuffer as ExtAudioBuffer};
+
 use crate::ast::*;
 use crate::error::JsfxError;
 use crate::parser::JsfxParser;
-use crate::vm::{AudioBuffer, JsfxVm};
-
-/// 插件类型（与opendaw-extension保持一致）
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PluginType {
-    Effect,
-    Instrument,
-    Analyzer,
-    MidiProcessor,
-}
-
-/// 参数信息（与opendaw-extension保持一致）
-#[derive(Clone, Debug)]
-pub struct ParamInfo {
-    pub id: String,
-    pub name: String,
-    pub min: f64,
-    pub max: f64,
-    pub default: f64,
-    pub step: f64,
-    pub value: f64,
-    pub unit: String,
-}
-
-/// 插件错误（与opendaw-extension保持一致）
-#[derive(Debug)]
-pub enum PluginError {
-    InitFailed(String),
-    InvalidParam { id: String, value: f64 },
-    ParamNotFound(String),
-    ProcessFailed(String),
-    Destroyed,
-}
-
-/// VcPlugin trait — 与opendaw-extension定义一致
-pub trait VcPlugin: Send + Sync {
-    fn plugin_id(&self) -> &str;
-    fn plugin_name(&self) -> &str;
-    fn plugin_type(&self) -> PluginType;
-    fn version(&self) -> &str;
-    fn init(&mut self, sample_rate: f64, buffer_size: usize) -> Result<(), PluginError>;
-    fn process(&mut self, input: &AudioBuffer, output: &mut AudioBuffer);
-    fn get_params(&self) -> Vec<ParamInfo>;
-    fn set_param(&mut self, id: &str, value: f64) -> Result<(), PluginError>;
-    fn get_param(&self, id: &str) -> Option<f64>;
-    fn destroy(&mut self);
-}
+use crate::vm::{AudioBuffer as VmAudioBuffer, JsfxVm};
 
 /// JSFX插件 — 适配VcPlugin trait
 pub struct JsfxPlugin {
@@ -73,6 +29,24 @@ pub struct JsfxPlugin {
     initialized: bool,
     /// 是否已销毁
     destroyed: bool,
+}
+
+/// 将VM内部AudioBuffer转换为扩展层AudioBuffer
+fn vm_to_ext(buf: &VmAudioBuffer) -> ExtAudioBuffer {
+    ExtAudioBuffer {
+        channels: buf.channels,
+        frames: buf.frames,
+        data: buf.data.clone(),
+    }
+}
+
+/// 将扩展层AudioBuffer转换为VM内部AudioBuffer
+fn ext_to_vm(buf: &ExtAudioBuffer) -> VmAudioBuffer {
+    VmAudioBuffer {
+        channels: buf.channels,
+        frames: buf.frames,
+        data: buf.data.clone(),
+    }
 }
 
 impl JsfxPlugin {
@@ -180,27 +154,34 @@ impl VcPlugin for JsfxPlugin {
         Ok(())
     }
 
-    fn process(&mut self, input: &AudioBuffer, output: &mut AudioBuffer) {
+    fn process(&mut self, input: &ExtAudioBuffer, output: &mut ExtAudioBuffer) {
         if !self.initialized || self.destroyed {
             // 未初始化或已销毁时直通
             output.data.copy_from_slice(&input.data);
             return;
         }
-        self.vm.process_buffer(input, output);
+
+        // 将扩展层AudioBuffer转换为VM内部AudioBuffer
+        let vm_input = ext_to_vm(input);
+        let mut vm_output = VmAudioBuffer::new(output.channels, output.frames);
+
+        self.vm.process_buffer(&vm_input, &mut vm_output);
+
+        // 将VM输出写回扩展层AudioBuffer
+        output.data.copy_from_slice(&vm_output.data);
     }
 
     fn get_params(&self) -> Vec<ParamInfo> {
         self.program.sliders.iter().map(|s| {
-            ParamInfo {
-                id: format!("slider{}", s.index),
-                name: s.name.clone().unwrap_or_else(|| format!("Slider {}", s.index)),
-                min: s.min,
-                max: s.max,
-                default: s.default,
-                step: s.step,
-                value: self.vm.runtime.get_slider(s.index),
-                unit: String::new(),
-            }
+            ParamInfo::with_step(
+                &format!("slider{}", s.index),
+                &s.name.clone().unwrap_or_else(|| format!("Slider {}", s.index)),
+                s.min,
+                s.max,
+                s.default,
+                s.step,
+                "",
+            )
         }).collect()
     }
 
@@ -288,13 +269,8 @@ spl1 *= gain;
         // 0dB = gain of 1.0
         plugin.set_param("slider1", 0.0).unwrap();
 
-        let input = AudioBuffer::new(2, 4);
-        let mut output = AudioBuffer::new(2, 4);
-
-        // 设置一些输入值
-        for i in 0..4 {
-            // 输入静音，所以输出也应该是静音
-        }
+        let input = ExtAudioBuffer::new(2, 4);
+        let mut output = ExtAudioBuffer::new(2, 4);
 
         plugin.process(&input, &mut output);
     }

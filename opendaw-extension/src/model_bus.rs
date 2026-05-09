@@ -146,7 +146,7 @@ impl ModelBackend for ApiBackend {
         }
         // 模拟API调用：返回基于输入的响应
         let prompt = input.prompt.as_deref().unwrap_or("(无提示)");
-        Ok(ModelOutput::from_text(format!("[API响应] {}", prompt)))
+        Ok(ModelOutput::from_text(&format!("[API响应] {}", prompt)))
     }
 
     fn batch_predict(&mut self, inputs: &[ModelInput]) -> Result<Vec<ModelOutput>, ModelError> {

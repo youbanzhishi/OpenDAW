@@ -79,12 +79,15 @@ pub struct ParamInfo {
     pub min: f64,
     pub max: f64,
     pub default: f64,
+    /// 参数步进值（UI步长），0.0表示连续参数
+    #[serde(default)]
+    pub step: f64,
     pub value: f64,
     pub unit: String,
 }
 
 impl ParamInfo {
-    /// 创建新参数
+    /// 创建新参数（step默认0.0，表示连续参数）
     pub fn new(id: &str, name: &str, min: f64, max: f64, default: f64, unit: &str) -> Self {
         Self {
             id: id.to_string(),
@@ -92,6 +95,21 @@ impl ParamInfo {
             min,
             max,
             default,
+            step: 0.0,
+            value: default,
+            unit: unit.to_string(),
+        }
+    }
+
+    /// 创建带步进值的参数
+    pub fn with_step(id: &str, name: &str, min: f64, max: f64, default: f64, step: f64, unit: &str) -> Self {
+        Self {
+            id: id.to_string(),
+            name: name.to_string(),
+            min,
+            max,
+            default,
+            step,
             value: default,
             unit: unit.to_string(),
         }

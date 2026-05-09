@@ -3,7 +3,8 @@
 //! 演示如何使用jsfx-engine加载JSFX效果器并处理音频数据
 
 use jsfx_engine::parser::JsfxParser;
-use jsfx_engine::vm::{AudioBuffer, JsfxVm};
+use jsfx_engine::vm::{AudioBuffer as VmAudioBuffer, JsfxVm};
+use jsfx_engine::AudioBuffer;
 
 fn main() {
     println!("=== JSFX引擎示例 ===\n");
@@ -79,7 +80,7 @@ spl1 *= gain;
 
     // 创建输入缓冲区（440Hz正弦波）
     let frames = 256;
-    let mut input = AudioBuffer::new(2, frames);
+    let mut input = VmAudioBuffer::new(2, frames);
     for i in 0..frames {
         let t = i as f64 / 44100.0;
         let sample = (2.0 * std::f64::consts::PI * 440.0 * t).sin() * 0.5;
@@ -87,7 +88,7 @@ spl1 *= gain;
         input.set_sample(1, i, sample);
     }
 
-    let mut output = AudioBuffer::new(2, frames);
+    let mut output = VmAudioBuffer::new(2, frames);
     vm.process_buffer(&input, &mut output);
 
     println!("处理了 {} 帧", frames);

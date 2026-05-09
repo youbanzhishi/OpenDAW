@@ -69,7 +69,7 @@ impl ExtensionRegistry {
 
     /// 获取插件可变引用
     pub fn get_plugin_mut(&mut self, id: &str) -> Option<&mut dyn VcPlugin> {
-        self.plugins.get_mut(id).map(|p| p.as_mut())
+        self.plugins.get_mut(id).map(|p| p.as_mut() as &mut dyn VcPlugin)
     }
 
     /// 列出所有已注册插件ID
@@ -105,7 +105,7 @@ impl ExtensionRegistry {
 
     /// 获取脚本引擎可变引用
     pub fn get_script_mut(&mut self, id: &str) -> Option<&mut dyn ScriptEngine> {
-        self.scripts.get_mut(id).map(|s| s.as_mut())
+        self.scripts.get_mut(id).map(|s| s.as_mut() as &mut dyn ScriptEngine)
     }
 
     /// 列出所有已注册脚本ID
@@ -127,7 +127,7 @@ impl ExtensionRegistry {
 
     /// 获取模型后端可变引用
     pub fn get_model_mut(&mut self, id: &str) -> Option<&mut dyn ModelBackend> {
-        self.models.get_mut(id).map(|m| m.as_mut())
+        self.models.get_mut(id).map(|m| m.as_mut() as &mut dyn ModelBackend)
     }
 
     /// 列出所有已注册模型后端ID

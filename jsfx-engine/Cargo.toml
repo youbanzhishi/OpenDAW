@@ -6,6 +6,7 @@ description = "JSFX解释器 — 兼容Reaper自定义效果器的EEL2脚本引�
 
 
 [dependencies]
+opendaw-extension = { path = "../opendaw-extension" }
 
 [dev-dependencies]
 

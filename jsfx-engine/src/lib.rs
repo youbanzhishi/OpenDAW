@@ -77,4 +77,7 @@ pub mod adapter;
 pub use error::JsfxError;
 pub use parser::JsfxParser;
 pub use vm::JsfxVm;
-pub use adapter::{JsfxPlugin, VcPlugin, PluginType, ParamInfo, PluginError};
+pub use adapter::JsfxPlugin;
+
+// 从opendaw-extension重导出统一类型（消除重复定义）
+pub use opendaw_extension::{VcPlugin, PluginType, ParamInfo, PluginError, AudioBuffer};
