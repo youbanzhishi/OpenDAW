@@ -350,6 +350,33 @@ impl AudioEngine {
         }
     }
 
+    /// 设置音轨声像
+    ///
+    /// - `track_id`: 音轨ID
+    /// - `pan`: 声像值，范围 -1.0（完全左）~ 0.0（居中）~ 1.0（完全右）
+    pub fn set_track_pan(&mut self, track_id: &str, pan: f64) -> Result<(), EngineError> {
+        let mut state = self.shared.lock();
+        if let Some(track) = state.tracks.get_mut(track_id) {
+            track.set_pan(pan);
+            Ok(())
+        } else {
+            Err(EngineError::TrackNotFound(track_id.to_string()))
+        }
+    }
+
+    /// 获取音轨声像
+    ///
+    /// - `track_id`: 音轨ID
+    /// 返回: 声像值（-1.0 ~ 1.0）
+    pub fn get_track_pan(&self, track_id: &str) -> Result<f64, EngineError> {
+        let state = self.shared.lock();
+        if let Some(track) = state.tracks.get(track_id) {
+            Ok(track.pan)
+        } else {
+            Err(EngineError::TrackNotFound(track_id.to_string()))
+        }
+    }
+
     // ==================== 主音量控制 ====================
 
     /// 设置主音量
@@ -367,9 +394,9 @@ impl AudioEngine {
 
     // ==================== WAV 文件加载 ====================
 
-    /// 从 WAV 文件加载音频数据到指定音轨
+    /// 从 WAV 文件加载音频数据到指定音轨（使用手动解析器）
     ///
-    /// 支持 16bit PCM 立体声 WAV 文件。
+    /// 支持 16bit PCM WAV 文件。
     pub fn load_wav(&mut self, track_id: &str, file_path: &str) -> Result<(), EngineError> {
         use std::fs;
         use std::path::Path;
@@ -394,15 +421,65 @@ impl AudioEngine {
         // 解析 WAV
         let buffer = AudioBuffer::from_wav_bytes(&wav_data)?;
 
-        // 获取采样率用于更新
-        let sample_rate = buffer.sample_rate;
+        // 注入缓冲区
+        let mut state = self.shared.lock();
+        if let Some(track) = state.tracks.get_mut(track_id) {
+            track.buffer = buffer;
+            Ok(())
+        } else {
+            Err(EngineError::TrackNotFound(track_id.to_string()))
+        }
+    }
+
+    /// 从 WAV 文件加载音频数据到指定音轨（使用hound库，支持多种格式）
+    ///
+    /// 支持 8/16/24/32bit PCM 和 32bit Float WAV 文件。
+    pub fn load_wav_file(&mut self, track_id: &str, file_path: &str) -> Result<(), EngineError> {
+        use std::path::Path;
+
+        // 确保音轨存在
+        {
+            let state = self.shared.lock();
+            if !state.tracks.contains_key(track_id) {
+                return Err(EngineError::TrackNotFound(track_id.to_string()));
+            }
+        }
+
+        // 加载WAV文件
+        let path = Path::new(file_path);
+        if !path.exists() {
+            return Err(EngineError::BufferError(format!("文件不存在: {}", file_path)));
+        }
+
+        let buffer = AudioBuffer::from_wav_file(path)?;
 
         // 注入缓冲区
         let mut state = self.shared.lock();
         if let Some(track) = state.tracks.get_mut(track_id) {
             track.buffer = buffer;
-            // 更新音轨采样率
-            track.buffer.sample_rate = sample_rate;
+            Ok(())
+        } else {
+            Err(EngineError::TrackNotFound(track_id.to_string()))
+        }
+    }
+
+    /// 从内存中的WAV字节数据加载音频到指定音轨
+    pub fn load_wav_bytes(&mut self, track_id: &str, wav_data: &[u8]) -> Result<(), EngineError> {
+        // 确保音轨存在
+        {
+            let state = self.shared.lock();
+            if !state.tracks.contains_key(track_id) {
+                return Err(EngineError::TrackNotFound(track_id.to_string()));
+            }
+        }
+
+        // 解析 WAV
+        let buffer = AudioBuffer::from_wav_bytes(wav_data)?;
+
+        // 注入缓冲区
+        let mut state = self.shared.lock();
+        if let Some(track) = state.tracks.get_mut(track_id) {
+            track.buffer = buffer;
             Ok(())
         } else {
             Err(EngineError::TrackNotFound(track_id.to_string()))
@@ -1119,5 +1196,270 @@ mod tests {
         let params = TrackRenderParams::from_track(&track);
         assert!(params.pan_gain_r > params.pan_gain_l);
         assert!(params.pan_gain_l < 0.01);
+    }
+
+    // ==================== 声像(Pan)控制测试 ====================
+
+    #[test]
+    fn test_set_track_pan() {
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 设置声像
+        engine.set_track_pan("test", 0.5).unwrap();
+        assert!((engine.get_track_pan("test").unwrap() - 0.5).abs() < 0.001);
+
+        // 全左
+        engine.set_track_pan("test", -1.0).unwrap();
+        assert!((engine.get_track_pan("test").unwrap() - (-1.0)).abs() < 0.001);
+
+        // 全右
+        engine.set_track_pan("test", 1.0).unwrap();
+        assert!((engine.get_track_pan("test").unwrap() - 1.0).abs() < 0.001);
+
+        // 超出范围应被钳制
+        engine.set_track_pan("test", 2.0).unwrap();
+        assert!((engine.get_track_pan("test").unwrap() - 1.0).abs() < 0.001);
+
+        engine.set_track_pan("test", -2.0).unwrap();
+        assert!((engine.get_track_pan("test").unwrap() - (-1.0)).abs() < 0.001);
+
+        // 不存在的音轨应报错
+        assert!(engine.set_track_pan("missing", 0.0).is_err());
+        assert!(engine.get_track_pan("missing").is_err());
+    }
+
+    #[test]
+    fn test_pan_affects_stereo_output() {
+        let sample_rate = 44100.0;
+        let frames = 256;
+
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 创建单声道测试信号
+        let mut buf = AudioBuffer::new(1, frames, sample_rate);
+        for i in 0..frames {
+            buf.set_sample(0, i, 1.0);
+        }
+        engine.inject_buffer("test", buf).unwrap();
+
+        engine.start(sample_rate, 256).unwrap();
+
+        // 居中声像
+        engine.set_track_pan("test", 0.0).unwrap();
+        let mut output_center = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output_center, frames);
+
+        // 重置位置
+        engine.set_position(0.0);
+
+        // 全左声像
+        engine.set_track_pan("test", -1.0).unwrap();
+        let mut output_left = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output_left, frames);
+
+        // 重置位置
+        engine.set_position(0.0);
+
+        // 全右键像
+        engine.set_track_pan("test", 1.0).unwrap();
+        let mut output_right = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output_right, frames);
+
+        // 验证居中时左右声道相等
+        assert!((output_center[0] - output_center[1]).abs() < 0.01,
+            "居中时左右声道应相等");
+
+        // 验证全左时左声道大于右声道
+        assert!(output_left[0] > output_left[1],
+            "全左时左声道应大于右声道");
+
+        // 验证全右时右声道大于左声道
+        assert!(output_right[1] > output_right[0],
+            "全右时右声道应大于左声道");
+
+        engine.stop().unwrap();
+    }
+
+    // ==================== WAV加载测试 ====================
+
+    #[test]
+    fn test_wav_bytes_roundtrip() {
+        // 创建测试音频数据
+        let sample_rate = 44100.0;
+        let frames = 100;
+        let channels = 2;
+        let mut original = AudioBuffer::new(channels, frames, sample_rate);
+        for frame in 0..frames {
+            for ch in 0..channels {
+                let value = ((frame + ch) as f32) * 0.01;
+                original.set_sample(ch, frame, value);
+            }
+        }
+
+        // 转换为WAV字节
+        let wav_bytes = original.to_wav_bytes().unwrap();
+
+        // 从WAV字节加载
+        let loaded = AudioBuffer::from_wav_bytes(&wav_bytes).unwrap();
+
+        // 验证
+        assert_eq!(loaded.channels, channels);
+        assert_eq!(loaded.frames, frames);
+        assert!((loaded.sample_rate - sample_rate).abs() < 1.0);
+
+        for frame in 0..frames.min(10) {
+            for ch in 0..channels {
+                let orig = original.get_sample(ch, frame);
+                let load = loaded.get_sample(ch, frame);
+                assert!((orig - load).abs() < 0.001,
+                    "帧{}/声道{}: 原始={}, 加载={}", frame, ch, orig, load);
+            }
+        }
+    }
+
+    #[test]
+    fn test_load_wav_bytes() {
+        let sample_rate = 44100.0;
+        let frames = 100;
+        let channels = 2;
+
+        // 创建测试音频
+        let mut buf = AudioBuffer::new(channels, frames, sample_rate);
+        for frame in 0..frames {
+            buf.set_sample(0, frame, 0.5);
+            buf.set_sample(1, frame, 0.3);
+        }
+
+        // 转换为WAV字节
+        let wav_bytes = buf.to_wav_bytes().unwrap();
+
+        // 创建引擎并加载
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+        engine.load_wav_bytes("test", &wav_bytes).unwrap();
+
+        // 验证
+        let state = engine.shared.lock();
+        let track = state.tracks.get("test").unwrap();
+        assert_eq!(track.buffer.channels, channels);
+        assert_eq!(track.buffer.frames, frames);
+        assert!((track.buffer.get_sample(0, 0) - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_load_wav_invalid_data() {
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 无效的WAV数据
+        let invalid_data = vec![0u8; 10];
+        let result = engine.load_wav_bytes("test", &invalid_data);
+        assert!(result.is_err());
+    }
+
+    // ==================== 音量+声像+静音组合测试 ====================
+
+    #[test]
+    fn test_volume_pan_mute_combined() {
+        let sample_rate = 44100.0;
+        let frames = 256;
+
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 创建单声道测试信号
+        let mut buf = AudioBuffer::new(1, frames, sample_rate);
+        for i in 0..frames {
+            buf.set_sample(0, i, 1.0);
+        }
+        engine.inject_buffer("test", buf).unwrap();
+
+        engine.start(sample_rate, 256).unwrap();
+
+        // 场景1: 默认设置
+        let mut output1 = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output1, frames);
+        let level1 = output1.iter().map(|&s| s.abs()).sum::<f32>() / (frames * 2) as f32;
+        engine.set_position(0.0);
+
+        // 场景2: 静音
+        engine.toggle_track_mute("test").unwrap();
+        let mut output2 = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output2, frames);
+        let level2 = output2.iter().map(|&s| s.abs()).sum::<f32>() / (frames * 2) as f32;
+        engine.toggle_track_mute("test").unwrap();
+        engine.set_position(0.0);
+
+        // 场景3: -6dB音量
+        engine.set_track_volume("test", -6.0).unwrap();
+        let mut output3 = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output3, frames);
+        let level3 = output3.iter().map(|&s| s.abs()).sum::<f32>() / (frames * 2) as f32;
+        engine.set_track_volume("test", 0.0).unwrap();
+        engine.set_position(0.0);
+
+        // 场景4: 声像左
+        engine.set_track_pan("test", -1.0).unwrap();
+        let mut output4 = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output4, frames);
+        engine.set_position(0.0);
+
+        // 场景5: 声像右
+        engine.set_track_pan("test", 1.0).unwrap();
+        let mut output5 = vec![0.0f32; frames * 2];
+        engine.render_frame(&mut output5, frames);
+
+        // 验证
+        assert!(level1 > level2 * 10.0, "静音时输出应远小于非静音");
+        assert!(level1 > level3 * 1.5, "-6dB时输出应小于0dB");
+        assert!(output4[0] > output4[1], "声像左时左声道应大于右声道");
+        assert!(output5[1] > output5[0], "声像右时右声道应大于左声道");
+
+        engine.stop().unwrap();
+    }
+
+    // ==================== 播放控制测试 ====================
+
+    #[test]
+    fn test_playback_with_position_control() {
+        let sample_rate = 44100.0;
+        let frames = 1000;
+
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 创建不同频率的测试信号
+        let mut buf = AudioBuffer::new(1, frames, sample_rate);
+        for frame in 0..frames {
+            let t = frame as f64 / sample_rate;
+            let sample = (2.0 * std::f64::consts::PI * 440.0 * t).sin() as f32;
+            buf.set_sample(0, frame, sample);
+        }
+        engine.inject_buffer("test", buf).unwrap();
+
+        engine.start(sample_rate, 256).unwrap();
+
+        // 从位置0渲染
+        engine.set_position(0.0);
+        let mut output1 = vec![0.0f32; 256 * 2];
+        engine.render_frame(&mut output1, 256);
+
+        // 从位置500渲染
+        engine.set_position(500.0 / sample_rate);
+        let mut output2 = vec![0.0f32; 256 * 2];
+        engine.render_frame(&mut output2, 256);
+
+        // 两个位置输出的相位应该不同
+        // 检查前几个样本
+        let same_count = output1.iter().zip(output2.iter())
+            .filter(|(a, b)| (a - b).abs() < 0.001)
+            .count();
+        
+        // 由于相位不同，相同样本数量应该很少
+        assert!(same_count < 50, "不同位置应有不同输出");
+
+        engine.stop().unwrap();
     }
 }

@@ -271,4 +271,93 @@ mod tests {
 
         let _ = std::fs::remove_file(&tmp);
     }
+
+    #[test]
+    fn test_render_multiple_tracks_mix() {
+        use std::path::Path;
+        
+        let renderer = OfflineRenderer::new(44100.0, 256, 2);
+        let tmp = std::env::temp_dir().join("test_mix.wav");
+
+        // 创建测试缓冲区
+        let track1_samples: Vec<f32> = (0..4410)
+            .map(|i| (2.0 * std::f64::consts::PI * 440.0 * i as f64 / 44100.0).sin() as f32 * 0.5)
+            .collect();
+        let track2_samples: Vec<f32> = (0..4410)
+            .map(|i| (2.0 * std::f64::consts::PI * 880.0 * i as f64 / 44100.0).sin() as f32 * 0.3)
+            .collect();
+
+        let stats = renderer.render_with_callback(0.1, &tmp, |buf| {
+            for frame in 0..buf.frames {
+                let t1_idx = frame;
+                let t2_idx = frame;
+                let mix = if t1_idx < track1_samples.len() { track1_samples[t1_idx] } else { 0.0 }
+                        + if t2_idx < track2_samples.len() { track2_samples[t2_idx] } else { 0.0 };
+                buf.set_sample(0, frame, mix.clamp(-1.0, 1.0));
+                buf.set_sample(1, frame, mix.clamp(-1.0, 1.0));
+            }
+        }).unwrap();
+
+        assert!(stats.total_frames > 0);
+        assert!(tmp.exists());
+
+        // 验证文件可以被读取
+        let loaded = EngineAudioBuffer::from_wav_file(&tmp);
+        assert!(loaded.is_ok(), "渲染的文件应能被加载: {:?}", loaded.err());
+
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn test_render_with_volume_control() {
+        let renderer = OfflineRenderer::new(44100.0, 256, 2);
+        let tmp = std::env::temp_dir().join("test_volume.wav");
+
+        let amplitude = 0.8;
+        let stats = renderer.render_with_callback(0.1, &tmp, |buf| {
+            for frame in 0..buf.frames {
+                let value = (2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() * amplitude;
+                buf.set_sample(0, frame, value);
+                buf.set_sample(1, frame, value);
+            }
+        }).unwrap();
+
+        assert!(stats.total_frames > 0);
+
+        // 加载并验证峰值
+        let loaded = EngineAudioBuffer::from_wav_file(&tmp).unwrap();
+        let max_sample = loaded.as_slice().iter()
+            .map(|s| s.abs())
+            .fold(0.0f32, |a, b| a.max(b));
+        
+        // 峰值应接近设定的幅度
+        assert!((max_sample - amplitude as f32).abs() < 0.1, 
+            "峰值应接近{}，实际{}", amplitude, max_sample);
+
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn test_render_mono_to_stereo() {
+        let renderer = OfflineRenderer::new(44100.0, 256, 2);
+        let tmp = std::env::temp_dir().join("test_mono_stereo.wav");
+
+        // 渲染单声道信号
+        let stats = renderer.render_with_callback(0.1, &tmp, |buf| {
+            for frame in 0..buf.frames {
+                let value = (2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() as f32 * 0.5;
+                // 只设置声道0，声道1保持0
+                buf.set_sample(0, frame, value);
+                buf.set_sample(1, frame, 0.0);
+            }
+        }).unwrap();
+
+        assert!(stats.total_frames > 0);
+
+        // 加载并验证
+        let loaded = EngineAudioBuffer::from_wav_file(&tmp).unwrap();
+        assert_eq!(loaded.channels, 2);
+
+        let _ = std::fs::remove_file(&tmp);
+    }
 }
