@@ -671,6 +671,73 @@ document.getElementById('btn-auto-apply').addEventListener('click', async () => 
 });
 
 // ═══════════════════════════════════════════════════════════════════════
+// ── Real-time Sync via WebSocket ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+let currentProjectId = null;
+
+const SYNC_EVENT_TYPES = new Set([
+    'project_created',
+    'project_updated',
+    'project_deleted',
+    'track_added',
+    'track_updated',
+    'track_removed',
+    'effect_added',
+    'effect_updated',
+    'effect_removed',
+    'ai_mix_applied',
+    'ai_master_applied',
+]);
+
+async function loadProject(projectId) {
+    if (!projectId) return;
+    try {
+        const resp = await fetch(`${API}/v1/projects/${projectId}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        currentProjectId = projectId;
+        // Populate YAML editor if project has tracks
+        if (data.tracks && data.tracks.length > 0) {
+            const yamlLines = [`name: ${data.name || 'Project'}`, `bpm: ${data.bpm || 120}`, `sample_rate: ${data.sample_rate || 44100}`, '', 'tracks:'];
+            for (const t of data.tracks) {
+                yamlLines.push(`  - name: ${t.name}`);
+                if (t.file) yamlLines.push(`    file: ${t.file}`);
+                if (t.type) yamlLines.push(`    type: ${t.type}`);
+                yamlLines.push(`    volume: ${t.volume !== undefined ? t.volume : 1.0}`);
+                yamlLines.push(`    mute: ${!!t.mute}`);
+                yamlLines.push(`    solo: ${!!t.solo}`);
+                if (t.effects && t.effects.length > 0) {
+                    yamlLines.push('    effects:');
+                    for (const fx of t.effects) {
+                        yamlLines.push(`      - name: ${fx.name}`);
+                        if (fx.params && Object.keys(fx.params).length > 0) {
+                            yamlLines.push('        params:');
+                            for (const [k, v] of Object.entries(fx.params)) {
+                                yamlLines.push(`          ${k}: ${v}`);
+                            }
+                        }
+                    }
+                }
+            }
+            if (data.master) {
+                yamlLines.push('', 'master:');
+                if (data.master.levels) {
+                    yamlLines.push('  levels:');
+                    for (const [k, v] of Object.entries(data.master.levels)) {
+                        yamlLines.push(`    ${k}: ${v}`);
+                    }
+                }
+                if (data.master.output) yamlLines.push(`  output: ${data.master.output}`);
+            }
+            yamlEditor.value = yamlLines.join('\n');
+        }
+    } catch (err) {
+        addLogEntry('error', `loadProject failed: ${err.message}`);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // ── WebSocket DataStream ───────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -717,12 +784,31 @@ function handleStreamEvent(data) {
 
     addLogEntry(type, JSON.stringify(data).substring(0, 200), ts);
 
+    // Existing render event handling
     if (type === 'track_level' || type === 'master_level') {
         updateMeter(data.track || 'unknown', data.rms_db, data.peak_db);
     }
 
     if (type === 'warning') {
         addLogEntry('⚠️ WARNING', `${data.track}: ${data.message}`, ts);
+    }
+
+    // Real-time sync events: refresh UI when data changes
+    if (SYNC_EVENT_TYPES.has(type)) {
+        if (type === 'project_deleted') {
+            if (currentProjectId === data.project_id) {
+                currentProjectId = null;
+                addLogEntry('sync', `Project ${data.project_id} deleted — editor cleared`);
+            }
+        } else if (type === 'project_created') {
+            loadProject(data.project_id);
+        } else {
+            // For all other events, refresh if it affects current project
+            if (data.project_id && (currentProjectId === data.project_id)) {
+                loadProject(data.project_id);
+            }
+        }
+        addLogEntry('sync', `${type}${data.detail ? ': ' + JSON.stringify(data.detail) : ''}`);
     }
 }
 
