@@ -2,15 +2,11 @@
 test_enhanced_modelbus.py — Tests for Enhanced ModelBus (Phase 22b).
 """
 
-import os
-import sys
 
 import pytest
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from enhanced_modelbus import (
+from vcmix.agent.phase22b.enhanced_modelbus import (
     EnhancedModelBus,
     MessageContext,
     ProviderConfig,

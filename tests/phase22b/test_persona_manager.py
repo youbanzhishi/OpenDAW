@@ -2,17 +2,13 @@
 test_persona_manager.py — Tests for Persona Manager (Phase 22b).
 """
 
-import os
-import sys
 import tempfile
 from pathlib import Path
 
 import pytest
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from persona_manager import (
+from vcmix.agent.phase22b.persona_manager import (
     Persona,
     PersonaManager,
     get_persona_manager,

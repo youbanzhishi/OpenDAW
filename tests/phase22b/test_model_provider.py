@@ -2,15 +2,11 @@
 test_model_provider.py — Tests for Model Provider system (Phase 22b).
 """
 
-import os
-import sys
 
 import pytest
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from model_provider import (
+from vcmix.agent.phase22b.model_provider import (
     MODEL_REGISTRY,
     AnthropicProvider,
     OllamaProvider,

@@ -260,7 +260,7 @@ impl AudioBuffer {
         // 根据位深读取样本
         let samples: Vec<f32> = match spec.sample_format {
             hound::SampleFormat::Int => {
-                let reader: hound::WavReader<_, i32> = reader.into();
+                let reader: hound::WavReader<_> = reader.into();
                 match spec.bits_per_sample {
                     8 => reader
                         .into_samples::<i8>()
@@ -291,7 +291,7 @@ impl AudioBuffer {
                 }
             }
             hound::SampleFormat::Float => {
-                let reader: hound::WavReader<_, f32> = reader.into();
+                let reader: hound::WavReader<_> = reader.into();
                 reader
                     .into_samples::<f32>()
                     .filter_map(|s| s.ok())

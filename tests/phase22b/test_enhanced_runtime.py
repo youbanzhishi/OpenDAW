@@ -2,23 +2,19 @@
 test_enhanced_runtime.py — Tests for Enhanced Runtime (Phase 22b).
 """
 
-import os
-import sys
 import tempfile
 
 import pytest
+from persona_manager import PersonaManager
 
 # Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from enhanced_modelbus import ProviderConfig
-from enhanced_runtime import (
+from vcmix.agent.phase22b.enhanced_modelbus import ProviderConfig
+from vcmix.agent.phase22b.enhanced_runtime import (
     AgentAction,
     AgentResponse,
     EnhancedAgentRuntime,
     create_runtime,
 )
-from persona_manager import PersonaManager
 
 
 class TestAgentResponse:
