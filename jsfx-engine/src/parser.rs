@@ -936,7 +936,7 @@ impl JsfxParser {
                     if name == "spl" {
                         if let Some(Expr::Number(ch)) = args.first() {
                             let ch = *ch as usize;
-                            return Ok(Expr::SplAccess(Box::new(Expr::Number(*ch as f64))));
+                            return Ok(Expr::SplAccess(Box::new(Expr::Number(ch as f64))));
                         }
                         return Ok(Expr::SplAccess(Box::new(args.into_iter().next().unwrap_or(Expr::Number(0.0)))));
                     }

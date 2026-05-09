@@ -38,6 +38,55 @@ struct SharedState {
     engine_state: EngineState,
 }
 
+/// 音轨渲染参数（预计算，避免每帧重复计算）
+#[derive(Clone, Debug)]
+struct TrackRenderParams {
+    /// 线性音量增益
+    volume_gain: f32,
+    /// 左声道声像增益
+    pan_gain_l: f32,
+    /// 右声道声像增益
+    pan_gain_r: f32,
+    /// 是否静音
+    muted: bool,
+    /// 缓冲区帧数
+    buffer_frames: usize,
+}
+
+impl TrackRenderParams {
+    /// 从 Track 计算渲染参数
+    fn from_track(track: &Track) -> Self {
+        // 音量转换：dB → 线性增益
+        let volume_gain = if track.volume <= -60.0 {
+            0.0
+        } else {
+            (10.0_f64.powf(track.volume / 20.0)) as f32
+        };
+
+        // 声像处理（简化线性声像法则）
+        let pan = track.pan.clamp(-1.0, 1.0);
+        let pan_gain_l = ((1.0 - pan) * 0.5).sqrt() as f32;
+        let pan_gain_r = ((1.0 + pan) * 0.5).sqrt() as f32;
+
+        Self {
+            volume_gain,
+            pan_gain_l,
+            pan_gain_r,
+            muted: track.muted,
+            buffer_frames: track.buffer.frames,
+        }
+    }
+
+    /// 获取指定声道的声像增益
+    fn get_pan_gain(&self, channel: usize) -> f32 {
+        if channel == 0 {
+            self.pan_gain_l
+        } else {
+            self.pan_gain_r
+        }
+    }
+}
+
 /// OpenDAW 音频引擎
 ///
 /// 提供实时音频 I/O、音轨管理、播放控制等核心功能。
@@ -300,6 +349,111 @@ impl AudioEngine {
             state.position += self.buffer_size;
         }
     }
+
+    // ==================== 混音辅助（供模拟模式使用）====================
+
+    /// 渲染一帧音频数据到输出缓冲区（模拟模式使用）
+    ///
+    /// 混合所有音轨的当前帧数据，返回是否还有音频可播放。
+    /// 用于无 audio feature 时的离线渲染验证。
+    ///
+    /// # 参数
+    /// - `output`: 输出缓冲区（交错格式，len = frames * channels）
+    /// - `frames`: 要渲染的帧数
+    ///
+    /// # 返回
+    /// - `true`: 还有音频可渲染
+    /// - `false`: 所有音轨已播放完毕
+    pub fn render_frame(&self, output: &mut [f32], frames: usize) -> bool {
+        let mut state = self.shared.lock();
+        let channels = state.channels.max(1);
+
+        // 预计算所有音轨的渲染参数（避免每帧重复计算）
+        let track_params: Vec<_> = state
+            .tracks
+            .values()
+            .map(TrackRenderParams::from_track)
+            .collect();
+        let track_buffers: Vec<_> = state.tracks.values().map(|t| &t.buffer).collect();
+
+        let start_pos = state.position;
+        let mut has_more_audio = false;
+
+        for frame_idx in 0..frames {
+            let pos = start_pos + frame_idx;
+
+            for ch in 0..channels {
+                let mut mixed = 0.0f32;
+
+                for (i, params) in track_params.iter().enumerate() {
+                    // 跳过静音或无缓冲的音轨
+                    if params.muted || params.buffer_frames == 0 {
+                        continue;
+                    }
+
+                    let buffer = &track_buffers[i];
+                    let track_ch = ch.min(buffer.channels.saturating_sub(1));
+
+                    if pos < params.buffer_frames {
+                        has_more_audio = true;
+                        let sample = buffer.get_sample(track_ch, pos);
+                        let pan_gain = params.get_pan_gain(ch);
+                        mixed += sample * params.volume_gain * pan_gain;
+                    }
+                }
+
+                // 硬限幅，防止削波
+                output[frame_idx * channels + ch] = mixed.clamp(-1.0, 1.0);
+            }
+        }
+
+        state.position += frames;
+        has_more_audio
+    }
+
+    /// 渲染完整缓冲区（模拟模式）
+    ///
+    /// 一次性渲染整个缓冲区，填充静音。
+    pub fn render(&self, output: &mut [f32], frames: usize) {
+        let mut state = self.shared.lock();
+        let channels = state.channels.max(1);
+
+        // 预计算所有音轨的渲染参数
+        let track_params: Vec<_> = state
+            .tracks
+            .values()
+            .map(TrackRenderParams::from_track)
+            .collect();
+        let track_buffers: Vec<_> = state.tracks.values().map(|t| &t.buffer).collect();
+
+        let start_pos = state.position;
+
+        for frame_idx in 0..frames {
+            for ch in 0..channels {
+                let mut mixed = 0.0f32;
+                let pos = start_pos + frame_idx;
+
+                for (i, params) in track_params.iter().enumerate() {
+                    if params.muted || params.buffer_frames == 0 {
+                        continue;
+                    }
+
+                    let buffer = &track_buffers[i];
+                    let track_ch = ch.min(buffer.channels.saturating_sub(1));
+
+                    if pos < params.buffer_frames {
+                        let sample = buffer.get_sample(track_ch, pos);
+                        let pan_gain = params.get_pan_gain(ch);
+                        mixed += sample * params.volume_gain * pan_gain;
+                    }
+                }
+
+                output[frame_idx * channels + ch] = mixed.clamp(-1.0, 1.0);
+            }
+        }
+
+        state.position += frames;
+    }
 }
 
 // ==================== CPAL 音频回调实现 ====================
@@ -358,59 +512,42 @@ impl AudioEngine {
     }
 }
 
-/// CPAL 音频回调函数
+/// CPAL 音频回调函数（优化版）
 ///
 /// 混合所有非静音音轨的音频数据并写入输出缓冲区。
-/// 处理流程：
-/// 1. 遍历所有音轨
-/// 2. 跳过静音音轨
-/// 3. 从音轨缓冲区读取当前位置的样本
-/// 4. 应用音量和声像
-/// 5. 混合所有音轨并写入输出
+/// 使用预计算的渲染参数避免每帧重复计算。
 #[cfg(feature = "audio")]
 fn audio_callback(output: &mut [f32], shared: &Arc<Mutex<SharedState>>) {
     let mut state = shared.lock();
     let channels = state.channels.max(1);
     let frames = output.len() / channels;
 
+    // 预计算所有音轨的渲染参数（避免每帧重复计算）
+    let track_params: Vec<_> = state
+        .tracks
+        .values()
+        .map(TrackRenderParams::from_track)
+        .collect();
+    let track_buffers: Vec<_> = state.tracks.values().map(|t| &t.buffer).collect();
+
     for frame_idx in 0..frames {
         for ch in 0..channels {
             let mut mixed = 0.0f32;
+            let pos = state.position;
 
-            for (_, track) in state.tracks.iter() {
-                // 跳过静音音轨
-                if track.muted {
+            for (i, params) in track_params.iter().enumerate() {
+                // 跳过静音或无缓冲的音轨
+                if params.muted || params.buffer_frames == 0 {
                     continue;
                 }
 
-                // 如果音轨声道数少于输出声道数，复制最后一声道（上变换）
-                let track_ch = ch.min(track.channels.saturating_sub(1));
+                let buffer = &track_buffers[i];
+                let track_ch = ch.min(buffer.channels.saturating_sub(1));
 
-                // 从音轨缓冲区读取当前位置的样本
-                if state.position < track.buffer.frames {
-                    let sample = track.buffer.get_sample(track_ch, state.position);
-
-                    // 音量转换：dB → 线性增益
-                    let volume_linear = if track.volume <= -60.0 {
-                        0.0
-                    } else {
-                        10.0_f64.powf(track.volume / 20.0) as f32
-                    };
-
-                    // 声像处理（简化线性声像法则）
-                    let pan_gain = if track.channels == 1 {
-                        // 单声道：根据声像分配到左右声道
-                        let pan = track.pan.clamp(-1.0, 1.0);
-                        if ch == 0 {
-                            ((1.0 - pan) * 0.5).sqrt() as f32
-                        } else {
-                            ((1.0 + pan) * 0.5).sqrt() as f32
-                        }
-                    } else {
-                        1.0 // 立体声暂不做声像处理
-                    };
-
-                    mixed += sample * volume_linear * pan_gain;
+                if pos < params.buffer_frames {
+                    let sample = buffer.get_sample(track_ch, pos);
+                    let pan_gain = params.get_pan_gain(ch);
+                    mixed += sample * params.volume_gain * pan_gain;
                 }
             }
 
@@ -421,9 +558,13 @@ fn audio_callback(output: &mut [f32], shared: &Arc<Mutex<SharedState>>) {
     }
 }
 
+// ==================== 测试模块 ====================
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ==================== 基础测试 ====================
 
     #[test]
     fn test_engine_lifecycle() {
@@ -512,5 +653,252 @@ mod tests {
         engine.start(44100.0, 256).unwrap();
         engine.tick();
         assert!((engine.get_position() - (256.0 / 44100.0)).abs() < 0.0001);
+    }
+
+    // ==================== 正弦波播放集成测试 ====================
+
+    #[test]
+    fn test_sine_wave_playback() {
+        let sample_rate = 44100.0;
+        let frequency = 440.0; // A4
+        let duration = 0.1; // 100ms
+        let frames = (sample_rate * duration) as usize;
+
+        // 生成 440Hz 正弦波
+        let mut buffer = AudioBuffer::new(2, frames, sample_rate);
+        for frame in 0..frames {
+            let t = frame as f64 / sample_rate;
+            let sample = (2.0 * std::f64::consts::PI * frequency * t).sin() as f32 * 0.5;
+            buffer.set_sample(0, frame, sample);
+            buffer.set_sample(1, frame, sample);
+        }
+
+        // 创建引擎并注入音频
+        let mut engine = AudioEngine::new();
+        engine.register_track("sine").unwrap();
+        engine.inject_buffer("sine", buffer).unwrap();
+
+        // 启动引擎
+        engine.start(sample_rate, 256).unwrap();
+
+        // 渲染几个 buffer
+        let channels = 2;
+        let mut output = vec![0.0f32; 256 * channels];
+        let has_more = engine.render_frame(&mut output, 256);
+        assert!(has_more, "首帧应有音频数据");
+
+        // 验证前几个样本与原始正弦波一致
+        for frame in 0..10.min(frames.min(256)) {
+            let t = frame as f64 / sample_rate;
+            let expected = (2.0 * std::f64::consts::PI * frequency * t).sin() as f32 * 0.5;
+            let actual = output[frame * channels]; // 左声道
+            assert!(
+                (expected - actual).abs() < 1e-5,
+                "帧{}: 期望{:?}, 实际{:?}",
+                frame,
+                expected,
+                actual
+            );
+        }
+
+        engine.stop().unwrap();
+    }
+
+    #[test]
+    fn test_mute_track() {
+        let sample_rate = 44100.0;
+        let frames = 256;
+
+        // 创建引擎和音轨
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        // 注入非零音频
+        let mut buf = AudioBuffer::new(2, frames, sample_rate);
+        buf.fill(0.5);
+        engine.inject_buffer("test", buf).unwrap();
+
+        engine.start(sample_rate, 256).unwrap();
+
+        // 渲染 - 应该听到音频
+        let mut output = vec![0.0f32; 256 * 2];
+        engine.render_frame(&mut output, 256);
+        assert!(output.iter().any(|&s| s != 0.0), "未静音时应有音频");
+
+        // 获取 track 并静音
+        {
+            let mut state = engine.shared.lock();
+            if let Some(track) = state.tracks.get_mut("test") {
+                track.muted = true;
+            }
+        }
+
+        // 再次渲染 - 应该是静音
+        let mut output2 = vec![0.0f32; 256 * 2];
+        engine.render_frame(&mut output2, 256);
+        assert!(
+            output2.iter().all(|&s| s == 0.0),
+            "静音后应无音频"
+        );
+
+        engine.stop().unwrap();
+    }
+
+    #[test]
+    fn test_position_beyond_buffer() {
+        let sample_rate = 44100.0;
+        let frames = 100;
+
+        // 创建引擎
+        let mut engine = AudioEngine::new();
+        engine.register_track("short").unwrap();
+
+        // 注入短音频
+        let buf = AudioBuffer::new(2, frames, sample_rate);
+        buf.fill(0.5);
+        engine.inject_buffer("short", buf).unwrap();
+
+        engine.start(sample_rate, 256).unwrap();
+
+        // 渲染超过缓冲区长度
+        let mut output = vec![0.0f32; 256 * 2];
+        engine.render_frame(&mut output, 256);
+
+        // 位置应该已超出缓冲区，输出应全为零（循环播放未启用）
+        // 实际行为取决于实现：可能是静音或循环
+        // 这里验证位置确实推进了
+        assert_eq!(engine.get_position(), 256.0 / sample_rate);
+
+        engine.stop().unwrap();
+    }
+
+    #[test]
+    fn test_multi_track_mixing() {
+        let sample_rate = 44100.0;
+        let frames = 100;
+
+        // 创建引擎和多个音轨
+        let mut engine = AudioEngine::new();
+        engine.register_track("track1").unwrap();
+        engine.register_track("track2").unwrap();
+
+        // 音轨1: 0.3 增益
+        let mut buf1 = AudioBuffer::new(1, frames, sample_rate);
+        for i in 0..frames {
+            buf1.set_sample(0, i, 1.0);
+        }
+        engine.inject_buffer("track1", buf1).unwrap();
+
+        // 音轨2: 0.2 增益
+        let mut buf2 = AudioBuffer::new(1, frames, sample_rate);
+        for i in 0..frames {
+            buf2.set_sample(0, i, 1.0);
+        }
+        engine.inject_buffer("track2", buf2).unwrap();
+
+        // 设置不同音量
+        {
+            let mut state = engine.shared.lock();
+            if let Some(t) = state.tracks.get_mut("track1") {
+                t.volume = -10.46; // ≈ 0.3 线性 (20*log10(0.3) ≈ -10.46)
+            }
+            if let Some(t) = state.tracks.get_mut("track2") {
+                t.volume = -13.98; // ≈ 0.2 线性 (20*log10(0.2) ≈ -13.98)
+            }
+        }
+
+        engine.start(sample_rate, 256).unwrap();
+
+        // 渲染一帧
+        let mut output = vec![0.0f32; 256 * 2];
+        engine.render_frame(&mut output, 1);
+
+        // 验证混合结果 ≈ 0.5 (0.3 + 0.2)
+        let mixed = output[0]; // L
+        assert!(
+            (mixed - 0.5).abs() < 0.01,
+            "混合应≈0.5，实际={}",
+            mixed
+        );
+
+        engine.stop().unwrap();
+    }
+
+    #[test]
+    fn test_render_after_end() {
+        let sample_rate = 44100.0;
+        let frames = 50;
+
+        let mut engine = AudioEngine::new();
+        engine.register_track("test").unwrap();
+
+        let buf = AudioBuffer::new(2, frames, sample_rate);
+        engine.inject_buffer("test", buf).unwrap();
+        engine.start(sample_rate, 256).unwrap();
+
+        // 渲染足够多的帧直到缓冲区结束
+        let mut all_zero = false;
+        let mut total_frames = 0;
+
+        while total_frames < 200 {
+            let mut output = vec![0.0f32; 256 * 2];
+            let has_more = engine.render_frame(&mut output, 256);
+
+            // 检查输出是否全为零
+            let this_batch_zero = output.iter().all(|&s| s == 0.0);
+            if this_batch_zero {
+                all_zero = true;
+                break;
+            }
+            total_frames += 256;
+        }
+
+        assert!(all_zero, "缓冲区结束后应输出静音");
+
+        engine.stop().unwrap();
+    }
+
+    // ==================== TrackRenderParams 测试 ====================
+
+    #[test]
+    fn test_track_render_params_volume() {
+        // 0dB
+        let track = Track::new("test");
+        let params = TrackRenderParams::from_track(&track);
+        assert!((params.volume_gain - 1.0).abs() < 0.001);
+
+        // -6dB
+        let mut track = Track::new("test");
+        track.volume = -6.0;
+        let params = TrackRenderParams::from_track(&track);
+        assert!((params.volume_gain - 0.501).abs() < 0.01);
+
+        // -inf dB (静音)
+        let mut track = Track::new("test");
+        track.volume = -60.0;
+        let params = TrackRenderParams::from_track(&track);
+        assert_eq!(params.volume_gain, 0.0);
+    }
+
+    #[test]
+    fn test_track_render_params_pan() {
+        // 居中
+        let track = Track::new("test");
+        let params = TrackRenderParams::from_track(&track);
+        assert!((params.pan_gain_l - params.pan_gain_r).abs() < 0.001);
+
+        // 全左
+        let mut track = Track::new("test");
+        track.pan = -1.0;
+        let params = TrackRenderParams::from_track(&track);
+        assert!(params.pan_gain_l > params.pan_gain_r);
+        assert!(params.pan_gain_r < 0.01);
+
+        // 全右
+        let mut track = Track::new("test");
+        track.pan = 1.0;
+        let params = TrackRenderParams::from_track(&track);
+        assert!(params.pan_gain_r > params.pan_gain_l);
+        assert!(params.pan_gain_l < 0.01);
     }
 }

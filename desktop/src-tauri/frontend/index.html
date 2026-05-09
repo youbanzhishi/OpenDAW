@@ -3,69 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VCMix — Loading</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            display: flex; align-items: center; justify-content: center;
-            height: 100vh; background: #1a1a2e; color: #e0e0e0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-        }
-        .loader {
-            text-align: center; padding: 40px;
-        }
-        .spinner {
-            width: 48px; height: 48px; margin: 0 auto 24px;
-            border: 4px solid rgba(233, 69, 96, 0.2);
-            border-top-color: #e94560; border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        h1 { font-size: 24px; margin-bottom: 8px; color: #e94560; }
-        p { font-size: 14px; color: #888; }
-        .error { color: #e94560; display: none; margin-top: 16px; }
-    </style>
+    <title>VCMix — AI-native DAW</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="loader">
-        <div class="spinner"></div>
-        <h1>VCMix</h1>
-        <p id="status">Starting backend...</p>
-        <p class="error" id="error"></p>
+
+<!-- ── Top Header / Transport Bar ─────────────────────────────────── -->
+<header id="app-header">
+    <div class="header-left">
+        <div class="logo">VCMix</div>
+        <div class="project-selector">
+            <select id="project-select" title="Select project">
+                <option value="">— Select Project —</option>
+            </select>
+            <button id="btn-new-project" class="icon-btn" title="New Project">+</button>
+        </div>
     </div>
-    <script>
-        const BACKEND_URL = 'http://localhost:8000';
-        const MAX_ATTEMPTS = 60;
-        const INTERVAL_MS = 1000;
-        let attempts = 0;
 
-        function checkBackend() {
-            fetch(BACKEND_URL + '/api/health')
-                .then(r => {
-                    if (r.ok) {
-                        document.getElementById('status').textContent = 'Backend ready, redirecting...';
-                        window.location.href = BACKEND_URL;
-                    } else {
-                        throw new Error('Not ready');
-                    }
-                })
-                .catch(() => {
-                    attempts++;
-                    if (attempts >= MAX_ATTEMPTS) {
-                        document.getElementById('status').style.display = 'none';
-                        document.querySelector('.spinner').style.display = 'none';
-                        const err = document.getElementById('error');
-                        err.textContent = 'Failed to connect to backend. Please ensure VCMix is running.';
-                        err.style.display = 'block';
-                        return;
-                    }
-                    document.getElementById('status').textContent =
-                        'Waiting for backend... (' + attempts + '/' + MAX_ATTEMPTS + ')';
-                    setTimeout(checkBackend, INTERVAL_MS);
-                });
-        }
+    <div class="transport">
+        <button id="btn-rewind" class="transport-btn" title="Rewind (Home)">⏮</button>
+        <button id="btn-play" class="transport-btn primary" title="Play (Space)">▶</button>
+        <button id="btn-stop" class="transport-btn" title="Stop (Space)">■</button>
+        <button id="btn-record" class="transport-btn danger" title="Record">●</button>
+        <div class="time-display" id="time-display">00:00:00.000</div>
+        <div class="bpm-display">
+            <label>BPM</label>
+            <input type="number" id="bpm-input" value="120" min="20" max="300" step="1">
+        </div>
+        <div class="time-signature">
+            <select id="time-sig-select">
+                <option value="4/4">4/4</option>
+                <option value="3/4">3/4</option>
+                <option value="6/8">6/8</option>
+            </select>
+        </div>
+    </div>
 
-        checkBackend();
-    </script>
+    <div class="header-right">
+        <div class="backend-status" id="backend-status">
+            <span class="dot offline"></span>
+            <span class="status-text">Connecting…</span>
+        </div>
+        <button id="btn-export" class="action-btn primary" title="Export (Ctrl+E)">Export</button>
+        <button id="btn-chat-toggle" class="icon-btn" title="AI Chat Panel">💬</button>
+    </div>
+</header>
+
+<!-- ── Main DAW Layout ──────────────────────────────────────────────── -->
+<div id="daw-main">
+
+    <!-- Left: Track List -->
+    <aside id="track-panel">
+        <div class="panel-header">
+            <span>Tracks</span>
+            <button id="btn-add-track" class="icon-btn sm" title="Add Track">+</button>
+        </div>
+        <div id="track-list">
+            <!-- Tracks injected by JS -->
+            <div class="empty-hint">No tracks yet.<br>Add one to get started.</div>
+        </div>
+    </aside>
+
+    <!-- Center: Arrangement / Timeline -->
+    <main id="arrangement">
+        <div id="timeline-ruler">
+            <div class="ruler-labels" id="ruler-labels"></div>
+        </div>
+        <div id="timeline-clips">
+            <div id="playhead"></div>
+            <div id="grid-overlay"></div>
+        </div>
+    </main>
+
+    <!-- Right: Mixer Panel -->
+    <aside id="mixer-panel">
+        <div class="panel-header">
+            <span>Mixer</span>
+        </div>
+        <div id="mixer-strips">
+            <!-- Strips injected by JS -->
+            <div class="empty-hint">No channels.</div>
+        </div>
+        <!-- Master strip -->
+        <div class="master-strip" id="master-strip">
+            <div class="strip-label">Master</div>
+            <div class="fader-wrap">
+                <input type="range" class="fader-v" id="master-fader" min="-60" max="12" value="0" step="0.5">
+                <div class="fader-dB" id="master-dB">0.0 dB</div>
+            </div>
+            <div class="meter" id="master-meter">
+                <div class="meter-fill" id="master-meter-fill"></div>
+            </div>
+        </div>
+    </aside>
+
+</div>
+
+<!-- ── Chat Panel (collapsible sidebar) ────────────────────────────── -->
+<aside id="chat-panel" class="hidden">
+    <div class="chat-header">
+        <span>AI Assistant</span>
+        <select id="persona-select" title="Agent persona">
+            <option value="mix-engineer">Mix Engineer</option>
+            <option value="vocal-expert">Vocal Expert</option>
+            <option value="beginner-coach">Beginner Coach</option>
+        </select>
+        <button id="btn-chat-close" class="icon-btn sm" title="Close">✕</button>
+    </div>
+    <div id="chat-messages">
+        <div class="chat-welcome">
+            <p>👋 Hi! I'm your VCMix AI assistant.</p>
+            <p>Ask me anything about mixing, effects, or your project.</p>
+            <div class="suggestion-chips">
+                <button class="chip" data-msg="Analyze the current project">Analyze project</button>
+                <button class="chip" data-msg="Suggest improvements for track 1">Suggest improvements</button>
+                <button class="chip" data-msg="Auto-mix the project">Auto-mix</button>
+            </div>
+        </div>
+    </div>
+    <div class="chat-input-area">
+        <textarea id="chat-input" rows="2" placeholder="Ask the AI assistant… (Enter to send, Shift+Enter for newline)"></textarea>
+        <button id="btn-chat-send" class="action-btn primary sm">Send</button>
+    </div>
+</aside>
+
+<!-- ── Status Bar ─────────────────────────────────────────────────── -->
+<footer id="app-status">
+    <span id="status-msg">Ready</span>
+    <span class="shortcut-hint">Space: Play/Stop &nbsp;|&nbsp; Home: Rewind &nbsp;|&nbsp; Ctrl+E: Export &nbsp;|&nbsp; Ctrl+M: Mixer &nbsp;|&nbsp; Ctrl+K: Chat</span>
+</footer>
+
+<!-- ── Toast Notifications ───────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
 </body>
 </html>

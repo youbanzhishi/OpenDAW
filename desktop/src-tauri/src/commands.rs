@@ -213,3 +213,221 @@ pub async fn get_midi_notes(
         total_beats: data.get("total_beats").and_then(|v| v.as_f64()).unwrap_or(0.0),
     })
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Phase 14 — Transport & Track Commands
+// ═══════════════════════════════════════════════════════════════════════
+
+#[derive(Debug, Serialize)]
+pub struct TransportStatus {
+    pub playing: bool,
+    pub recording: bool,
+    pub current_time_s: f64,
+    pub bpm: f64,
+    pub time_sig: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TrackInfo {
+    pub id: String,
+    pub name: String,
+    pub r#type: String,
+    pub gain_db: f64,
+    pub pan: f64,
+    pub mute: bool,
+    pub solo: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectInfo {
+    pub id: String,
+    pub name: String,
+    pub bpm: f64,
+    pub sample_rate: u32,
+    pub tracks: Vec<TrackInfo>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProjectList {
+    pub projects: Vec<serde_json::Value>,
+    pub count: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AgentChatResponse {
+    pub message: String,
+    pub actions: Vec<serde_json::Value>,
+    pub thinking: String,
+}
+
+#[tauri::command]
+pub async fn transport_play(state: State<'_, AppState>) -> Result<TransportStatus, String> {
+    // Transport is managed in the frontend JS; this is a backend sync hook
+    Ok(TransportStatus {
+        playing: true,
+        recording: false,
+        current_time_s: 0.0,
+        bpm: 120.0,
+        time_sig: "4/4".into(),
+    })
+}
+
+#[tauri::command]
+pub async fn transport_stop(state: State<'_, AppState>) -> Result<TransportStatus, String> {
+    Ok(TransportStatus {
+        playing: false,
+        recording: false,
+        current_time_s: 0.0,
+        bpm: 120.0,
+        time_sig: "4/4".into(),
+    })
+}
+
+#[tauri::command]
+pub async fn list_projects(state: State<'_, AppState>) -> Result<ProjectList, String> {
+    let url = format!("{}/api/v1/projects", state.backend.base_url);
+    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let projects = data.get("projects").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    Ok(ProjectList {
+        count: projects.len(),
+        projects,
+    })
+}
+
+#[tauri::command]
+pub async fn get_project(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> Result<ProjectInfo, String> {
+    let url = format!("{}/api/v1/projects/{}", state.backend.base_url, project_id);
+    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+
+    let tracks: Vec<TrackInfo> = data.get("tracks")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|t| TrackInfo {
+            id: t.get("id").or(t.get("name")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
+            name: t.get("name").and_then(|v| v.as_str()).unwrap_or("Track").to_string(),
+            r#type: t.get("type").and_then(|v| v.as_str()).unwrap_or("audio").to_string(),
+            gain_db: t.get("gain").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            pan: t.get("pan").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            mute: t.get("mute").and_then(|v| v.as_bool()).unwrap_or(false),
+            solo: t.get("solo").and_then(|v| v.as_bool()).unwrap_or(false),
+        })
+        .collect();
+
+    Ok(ProjectInfo {
+        id: project_id,
+        name: data.get("name").and_then(|v| v.as_str()).unwrap_or("Untitled").to_string(),
+        bpm: data.get("bpm").and_then(|v| v.as_f64()).unwrap_or(120.0),
+        sample_rate: data.get("sample_rate").and_then(|v| v.as_u64()).unwrap_or(44100) as u32,
+        tracks,
+    })
+}
+
+#[tauri::command]
+pub async fn create_project(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<serde_json::Value, String> {
+    let url = format!("{}/api/v1/projects", state.backend.base_url);
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&url)
+        .json(&serde_json::json!({ "name": name }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    Ok(data)
+}
+
+#[tauri::command]
+pub async fn add_track(
+    state: State<'_, AppState>,
+    project_id: String,
+    name: String,
+    track_type: String,
+) -> Result<serde_json::Value, String> {
+    let url = format!("{}/api/v1/projects/{}/tracks", state.backend.base_url, project_id);
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&url)
+        .json(&serde_json::json!({ "name": name, "type": track_type }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    Ok(data)
+}
+
+#[tauri::command]
+pub async fn delete_track(
+    state: State<'_, AppState>,
+    project_id: String,
+    track_name: String,
+) -> Result<serde_json::Value, String> {
+    let url = format!(
+        "{}/api/v1/projects/{}/tracks/{}",
+        state.backend.base_url,
+        project_id,
+        urlencoding::encode(&track_name)
+    );
+    let client = reqwest::Client::new();
+    let resp = client
+        .delete(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp.json().await.unwrap_or(serde_json::Value::Null);
+    Ok(data)
+}
+
+#[tauri::command]
+pub async fn agent_chat(
+    state: State<'_, AppState>,
+    message: String,
+    project_id: Option<String>,
+) -> Result<AgentChatResponse, String> {
+    let url = format!("{}/api/v1/agent/chat", state.backend.base_url);
+    let client = reqwest::Client::new();
+    let body = serde_json::json!({
+        "message": message,
+        "project_id": project_id
+    });
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Agent chat failed: {}", e))?;
+
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+
+    Ok(AgentChatResponse {
+        message: data.get("message").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        actions: data.get("actions").and_then(|v| v.as_array()).cloned().unwrap_or_default(),
+        thinking: data.get("thinking").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+    })
+}
+
+#[tauri::command]
+pub async fn automix_project(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> Result<serde_json::Value, String> {
+    let url = format!("{}/api/automix", state.backend.base_url);
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&url)
+        .json(&serde_json::json!({ "project_id": project_id }))
+        .send()
+        .await
+        .map_err(|e| format!("Automix failed: {}", e))?;
+    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    Ok(data)
+}
