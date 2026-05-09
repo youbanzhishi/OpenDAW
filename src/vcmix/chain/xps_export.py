@@ -36,14 +36,12 @@ Dependencies: vcmix.chain.models
 from __future__ import annotations
 
 import logging
-import re
 import struct
 from pathlib import Path
-from typing import Any
-from xml.etree.ElementTree import Element, SubElement, tostring
 from xml.dom import minidom
+from xml.etree.ElementTree import Element, SubElement, tostring
 
-from vcmix.chain.models import ChainConfig, ChainStep, ParallelBranch
+from vcmix.chain.models import ChainConfig
 
 logger = logging.getLogger(__name__)
 

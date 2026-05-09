@@ -12,21 +12,15 @@ All endpoints preserve conversation context across model/persona switches.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from vcmix.agent.enhanced_modelbus import EnhancedModelBus, ProviderConfig
 from vcmix.agent.enhanced_runtime import AgentResponse, EnhancedAgentRuntime
-from vcmix.agent.model_provider import (
-    MODEL_REGISTRY,
-    ProviderType,
-    get_available_models,
-)
 from vcmix.agent.persona_manager import Persona, PersonaManager
 
 logger = logging.getLogger("vcmix.agent.api")
@@ -145,7 +139,7 @@ async def list_models() -> ModelListResponse:
 @router.post("/model/switch")
 async def switch_model(request: ModelSwitchRequest) -> dict[str, Any]:
     """Switch to a different LLM model.
-    
+
     The conversation context is preserved across the switch.
     """
     runtime = get_runtime()
@@ -221,7 +215,7 @@ async def get_persona(persona_id: str) -> dict[str, Any]:
 @router.post("/personas/switch")
 async def switch_persona(request: PersonaSwitchRequest) -> dict[str, Any]:
     """Switch to a different persona.
-    
+
     The conversation context is preserved across the switch.
     """
     runtime = get_runtime()
@@ -235,10 +229,10 @@ async def switch_persona(request: PersonaSwitchRequest) -> dict[str, Any]:
 async def create_custom_persona(request: PersonaCreateRequest) -> dict[str, Any]:
     """Create a custom persona."""
     manager = get_persona_manager()
-    
+
     if manager.persona_exists(request.id):
         raise HTTPException(status_code=400, detail="Persona ID already exists")
-    
+
     persona = Persona(
         id=request.id,
         name=request.name,
@@ -248,7 +242,7 @@ async def create_custom_persona(request: PersonaCreateRequest) -> dict[str, Any]
         tool_preferences=request.tool_preferences,
         is_builtin=False,
     )
-    
+
     manager.save_persona(persona)
     return {"success": True, "persona": persona.to_dict()}
 
@@ -258,13 +252,13 @@ async def update_persona(persona_id: str, request: PersonaUpdateRequest) -> dict
     """Update a custom persona."""
     manager = get_persona_manager()
     persona = manager.get_persona(persona_id)
-    
+
     if not persona:
         raise HTTPException(status_code=404, detail="Persona not found")
-    
+
     if persona.is_builtin:
         raise HTTPException(status_code=400, detail="Cannot modify built-in personas")
-    
+
     # Update fields
     if request.name is not None:
         persona.name = request.name
@@ -276,7 +270,7 @@ async def update_persona(persona_id: str, request: PersonaUpdateRequest) -> dict
         persona.execution_mode = request.execution_mode
     if request.tool_preferences is not None:
         persona.tool_preferences = request.tool_preferences
-    
+
     manager.save_persona(persona)
     return {"success": True, "persona": persona.to_dict()}
 
@@ -327,13 +321,13 @@ async def import_persona(json_str: str) -> dict[str, Any]:
 async def chat(request: ChatRequest) -> AgentResponse:
     """Send a message to the agent and get a response."""
     runtime = get_runtime()
-    
+
     response = await runtime.chat(
         user_message=request.message,
         project_id=request.project_id,
         execution_mode=request.execution_mode,
     )
-    
+
     return response
 
 
@@ -341,20 +335,20 @@ async def chat(request: ChatRequest) -> AgentResponse:
 async def chat_stream(request: ChatRequest) -> AsyncIterator[ChatStreamResponse]:
     """Stream agent response (thinking, tool calls, final message)."""
     runtime = get_runtime()
-    
+
     async def generate() -> AsyncIterator[ChatStreamResponse]:
         # Add user message
         runtime._memory.add_message("user", request.message)
         messages = runtime._build_messages()
         tools = runtime._tool_executor._tools
-        
+
         # First, send thinking status
         yield ChatStreamResponse(
             type="status",
             content="正在分析...",
             data={"project_id": request.project_id or runtime._project_id}
         )
-        
+
         # Get LLM response
         try:
             response = await runtime._model_bus.chat(
@@ -367,7 +361,7 @@ async def chat_stream(request: ChatRequest) -> AsyncIterator[ChatStreamResponse]
                 content=f"模型调用失败: {e}",
             )
             return
-        
+
         # Send tool calls if any
         if response.has_tool_calls:
             for tc in response.tool_calls:
@@ -376,14 +370,14 @@ async def chat_stream(request: ChatRequest) -> AsyncIterator[ChatStreamResponse]
                     content=f"{tc['name']}({tc.get('arguments', '{}')})",
                     data=tc,
                 )
-        
+
         # Send final message
         yield ChatStreamResponse(
             type="done",
             content=response.content,
             data={"model": runtime.get_current_model()}
         )
-    
+
     return generate()
 
 
@@ -423,9 +417,9 @@ async def lifespan(app: Any) -> AsyncIterator[None]:
     _runtime = EnhancedAgentRuntime()
     _persona_manager = PersonaManager()
     logger.info("Agent API ready")
-    
+
     yield
-    
+
     # Shutdown
     if _runtime:
         await _runtime.close()

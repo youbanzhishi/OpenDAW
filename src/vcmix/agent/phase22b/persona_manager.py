@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -24,7 +23,7 @@ logger = logging.getLogger("vcmix.agent.persona_manager")
 @dataclass
 class Persona:
     """A persona definition for the VCMix Agent.
-    
+
     Attributes:
         id: Unique persona identifier (system or custom).
         name: Display name shown in UI.
@@ -43,18 +42,18 @@ class Persona:
     execution_mode: str = "confirm"
     is_builtin: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
-    
+
     def get_system_prompt(self, context: dict[str, Any] | None = None) -> str:
         """Get the system prompt, optionally with dynamic context.
-        
+
         Args:
             context: Optional context dict (project info, user preferences, etc.)
-            
+
         Returns:
             The system prompt string.
         """
         prompt = self.system_prompt
-        
+
         # Add dynamic context if provided
         if context:
             context_str = "\n\n## 当前上下文\n"
@@ -62,9 +61,9 @@ class Persona:
                 if value:
                     context_str += f"- {key}: {value}\n"
             prompt += context_str
-        
+
         return prompt
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dict for storage."""
         return {
@@ -77,7 +76,7 @@ class Persona:
             "is_builtin": self.is_builtin,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Persona":
         """Create Persona from dict."""
@@ -131,7 +130,7 @@ def _get_builtin_personas() -> dict[str, Persona]:
             execution_mode="confirm",
             is_builtin=True,
         ),
-        
+
         "vocal-expert": Persona(
             id="vocal-expert",
             name="人声专家",
@@ -165,7 +164,7 @@ def _get_builtin_personas() -> dict[str, Persona]:
             execution_mode="confirm",
             is_builtin=True,
         ),
-        
+
         "beginner-coach": Persona(
             id="beginner-coach",
             name="新手教练",
@@ -206,7 +205,7 @@ def _get_builtin_personas() -> dict[str, Persona]:
             execution_mode="suggest",
             is_builtin=True,
         ),
-        
+
         "mastering-guru": Persona(
             id="mastering-guru",
             name="母带大师",
@@ -241,7 +240,7 @@ def _get_builtin_personas() -> dict[str, Persona]:
             execution_mode="confirm",
             is_builtin=True,
         ),
-        
+
         "efficiency-pro": Persona(
             id="efficiency-pro",
             name="效率助手",
@@ -283,22 +282,22 @@ def _get_builtin_personas() -> dict[str, Persona]:
 
 class PersonaManager:
     """Manager for VCMix Agent personas.
-    
+
     Handles:
     - Built-in persona catalog
     - User custom persona CRUD
     - Persona persistence
     - Active persona tracking
-    
+
     Usage:
         manager = PersonaManager()
-        
+
         # List all personas
         personas = manager.list_personas()
-        
+
         # Get a persona
         persona = manager.get_persona("mix-engineer")
-        
+
         # Create custom persona
         custom = Persona(
             id="my-persona",
@@ -307,14 +306,14 @@ class PersonaManager:
             system_prompt="You are...",
         )
         manager.save_persona(custom)
-        
+
         # Delete custom persona
         manager.delete_persona("my-persona")
     """
-    
+
     def __init__(self, storage_dir: str | None = None) -> None:
         """Initialize PersonaManager.
-        
+
         Args:
             storage_dir: Directory for storing custom personas. Defaults to ~/.vcmix/personas/
         """
@@ -322,19 +321,19 @@ class PersonaManager:
             self._storage_dir = Path(storage_dir)
         else:
             self._storage_dir = Path.home() / ".vcmix" / "personas"
-        
+
         self._storage_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Load built-in personas
         self._builtin_personas = _get_builtin_personas()
-        
+
         # Load custom personas from disk
         self._custom_personas: dict[str, Persona] = {}
         self._load_custom_personas()
-        
+
         logger.info("PersonaManager initialized with %d built-in, %d custom personas",
                    len(self._builtin_personas), len(self._custom_personas))
-    
+
     def _load_custom_personas(self) -> None:
         """Load custom personas from disk."""
         self._custom_personas.clear()
@@ -347,27 +346,27 @@ class PersonaManager:
                 logger.debug("Loaded custom persona: %s", persona.id)
             except Exception as e:
                 logger.warning("Failed to load persona %s: %s", file_path, e)
-    
+
     def _save_persona_to_disk(self, persona: Persona) -> None:
         """Save a persona to disk."""
         file_path = self._storage_dir / f"{persona.id}.json"
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(persona.to_dict(), f, ensure_ascii=False, indent=2)
-    
+
     def _delete_persona_from_disk(self, persona_id: str) -> None:
         """Delete a persona from disk."""
         file_path = self._storage_dir / f"{persona_id}.json"
         if file_path.exists():
             file_path.unlink()
-    
+
     # ── Public API ───────────────────────────────────────────────────────
-    
+
     def list_personas(self, include_builtin: bool = True) -> list[Persona]:
         """List all available personas.
-        
+
         Args:
             include_builtin: Whether to include built-in personas.
-            
+
         Returns:
             List of all personas.
         """
@@ -376,90 +375,90 @@ class PersonaManager:
             personas.extend(self._builtin_personas.values())
         personas.extend(self._custom_personas.values())
         return personas
-    
+
     def list_builtin_personas(self) -> list[Persona]:
         """List only built-in personas."""
         return list(self._builtin_personas.values())
-    
+
     def list_custom_personas(self) -> list[Persona]:
         """List only custom personas."""
         return list(self._custom_personas.values())
-    
+
     def get_persona(self, persona_id: str) -> Persona | None:
         """Get a persona by ID.
-        
+
         Args:
             persona_id: The persona ID.
-            
+
         Returns:
             Persona if found, None otherwise.
         """
         return self._builtin_personas.get(persona_id) or self._custom_personas.get(persona_id)
-    
+
     def persona_exists(self, persona_id: str) -> bool:
         """Check if a persona exists.
-        
+
         Args:
             persona_id: The persona ID.
-            
+
         Returns:
             True if persona exists.
         """
         return persona_id in self._builtin_personas or persona_id in self._custom_personas
-    
+
     def save_persona(self, persona: Persona) -> None:
         """Save a custom persona (create or update).
-        
+
         Args:
             persona: The persona to save.
-            
+
         Raises:
             ValueError: If trying to save a built-in persona.
         """
         if persona.is_builtin:
             raise ValueError("Cannot save built-in personas. Create a copy instead.")
-        
+
         persona.is_builtin = False
         self._custom_personas[persona.id] = persona
         self._save_persona_to_disk(persona)
         logger.info("Saved custom persona: %s", persona.id)
-    
+
     def delete_persona(self, persona_id: str) -> bool:
         """Delete a custom persona.
-        
+
         Args:
             persona_id: The persona ID to delete.
-            
+
         Returns:
             True if deleted, False if not found or built-in.
         """
         if persona_id in self._builtin_personas:
             logger.warning("Cannot delete built-in persona: %s", persona_id)
             return False
-        
+
         if persona_id not in self._custom_personas:
             return False
-        
+
         del self._custom_personas[persona_id]
         self._delete_persona_from_disk(persona_id)
         logger.info("Deleted custom persona: %s", persona_id)
         return True
-    
+
     def duplicate_persona(self, source_id: str, new_id: str, new_name: str) -> Persona | None:
         """Create a copy of an existing persona.
-        
+
         Args:
             source_id: ID of the persona to copy.
             new_id: ID for the new persona.
             new_name: Name for the new persona.
-            
+
         Returns:
             The new persona, or None if source not found.
         """
         source = self.get_persona(source_id)
         if not source:
             return None
-        
+
         new_persona = Persona(
             id=new_id,
             name=new_name,
@@ -470,20 +469,20 @@ class PersonaManager:
             is_builtin=False,
             metadata={"copied_from": source_id},
         )
-        
+
         self.save_persona(new_persona)
         return new_persona
-    
+
     def reload_personas(self) -> None:
         """Reload custom personas from disk."""
         self._load_custom_personas()
-    
+
     def export_persona(self, persona_id: str) -> str | None:
         """Export a persona as JSON string.
-        
+
         Args:
             persona_id: The persona ID.
-            
+
         Returns:
             JSON string, or None if not found.
         """
@@ -491,23 +490,23 @@ class PersonaManager:
         if not persona:
             return None
         return json.dumps(persona.to_dict(), ensure_ascii=False, indent=2)
-    
+
     def import_persona(self, json_str: str) -> Persona | None:
         """Import a persona from JSON string.
-        
+
         Args:
             json_str: The JSON string.
-            
+
         Returns:
             The imported persona, or None on error.
         """
         try:
             data = json.loads(json_str)
             persona = Persona.from_dict(data)
-            
+
             # Ensure it's treated as custom
             persona.is_builtin = False
-            
+
             self.save_persona(persona)
             return persona
         except Exception as e:

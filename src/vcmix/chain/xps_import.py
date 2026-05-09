@@ -34,7 +34,6 @@ Dependencies: lxml or xml.etree, vcmix.chain.models
 from __future__ import annotations
 
 import logging
-import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -125,7 +124,6 @@ WAVES_TO_VC_PLUGIN: dict[str, str] = {
     "C4": "vc-multiband",
     "C6": "vc-multiband",
     "L3 Multimaximizer": "vc-multiband",
-    "L3-16": "vc-multiband",
     "LinearPhase Multiband": "vc-multiband",
 
     # Gate
@@ -134,7 +132,6 @@ WAVES_TO_VC_PLUGIN: dict[str, str] = {
 
     # Chorus / Flanger
     "MetaFlanger": "vc-chorus",
-    "MondoMod": "vc-chorus",
     "Ultrapitch": "vc-chorus",
 
     # Tune

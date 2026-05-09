@@ -28,7 +28,7 @@ from typing import Any
 
 import numpy as np
 
-from vcmix.chain.models import ChainConfig, ChainStep, ParallelBranch
+from vcmix.chain.models import ChainConfig, ChainStep
 from vcmix.plugins.registry import PluginRegistry
 
 logger = logging.getLogger(__name__)

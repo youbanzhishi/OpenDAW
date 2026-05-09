@@ -26,8 +26,6 @@ Dependencies: vcmix.chain.models
 
 from __future__ import annotations
 
-from typing import Any
-
 from vcmix.chain.models import (
     ChainConfig,
     ChainStep,

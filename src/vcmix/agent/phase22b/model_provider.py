@@ -62,7 +62,7 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
     "gpt-4-turbo": ModelInfo("gpt-4-turbo", "GPT-4 Turbo", ProviderType.OPENAI,
                              context_window=128_000, supports_tools=True,
                              max_output_tokens=4096, description="Previous generation flagship"),
-    
+
     # Anthropic models
     "claude-3.5-sonnet": ModelInfo("claude-3.5-sonnet-latest", "Claude 3.5 Sonnet", ProviderType.ANTHROPIC,
                                     context_window=200_000, supports_tools=True, supports_vision=True,
@@ -73,7 +73,7 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
     "claude-3-sonnet": ModelInfo("claude-3-sonnet-latest", "Claude 3 Sonnet", ProviderType.ANTHROPIC,
                                   context_window=200_000, supports_tools=True, supports_vision=True,
                                   max_output_tokens=4096, description="Balanced capability"),
-    
+
     # Ollama models (local)
     "llama3.3:70b": ModelInfo("llama3.3:70b", "Llama 3.3 70B", ProviderType.OLLAMA,
                               context_window=128_000, supports_tools=True,
@@ -84,7 +84,7 @@ MODEL_REGISTRY: dict[str, ModelInfo] = {
     "deepseek-r1:70b": ModelInfo("deepseek-r1:70b", "DeepSeek R1 70B", ProviderType.OLLAMA,
                                   context_window=128_000, supports_tools=True,
                                   max_output_tokens=8192, description="DeepSeek's reasoning model"),
-    
+
     # vLLM models
     "custom-mix-v1": ModelInfo("custom-mix-v1", "Custom Mix v1", ProviderType.VLLM,
                               context_window=128_000, supports_tools=True,
@@ -102,7 +102,7 @@ class LLMResponse:
     raw_response: dict[str, Any] = field(default_factory=dict)
     model: str = ""
     usage: dict[str, int] = field(default_factory=dict)  # prompt_tokens, completion_tokens, total_tokens
-    
+
     @property
     def has_tool_calls(self) -> bool:
         return self.tool_calls is not None and len(self.tool_calls) > 0
@@ -110,17 +110,17 @@ class LLMResponse:
 
 class ModelProvider(ABC):
     """Abstract base class for all LLM providers.
-    
+
     Each provider implements chat completion for its specific API.
     All providers return standardized LLMResponse objects.
     """
-    
+
     def __init__(self, model_id: str, **kwargs: Any) -> None:
         self.model_id = model_id
         self.model_info = MODEL_REGISTRY.get(model_id, ModelInfo(
             id=model_id, name=model_id, provider=ProviderType.CUSTOM
         ))
-    
+
     @abstractmethod
     async def chat(
         self,
@@ -130,23 +130,23 @@ class ModelProvider(ABC):
         max_tokens: int | None = None,
     ) -> LLMResponse:
         """Send a chat completion request.
-        
+
         Args:
             messages: List of message dicts with role/content.
             tools: Optional tool definitions.
             temperature: Sampling temperature.
             max_tokens: Max output tokens (None = model default).
-            
+
         Returns:
             LLMResponse with standardized structure.
         """
         ...
-    
+
     @abstractmethod
     async def close(self) -> None:
         """Close underlying HTTP client."""
         ...
-    
+
     def supports_tools(self) -> bool:
         """Check if this provider/model supports function calling."""
         return self.model_info.supports_tools
@@ -156,9 +156,9 @@ class ModelProvider(ABC):
 
 class OpenAIProvider(ModelProvider):
     """OpenAI API provider (also compatible with OpenAI-compatible APIs)."""
-    
+
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
-    
+
     def __init__(
         self,
         model_id: str = "gpt-4o",
@@ -177,7 +177,7 @@ class OpenAIProvider(ModelProvider):
             },
             timeout=60.0,
         )
-    
+
     async def chat(
         self,
         messages: list[dict[str, Any]],
@@ -193,7 +193,7 @@ class OpenAIProvider(ModelProvider):
         }
         if tools:
             payload["tools"] = [{"type": "function", "function": t} for t in tools]
-        
+
         try:
             resp = await self._client.post("/chat/completions", json=payload)
             resp.raise_for_status()
@@ -205,12 +205,12 @@ class OpenAIProvider(ModelProvider):
         except httpx.RequestError as e:
             logger.error("OpenAI request failed: %s", e)
             raise RuntimeError(f"OpenAI request failed: {e}") from e
-    
+
     def _parse_response(self, data: dict[str, Any]) -> LLMResponse:
         choice = data.get("choices", [{}])[0]
         msg = choice.get("message", {})
         content = msg.get("content", "") or ""
-        
+
         tool_calls = None
         raw_tcs = msg.get("tool_calls")
         if raw_tcs:
@@ -222,7 +222,7 @@ class OpenAIProvider(ModelProvider):
                     "name": fn.get("name", ""),
                     "arguments": fn.get("arguments", "{}"),
                 })
-        
+
         usage = data.get("usage", {})
         return LLMResponse(
             content=content,
@@ -235,7 +235,7 @@ class OpenAIProvider(ModelProvider):
                 "total_tokens": usage.get("total_tokens", 0),
             },
         )
-    
+
     async def close(self) -> None:
         await self._client.aclose()
 
@@ -244,9 +244,9 @@ class OpenAIProvider(ModelProvider):
 
 class AnthropicProvider(ModelProvider):
     """Anthropic Claude API provider (native API, not OpenAI-compatible)."""
-    
+
     ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-    
+
     def __init__(
         self,
         model_id: str = "claude-3.5-sonnet",
@@ -264,7 +264,7 @@ class AnthropicProvider(ModelProvider):
             },
             timeout=60.0,
         )
-    
+
     async def chat(
         self,
         messages: list[dict[str, Any]],
@@ -275,11 +275,11 @@ class AnthropicProvider(ModelProvider):
         # Convert OpenAI message format to Anthropic format
         system_msg = ""
         chat_messages = []
-        
+
         for msg in messages:
             role = msg.get("role")
             content = msg.get("content", "")
-            
+
             if role == "system":
                 system_msg = content
             elif role == "user":
@@ -293,7 +293,7 @@ class AnthropicProvider(ModelProvider):
                     "role": "user",
                     "content": f"<tool_result id=\"{tool_call_id}\">{content}</tool_result>",
                 })
-        
+
         payload: dict[str, Any] = {
             "model": self.model_id,
             "messages": chat_messages,
@@ -302,7 +302,7 @@ class AnthropicProvider(ModelProvider):
         }
         if system_msg:
             payload["system"] = system_msg
-        
+
         # Convert tools to Anthropic format
         if tools:
             payload["tools"] = [
@@ -313,7 +313,7 @@ class AnthropicProvider(ModelProvider):
                 }
                 for t in tools
             ]
-        
+
         try:
             resp = await self._client.post("/messages", json=payload)
             resp.raise_for_status()
@@ -325,14 +325,14 @@ class AnthropicProvider(ModelProvider):
         except httpx.RequestError as e:
             logger.error("Anthropic request failed: %s", e)
             raise RuntimeError(f"Anthropic request failed: {e}") from e
-    
+
     def _parse_response(self, data: dict[str, Any]) -> LLMResponse:
         content_blocks = data.get("content", [])
-        
+
         # Find text content
         text_content = ""
         tool_calls = None
-        
+
         for block in content_blocks:
             if block.get("type") == "text":
                 text_content = block.get("text", "")
@@ -344,7 +344,7 @@ class AnthropicProvider(ModelProvider):
                     "name": block.get("name", ""),
                     "arguments": json.dumps(block.get("input", {})),
                 })
-        
+
         usage = data.get("usage", {})
         return LLMResponse(
             content=text_content,
@@ -356,7 +356,7 @@ class AnthropicProvider(ModelProvider):
                 "output_tokens": usage.get("output_tokens", 0),
             },
         )
-    
+
     async def close(self) -> None:
         await self._client.aclose()
 
@@ -365,7 +365,7 @@ class AnthropicProvider(ModelProvider):
 
 class OllamaProvider(ModelProvider):
     """Ollama local LLM provider (OpenAI-compatible API)."""
-    
+
     def __init__(
         self,
         model_id: str = "llama3.3:70b",
@@ -379,7 +379,7 @@ class OllamaProvider(ModelProvider):
             headers={"Content-Type": "application/json"},
             timeout=120.0,  # Local models need longer timeout
         )
-    
+
     async def chat(
         self,
         messages: list[dict[str, Any]],
@@ -397,7 +397,7 @@ class OllamaProvider(ModelProvider):
             payload["options"] = {"num_predict": max_tokens}
         if tools:
             payload["tools"] = [{"type": "function", "function": t} for t in tools]
-        
+
         try:
             resp = await self._client.post("/chat/completions", json=payload)
             resp.raise_for_status()
@@ -409,11 +409,11 @@ class OllamaProvider(ModelProvider):
         except httpx.RequestError as e:
             logger.error("Ollama request failed: %s", e)
             raise RuntimeError(f"Ollama request failed: {e}") from e
-    
+
     def _parse_response(self, data: dict[str, Any]) -> LLMResponse:
         msg = data.get("message", {})
         content = msg.get("content", "") or ""
-        
+
         tool_calls = None
         raw_tcs = msg.get("tool_calls")
         if raw_tcs:
@@ -425,14 +425,14 @@ class OllamaProvider(ModelProvider):
                     "name": fn.get("name", ""),
                     "arguments": fn.get("arguments", "{}"),
                 })
-        
+
         return LLMResponse(
             content=content,
             tool_calls=tool_calls,
             raw_response=data,
             model=data.get("model", self.model_id),
         )
-    
+
     async def close(self) -> None:
         await self._client.aclose()
 
@@ -441,12 +441,12 @@ class OllamaProvider(ModelProvider):
 
 def create_provider(provider_type: ProviderType | str, model_id: str, **kwargs: Any) -> ModelProvider:
     """Factory function to create a provider instance.
-    
+
     Args:
         provider_type: Provider type (ProviderType enum or string).
         model_id: Model identifier (e.g., "gpt-4o", "claude-3.5-sonnet").
         **kwargs: Additional provider-specific arguments (api_key, base_url, etc.).
-        
+
     Returns:
         ModelProvider instance.
     """
@@ -455,34 +455,33 @@ def create_provider(provider_type: ProviderType | str, model_id: str, **kwargs: 
             provider_type = ProviderType(provider_type)
         except ValueError:
             provider_type = ProviderType.CUSTOM
-    
+
     # Auto-detect provider from model_id if not specified
     if provider_type == ProviderType.CUSTOM:
         if "claude" in model_id.lower():
             provider_type = ProviderType.ANTHROPIC
         elif model_id in MODEL_REGISTRY:
             provider_type = MODEL_REGISTRY[model_id].provider
-    
-    match provider_type:
-        case ProviderType.OPENAI | ProviderType.AZURE | ProviderType.CUSTOM:
-            return OpenAIProvider(model_id=model_id, **kwargs)
-        case ProviderType.ANTHROPIC:
-            return AnthropicProvider(model_id=model_id, **kwargs)
-        case ProviderType.OLLAMA:
+
+    if provider_type in (ProviderType.OPENAI, ProviderType.AZURE, ProviderType.CUSTOM):
+        return OpenAIProvider(model_id=model_id, **kwargs)
+    elif provider_type == ProviderType.ANTHROPIC:
+        return AnthropicProvider(model_id=model_id, **kwargs)
+    elif provider_type == ProviderType.OLLAMA:
             return OllamaProvider(model_id=model_id, **kwargs)
-        case ProviderType.VLLM:
+    elif provider_type == ProviderType.VLLM:
             # vLLM uses OpenAI-compatible API
             return OpenAIProvider(model_id=model_id, **kwargs)
-        case _:
-            raise ValueError(f"Unsupported provider type: {provider_type}")
+    else:
+        raise ValueError(f"Unsupported provider type: {provider_type}")
 
 
 def get_available_models(provider_type: ProviderType | None = None) -> list[ModelInfo]:
     """Get list of available models, optionally filtered by provider.
-    
+
     Args:
         provider_type: Optional filter for specific provider.
-        
+
     Returns:
         List of ModelInfo objects.
     """

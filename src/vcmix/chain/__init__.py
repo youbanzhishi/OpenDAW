@@ -20,18 +20,18 @@ Usage:
     output = engine.process(audio, sample_rate=44100)
 """
 
+from vcmix.chain.engine import ChainEngine
+from vcmix.chain.macro import MacroController
 from vcmix.chain.models import (
     ChainConfig,
     ChainStep,
     MacroConfig,
     MacroMapping,
-    ParallelBranch,
-    MultibandConfig,
     MultibandBand,
+    MultibandConfig,
+    ParallelBranch,
 )
-from vcmix.chain.engine import ChainEngine
-from vcmix.chain.macro import MacroController
-from vcmix.chain.presets import list_builtin_presets, get_builtin_preset
+from vcmix.chain.presets import get_builtin_preset, list_builtin_presets
 
 __all__ = [
     "ChainConfig",

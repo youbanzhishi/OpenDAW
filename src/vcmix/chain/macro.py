@@ -34,7 +34,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from vcmix.chain.models import MAX_MACROS, MacroConfig, MacroMapping
+from vcmix.chain.models import MAX_MACROS, MacroConfig
 
 logger = logging.getLogger(__name__)
 
