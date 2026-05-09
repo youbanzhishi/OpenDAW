@@ -172,12 +172,12 @@ mod tests {
         let mixer = Mixer::new(44100.0, 256, 2);
 
         // 两个轨道混合
-        let buf1 = EngineAudioBuffer::new(2, 256);
-        let mut buf2 = EngineAudioBuffer::new(2, 256);
+        let buf1 = EngineAudioBuffer::new(2, 256, 44100.0);
+        let mut buf2 = EngineAudioBuffer::new(2, 256, 44100.0);
         buf2.data[0] = 0.5; // 左声道
         buf2.data[256] = 0.5; // 右声道
 
-        let mut output = EngineAudioBuffer::new(2, 256);
+        let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
         mixer.mix(
             &[
                 (1.0, 0.0, false, &buf1),
@@ -193,10 +193,10 @@ mod tests {
     #[test]
     fn test_mixer_mute() {
         let mixer = Mixer::new(44100.0, 256, 2);
-        let mut buf = EngineAudioBuffer::new(2, 256);
+        let mut buf = EngineAudioBuffer::new(2, 256, 44100.0);
         buf.data[0] = 1.0;
 
-        let mut output = EngineAudioBuffer::new(2, 256);
+        let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
         mixer.mix(
             &[(1.0, 0.0, true, &buf)], // 静音
             &mut output,
@@ -211,10 +211,10 @@ mod tests {
         let mut mixer = Mixer::new(44100.0, 256, 2);
         mixer.set_master_volume(0.5);
 
-        let mut buf = EngineAudioBuffer::new(2, 256);
+        let mut buf = EngineAudioBuffer::new(2, 256, 44100.0);
         buf.data[0] = 1.0;
 
-        let mut output = EngineAudioBuffer::new(2, 256);
+        let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
         mixer.mix(
             &[(1.0, 0.0, false, &buf)],
             &mut output,
