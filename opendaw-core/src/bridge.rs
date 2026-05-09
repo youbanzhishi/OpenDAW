@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn test_roundtrip() {
         // 创建原始数据
-        let original = ExtAudioBuffer::new(2, 256);
+        let mut original = ExtAudioBuffer::new(2, 256);
         for i in 0..512 {
             original.data[i] = (i as f64) * 0.1;
         }
