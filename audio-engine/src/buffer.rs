@@ -252,6 +252,33 @@ impl AudioBuffer {
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
+
+    /// 清零所有样本
+    pub fn clear(&mut self) {
+        self.data.fill(0.0);
+    }
+
+    /// 获取指定声道的数据切片（别名，兼容旧代码）
+    pub fn channel_slice(&self, channel: usize) -> &[f32] {
+        self.channel(channel)
+    }
+
+    /// 获取指定声道的可变数据切片（别名，兼容旧代码）
+    pub fn channel_slice_mut(&mut self, channel: usize) -> &mut [f32] {
+        self.channel_mut(channel)
+    }
+
+    /// 对所有样本施加增益
+    pub fn apply_gain(&mut self, gain: f32) {
+        for sample in &mut self.data {
+            *sample *= gain;
+        }
+    }
+
+    /// 获取指定位置的样本值（别名，兼容旧代码）
+    pub fn sample(&self, channel: usize, frame: usize) -> f32 {
+        self.get_sample(channel, frame)
+    }
 }
 
 // ========================================================================
