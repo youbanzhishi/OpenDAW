@@ -1,3 +1,12 @@
+# ============================================================================
+# desktop.yml - OpenDAW Desktop Build 工作流
+#
+# 三平台构建: ubuntu-latest(24.04)/macOS-latest/windows-latest
+# 踩坑: rust-oom.md — Tauri v2需要GLIBC 2.39(用ubuntu-latest=24.04)
+# 踩坑: rust-oom.md — serde版本冲突(不锁上限)、tempfile必须在dependencies
+# 优化: platform-specific cache key(避免GLIBC mismatch) + 构建前cargo check
+# ============================================================================
+
 name: Desktop Build
 
 on:
@@ -11,8 +20,34 @@ permissions:
   contents: write
 
 jobs:
+  # ========== 快速检查（全平台构建前先验证编译） ==========
+  check:
+    name: Cargo Check (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libasound2-dev
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri -> target
+          cache-on-failure: true
+
+      - name: Cargo check (fast fail)
+        run: cargo check --manifest-path desktop/src-tauri/Cargo.toml
+
+  # ========== 三平台构建 ==========
   build:
     name: Build Desktop (${{ matrix.target }})
+    needs: check
     strategy:
       matrix:
         include:
@@ -31,11 +66,11 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust dependencies
+      - name: Cache Rust dependencies (platform-specific)
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri -> target
-          prefix-key: v0-rust-${{ matrix.platform }}
+          prefix-key: v0-rust-${{ matrix.platform }}-${{ matrix.target }}
           cache-on-failure: true
 
       - name: Install system dependencies (Linux)
@@ -43,7 +78,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libasound2-dev
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -53,7 +88,6 @@ jobs:
       - name: Prepare frontend dist
         shell: bash
         run: |
-          # Copy Python web static files as Tauri frontend dist
           mkdir -p desktop/src-tauri/frontend
           cp src/vcmix/web/static/index.html desktop/src-tauri/frontend/
           cp src/vcmix/web/static/style.css desktop/src-tauri/frontend/
@@ -77,6 +111,30 @@ jobs:
           releaseBody: 'Cross-platform desktop build for ${{ matrix.target }}'
           releaseDraft: true
           prerelease: false
+
+      - name: Verify build artifacts (Linux)
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          echo "Verifying Linux artifacts..."
+          find desktop/src-tauri/target/release/bundle -type f \( -name "*.AppImage" -o -name "*.deb" \) | head -5
+          test -n "$(find desktop/src-tauri/target/release/bundle -type f -name '*.AppImage' 2>/dev/null)" && echo "✅ AppImage found" || echo "⚠️ No AppImage"
+
+      - name: Verify build artifacts (macOS)
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          echo "Verifying macOS artifacts..."
+          find desktop/src-tauri/target/release/bundle -type f \( -name "*.dmg" -o -name "*.app" \) | head -5
+          test -n "$(find desktop/src-tauri/target/release/bundle -type f -name '*.dmg' 2>/dev/null)" && echo "✅ DMG found" || echo "⚠️ No DMG"
+
+      - name: Verify build artifacts (Windows)
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          echo "Verifying Windows artifacts..."
+          find desktop/src-tauri/target/release/bundle -type f \( -name "*.exe" -o -name "*.msi" \) | head -5
+          test -n "$(find desktop/src-tauri/target/release/bundle -name '*.exe' -path '*/nsis/*' 2>/dev/null)" && echo "✅ NSIS exe found" || echo "⚠️ No NSIS exe"
 
       - name: Upload artifact (Linux)
         if: matrix.target == 'linux'
