@@ -18,7 +18,7 @@ tokio = { version = "1", features = ["full"] }
 ctrlc = "3"
 urlencoding = "2"
 opendaw-core = { path = "../../opendaw-core" }
-audio-engine = { path = "../../audio-engine", features = ["audio"] }
+audio-engine = { path = "../../audio-engine" }
 parking_lot = "0.12"
 
 [lib]

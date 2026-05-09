@@ -3,7 +3,6 @@
 //! Handles spawning, health-checking, and cleanup of the Python backend process.
 
 use std::process::{Child, Command};
-use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
@@ -17,20 +16,20 @@ const BACKEND_MODULE: &str = "vcmix.web";
 // ── Shared State ─────────────────────────────────────────────────────────
 
 pub struct BackendState {
-    pub pid: Mutex<Option<u32>>,
+    pub pid: parking_lot::Mutex<Option<u32>>,
     pub base_url: String,
 }
 
 impl Default for BackendState {
     fn default() -> Self {
         Self {
-            pid: Mutex::new(None),
+            pid: parking_lot::Mutex::new(None),
             base_url: format!("http://localhost:{}", BACKEND_PORT),
         }
     }
 }
 
-static BACKEND_PROCESS: Mutex<Option<Child>> = Mutex::new(None);
+static BACKEND_PROCESS: parking_lot::Mutex<Option<Child>> = parking_lot::Mutex::new(None);
 
 // ── Backend Management ───────────────────────────────────────────────────
 
