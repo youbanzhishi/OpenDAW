@@ -113,27 +113,20 @@ impl Mixer {
             let left_gain = volume * theta.cos();
             let right_gain = volume * theta.sin();
 
-            // 混合到输出
+            // 混合到输出（用索引直接访问避免双重可变借用E0499）
+            let frames = buffer.frames.min(output.frames);
             if buffer.channels >= 2 && output.channels >= 2 {
-                let in_left = buffer.channel_slice(0);
-                let in_right = buffer.channel_slice(1);
-                let out_left = output.channel_slice_mut(0);
-                let out_right = output.channel_slice_mut(1);
-
-                let len = in_left.len().min(out_left.len());
-                for i in 0..len {
-                    out_left[i] += in_left[i] * left_gain as f32;
-                    out_right[i] += in_right[i] * right_gain as f32;
+                for i in 0..frames {
+                    let in_l = buffer.data[i];
+                    let in_r = buffer.data[buffer.frames + i];
+                    output.data[i] += in_l * left_gain as f32;
+                    output.data[output.frames + i] += in_r * right_gain as f32;
                 }
             } else if buffer.channels == 1 && output.channels >= 2 {
-                // 单声道到立体声
-                let in_mono = buffer.channel_slice(0);
-                let out_left = output.channel_slice_mut(0);
-                let out_right = output.channel_slice_mut(1);
-                let len = in_mono.len().min(out_left.len());
-                for i in 0..len {
-                    out_left[i] += in_mono[i] * left_gain as f32;
-                    out_right[i] += in_mono[i] * right_gain as f32;
+                for i in 0..frames {
+                    let in_m = buffer.data[i];
+                    output.data[i] += in_m * left_gain as f32;
+                    output.data[output.frames + i] += in_m * right_gain as f32;
                 }
             }
         }
