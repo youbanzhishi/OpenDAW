@@ -1,31 +1,3 @@
-[build-system]
-requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "vcmix"
-version = "0.13.0"
-description = "AI-native open-source DAW — YAML-driven, cross-platform, AI Agent friendly"
-readme = "README.md"
-license = {text = "MIT"}
-requires-python = ">=3.9"
-authors = [
-    {name = "youbanzhishi", email = "xiaolong_steward@coze.email"},
-]
-keywords = ["daw", "audio", "mixing", "yaml", "ai", "vst3"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Multimedia :: Sound/Audio",
-    "Topic :: Multimedia :: Sound/Audio :: Mixers",
-]
 dependencies = [
     "numpy>=1.24.0",
     "soundfile>=0.12.0",
@@ -37,15 +9,13 @@ dependencies = [
     "rich>=13.0",
     "click>=8.0",
     "librosa>=0.10.0",
+    "python-multipart>0.0.6",
 ]
 
 [project.optional-dependencies]
-web = [
-    "fastapi>=0.100.0",
+web = ["fastapi>=0.100.0",
     "uvicorn>=0.20.0",
-    "websockets>=11.0",
-    "python-multipart>=0.0.6",
-]
+    "websockets>=11.0",]
 ai = [
     "demucs>=4.0",
 ]
