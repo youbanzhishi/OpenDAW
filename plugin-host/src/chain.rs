@@ -155,7 +155,7 @@ impl PluginChain {
             output.channels = input.channels;
             output.frames = input.frames;
             output.sample_rate = input.sample_rate;
-            output.as_mut_slice().resize(input.as_slice().len(), 0.0);
+            output.data.resize(input.data.len(), 0.0);
         }
 
         // extension f64 → engine f32
