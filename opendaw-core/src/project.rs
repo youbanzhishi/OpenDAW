@@ -6,7 +6,6 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use audio_engine::Track;
-use opendaw_extension::PluginType;
 
 /// 项目配置（YAML格式）
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,7 +78,7 @@ impl Project {
         let mut project = Self::new(&config.name, config.sample_rate, config.buffer_size);
 
         for tc in &config.tracks {
-            let mut track = Track::new(&tc.name, tc.channels);
+            let mut track = Track::new(&tc.name);
             track.set_volume(tc.volume);
             track.set_pan(tc.pan);
             if tc.muted {
