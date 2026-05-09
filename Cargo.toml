@@ -6,4 +6,7 @@ members = [
     "opendaw-core",
     "plugin-host",
 ]
+exclude = [
+    "desktop/src-tauri",
+]
 resolver = "2"
