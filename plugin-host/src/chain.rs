@@ -137,7 +137,7 @@ impl PluginChain {
     }
 
     /// 获取指定位置插件的可变引用
-    pub fn get_plugin_mut(&mut self, index: usize) -> Option<&mut dyn VcPlugin + '_> {
+    pub fn get_plugin_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut (dyn VcPlugin + 'a)> {
         self.nodes.get_mut(index).map(|n| n.plugin.as_mut())
     }
 
