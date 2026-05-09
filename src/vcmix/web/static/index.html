@@ -9,7 +9,7 @@
 <body>
     <header>
         <h1>🎛️ VCMix</h1>
-        <p class="subtitle">AI-native open-source DAW — Phase 13 Web UI</p>
+        <p class="subtitle">AI-native open-source DAW — Phase 22a Web UI</p>
     </header>
 
     <main>
@@ -26,6 +26,7 @@
             <button class="tab-btn" data-tab="waveform">〰️ Waveform</button>
             <button class="tab-btn" data-tab="spectrum">📊 Spectrum</button>
             <button class="tab-btn" data-tab="pianoroll">🎼 Piano Roll</button>
+            <button class="tab-btn" data-tab="agent">🤖 Agent</button>
         </nav>
 
         <!-- YAML Editor Tab -->
@@ -256,10 +257,59 @@
                 <div id="piano-roll-info" class="result-box hidden"></div>
             </div>
         </section>
+    
+        <!-- Agent Chat Tab (Phase 22a) -->
+        <section id="tab-agent" class="tab-content">
+            <div class="panel">
+                <h2>🤖 Agent Chat</h2>
+                <div class="agent-status-bar">
+                    <span id="agent-status" class="status-badge disconnected">Not configured</span>
+                </div>
+
+                <!-- Agent Config (collapsible) -->
+                <details class="agent-config-section">
+                    <summary>⚙️ Agent Configuration</summary>
+                    <div class="form-group">
+                        <label>Persona:</label>
+                        <select id="agent-persona-select" class="input-field">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Execution Mode:</label>
+                            <select id="agent-mode-select" class="input-field">
+                                <option value="confirm">Confirm (ask before executing)</option>
+                                <option value="auto">Auto (execute immediately)</option>
+                                <option value="suggest">Suggest (only advise)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Model:</label>
+                            <input type="text" id="agent-model-input" placeholder="gpt-4o" class="input-field">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>API Key:</label>
+                        <input type="password" id="agent-apikey-input" placeholder="sk-..." class="input-field">
+                    </div>
+                    <button id="agent-config-btn" class="btn btn-secondary">Apply Config</button>
+                </details>
+
+                <!-- Chat Messages -->
+                <div id="chat-messages" class="chat-messages"></div>
+
+                <!-- Chat Input -->
+                <div class="chat-input-bar">
+                    <input type="text" id="agent-chat-input" placeholder="Ask the Agent... (e.g. '人声太闷了')" class="input-field chat-input">
+                    <button id="agent-chat-send" class="btn btn-primary">Send</button>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer>
-        <p>VCMix v0.13.0 — Phase 13 Web UI | <a href="/api/docs">API Docs</a></p>
+        <p>VCMix v0.22.0 — Phase 22a Web UI | <a href="/api/docs">API Docs</a></p>
     </footer>
 
     <script src="/static/waveform.js"></script>

@@ -559,3 +559,115 @@ footer a:hover { text-decoration: underline; }
         flex-wrap: wrap;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Phase 22a: Agent Chat Panel Styles
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.agent-status-bar {
+    margin-bottom: 0.75rem;
+}
+
+.agent-config-section {
+    background: var(--bg-secondary, #1e1e2e);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.agent-config-section summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0.25rem 0;
+}
+
+.agent-config-section .form-group {
+    margin-top: 0.5rem;
+}
+
+.chat-messages {
+    height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color, #333);
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: var(--bg-primary, #0d1117);
+    margin-bottom: 0.75rem;
+}
+
+.chat-msg {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.chat-msg-user {
+    background: var(--bg-secondary, #1e1e2e);
+    border-left: 3px solid #58a6ff;
+}
+
+.chat-msg-assistant {
+    background: var(--bg-secondary, #1e1e2e);
+    border-left: 3px solid #3fb950;
+}
+
+.chat-msg-action {
+    background: var(--bg-secondary, #1e1e2e);
+    border-left: 3px solid #d29922;
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+.chat-msg-external {
+    background: var(--bg-secondary, #1e1e2e);
+    border-left: 3px solid #bc8cff;
+    font-style: italic;
+}
+
+.chat-msg-system {
+    background: var(--bg-secondary, #1e1e2e);
+    border-left: 3px solid #8b949e;
+    color: #8b949e;
+    font-size: 0.8rem;
+}
+
+.chat-msg-thinking {
+    border-left: 3px solid #768390;
+}
+
+.chat-icon { margin-right: 0.25rem; }
+.chat-role { font-weight: 600; margin-right: 0.5rem; }
+.chat-time { color: #8b949e; font-size: 0.75rem; }
+.chat-text { margin-top: 0.25rem; white-space: pre-wrap; }
+
+.thinking-details {
+    cursor: pointer;
+}
+
+.thinking-details summary {
+    font-size: 0.85rem;
+    color: #768390;
+}
+
+.thinking-content {
+    font-size: 0.8rem;
+    color: #8b949e;
+    background: rgba(0,0,0,0.2);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.chat-input-bar {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.chat-input {
+    flex: 1;
+}

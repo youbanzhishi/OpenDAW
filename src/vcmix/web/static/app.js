@@ -1009,3 +1009,259 @@ function initPianoRollTab() {
 initWaveformTab();
 initSpectrumTab();
 initPianoRollTab();
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── Phase 22a: Agent Chat Panel ───────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Agent Chat State ──────────────────────────────────────────────────
+let agentChatHistory = [];
+let agentActions = [];
+let agentConfig = {
+    provider: 'openai',
+    model: 'gpt-4o',
+    persona: 'mix-engineer',
+    execution_mode: 'confirm',
+};
+
+// ── Agent Chat Functions ──────────────────────────────────────────────
+
+async function agentChat(message) {
+    if (!message || !message.trim()) return;
+    const msg = message.trim();
+
+    // Add user message to chat
+    addChatMessage('user', msg);
+
+    // Clear input
+    const input = document.getElementById('agent-chat-input');
+    if (input) input.value = '';
+
+    try {
+        const resp = await fetch(`${API}/v1/agent/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: msg,
+                project_id: currentProjectId || undefined,
+            }),
+        });
+        const data = await resp.json();
+
+        if (data.message) {
+            addChatMessage('assistant', data.message);
+        }
+
+        // Show actions taken
+        if (data.actions && data.actions.length > 0) {
+            for (const action of data.actions) {
+                addChatAction(action);
+            }
+        }
+
+        // Show thinking chain (collapsible)
+        if (data.thinking) {
+            addThinkingChain(data.thinking);
+        }
+
+    } catch (err) {
+        addChatMessage('system', `❌ Agent error: ${err.message}`);
+    }
+}
+
+async function configureAgent(config) {
+    try {
+        const resp = await fetch(`${API}/v1/agent/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config),
+        });
+        const data = await resp.json();
+        if (data.status === 'configured') {
+            agentConfig = { ...agentConfig, ...config };
+            addChatMessage('system', `⚙️ Agent configured: ${data.agent.model} | persona: ${data.agent.persona} | mode: ${data.agent.execution_mode}`);
+        }
+    } catch (err) {
+        addChatMessage('system', `❌ Config error: ${err.message}`);
+    }
+}
+
+function addChatMessage(role, content) {
+    agentChatHistory.push({ role, content, timestamp: Date.now() });
+    renderChatPanel();
+}
+
+function addChatAction(action) {
+    agentActions.push(action);
+    const msg = `[工具调用] ${action.tool}(${JSON.stringify(action.arguments).substring(0, 60)}...)`;
+    addChatMessage('action', msg);
+}
+
+function addThinkingChain(thinking) {
+    // Add as a collapsible thinking entry
+    agentChatHistory.push({
+        role: 'thinking',
+        content: thinking,
+        timestamp: Date.now(),
+    });
+    renderChatPanel();
+}
+
+// ── External Agent (MCP) Message Handler ──────────────────────────────
+
+function addExternalAgentAction(agentName, action) {
+    const msg = `[外部Agent: ${agentName}] 执行了 ${action.tool} 操作`;
+    addChatMessage('external', msg);
+}
+
+// ── Chat Panel Renderer ───────────────────────────────────────────────
+
+function renderChatPanel() {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    container.innerHTML = '';
+    for (const entry of agentChatHistory) {
+        const div = document.createElement('div');
+        div.className = `chat-msg chat-msg-${entry.role}`;
+
+        const time = new Date(entry.timestamp).toLocaleTimeString('zh-CN', { hour12: false });
+        let roleLabel = '';
+        let icon = '';
+        switch (entry.role) {
+            case 'user':
+                roleLabel = '你';
+                icon = '👤';
+                break;
+            case 'assistant':
+                roleLabel = 'Agent';
+                icon = '🤖';
+                break;
+            case 'action':
+                roleLabel = '操作';
+                icon = '🔧';
+                break;
+            case 'thinking':
+                roleLabel = '思维链';
+                icon = '💭';
+                break;
+            case 'external':
+                roleLabel = '外部Agent';
+                icon = '🔗';
+                break;
+            case 'system':
+                roleLabel = '系统';
+                icon = '⚙️';
+                break;
+            default:
+                roleLabel = entry.role;
+                icon = '📋';
+        }
+
+        if (entry.role === 'thinking') {
+            div.innerHTML = `
+                <details class="thinking-details">
+                    <summary>${icon} ${roleLabel} <span class="chat-time">${time}</span></summary>
+                    <pre class="thinking-content">${escapeHtml(entry.content)}</pre>
+                </details>`;
+        } else {
+            div.innerHTML = `
+                <span class="chat-icon">${icon}</span>
+                <span class="chat-role">${roleLabel}</span>
+                <span class="chat-time">${time}</span>
+                <div class="chat-text">${escapeHtml(entry.content)}</div>`;
+        }
+        container.appendChild(div);
+    }
+
+    // Auto-scroll to bottom
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ── Initialize Agent Chat Panel ───────────────────────────────────────
+
+function initAgentChat() {
+    // Send button
+    const sendBtn = document.getElementById('agent-chat-send');
+    const input = document.getElementById('agent-chat-input');
+
+    if (sendBtn) {
+        sendBtn.addEventListener('click', () => {
+            agentChat(input ? input.value : '');
+        });
+    }
+
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                agentChat(input.value);
+            }
+        });
+    }
+
+    // Config button
+    const configBtn = document.getElementById('agent-config-btn');
+    if (configBtn) {
+        configBtn.addEventListener('click', () => {
+            const persona = document.getElementById('agent-persona-select');
+            const mode = document.getElementById('agent-mode-select');
+            const model = document.getElementById('agent-model-input');
+            const apiKey = document.getElementById('agent-apikey-input');
+
+            const config = {};
+            if (persona && persona.value) config.persona = persona.value;
+            if (mode && mode.value) config.execution_mode = mode.value;
+            if (model && model.value) config.model = model.value;
+            if (apiKey && apiKey.value) config.api_key = apiKey.value;
+
+            configureAgent(config);
+        });
+    }
+
+    // Load personas
+    loadAgentPersonas();
+
+    // Load status
+    loadAgentStatus();
+}
+
+async function loadAgentPersonas() {
+    try {
+        const resp = await fetch(`${API}/v1/agent/personas`);
+        const data = await resp.json();
+        const select = document.getElementById('agent-persona-select');
+        if (select && data.personas) {
+            select.innerHTML = '';
+            for (const p of data.personas) {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} — ${p.description}`;
+                select.appendChild(opt);
+            }
+        }
+    } catch (err) {
+        // Silently ignore — personas may not be available
+    }
+}
+
+async function loadAgentStatus() {
+    try {
+        const resp = await fetch(`${API}/v1/agent/status`);
+        const data = await resp.json();
+        const statusEl = document.getElementById('agent-status');
+        if (statusEl && data.agent) {
+            statusEl.textContent = `${data.agent.model} | ${data.agent.persona} | ${data.agent.execution_mode}`;
+        }
+    } catch (err) {
+        // Silently ignore
+    }
+}
+
+initAgentChat();
