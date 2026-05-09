@@ -23,7 +23,6 @@ pub use opendaw_extension::{
     ExtensionRegistry, VcPlugin, ScriptEngine, ModelBackend,
     HookSystem, HookContext, AudioBuffer, ParamInfo, PluginType,
     ModelInput, ModelOutput, ScriptValue,
-    SimpleScriptEngine, LocalBackend,
 };
 pub use audio_engine::{
     AudioEngine, EngineAudioBuffer, Scheduler, Track, EngineState,
