@@ -122,8 +122,8 @@ impl Mixer {
 
                 let len = in_left.len().min(out_left.len());
                 for i in 0..len {
-                    out_left[i] += in_left[i] * left_gain;
-                    out_right[i] += in_right[i] * right_gain;
+                    out_left[i] += in_left[i] * left_gain as f32;
+                    out_right[i] += in_right[i] * right_gain as f32;
                 }
             } else if buffer.channels == 1 && output.channels >= 2 {
                 // 单声道到立体声
@@ -132,14 +132,14 @@ impl Mixer {
                 let out_right = output.channel_slice_mut(1);
                 let len = in_mono.len().min(out_left.len());
                 for i in 0..len {
-                    out_left[i] += in_mono[i] * left_gain;
-                    out_right[i] += in_mono[i] * right_gain;
+                    out_left[i] += in_mono[i] * left_gain as f32;
+                    out_right[i] += in_mono[i] * right_gain as f32;
                 }
             }
         }
 
         // 应用master音量
-        output.apply_gain(self.master_bus.volume);
+        output.apply_gain(self.master_bus.volume as f32);
     }
 
     /// 设置主音量
