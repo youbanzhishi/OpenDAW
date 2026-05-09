@@ -26,7 +26,7 @@ ARG VCMIX_PROFILE=core
 # OpenDAW源码版本（tag或branch）
 ARG OPENDAW_VERSION=v0.22.2
 # AudioFX CLI插件版本（tag）
-ARG AUDIOFX_RELEASE_VERSION=v2.8.0
+ARG AUDIOFX_RELEASE_VERSION=v2.7.0
 
 # ── 换国内源 ──────────────────────────────────────────────
 # apt换阿里云镜像（兼容bookworm和trixie两种格式）
