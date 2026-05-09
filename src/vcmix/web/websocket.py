@@ -174,3 +174,18 @@ def emit_stream_event_sync(event: dict[str, Any]) -> None:
             loop.run_until_complete(emit_stream_event(event))
     except RuntimeError:
         pass  # No event loop available
+
+
+# ── Real-time sync event types ────────────────────────────────────────
+
+EVENT_PROJECT_CREATED = "project_created"
+EVENT_PROJECT_UPDATED = "project_updated"
+EVENT_PROJECT_DELETED = "project_deleted"
+EVENT_TRACK_ADDED = "track_added"
+EVENT_TRACK_UPDATED = "track_updated"
+EVENT_TRACK_REMOVED = "track_removed"
+EVENT_EFFECT_ADDED = "effect_added"
+EVENT_EFFECT_UPDATED = "effect_updated"
+EVENT_EFFECT_REMOVED = "effect_removed"
+EVENT_AI_MIX_APPLIED = "ai_mix_applied"
+EVENT_AI_MASTER_APPLIED = "ai_master_applied"
