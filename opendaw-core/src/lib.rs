@@ -10,11 +10,16 @@
 //! - 混音器（Track -> PluginChain -> Bus -> Master）
 //! - 离线渲染
 //! - AudioBuffer 桥接层
+//! - PyO3 Python绑定（需要python feature）
 
 pub mod project;
 pub mod mixer;
 pub mod render;
 pub mod bridge;
+
+// PyO3 Python bindings (optional, requires python feature)
+#[cfg(feature = "python")]
+pub mod python;
 
 // 桥接函数重导出
 pub use bridge::{

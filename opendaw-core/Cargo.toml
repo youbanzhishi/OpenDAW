@@ -1,8 +1,12 @@
 [package]
 name = "opendaw-core"
-version = "0.1.0"
+version = "0.24.0"
 edition = "2021"
 description = "OpenDAW 核心胶水层 - 统一入口，组合所有crate"
+
+[lib]
+name = "opendaw_core"
+crate-type = ["lib", "cdylib"]
 
 [dependencies]
 opendaw-extension = { path = "../opendaw-extension" }
@@ -11,10 +15,20 @@ plugin-host = { path = "../plugin-host" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
+parking_lot = "0.12"
+
+[dependencies.pyo3]
+version = "0.22"
+features = ["extension-module"]
+optional = true
 
 [dev-dependencies]
 log = "0.4"
 env_logger = "0.11"
+
+[features]
+default = []
+python = ["dep:pyo3"]
 
 [[example]]
 name = "plugin_chain_demo"
