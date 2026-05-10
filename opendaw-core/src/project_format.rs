@@ -129,7 +129,11 @@ pub struct FormatConverter;
 
 impl FormatConverter {
     /// 将一种格式的数据转换为另一种格式
-    pub fn convert(data: &[u8], from: ProjectFormat, to: ProjectFormat) -> Result<Vec<u8>, ProjectFormatError> {
+    pub fn convert(
+        data: &[u8],
+        from: ProjectFormat,
+        to: ProjectFormat,
+    ) -> Result<Vec<u8>, ProjectFormatError> {
         if from == to {
             return Ok(data.to_vec());
         }
@@ -150,18 +154,16 @@ impl FormatConverter {
     }
 
     /// 文件格式转换
-    pub fn convert_file(
-        source: &Path,
-        target: &Path,
-    ) -> Result<ProjectConfig, ProjectFormatError> {
-        let from_format = ProjectFormat::from_extension(source)
-            .ok_or_else(|| ProjectFormatError::FormatError(
-                format!("无法识别源文件格式: {:?}", source.extension())
-            ))?;
-        let to_format = ProjectFormat::from_extension(target)
-            .ok_or_else(|| ProjectFormatError::FormatError(
-                format!("无法识别目标文件格式: {:?}", target.extension())
-            ))?;
+    pub fn convert_file(source: &Path, target: &Path) -> Result<ProjectConfig, ProjectFormatError> {
+        let from_format = ProjectFormat::from_extension(source).ok_or_else(|| {
+            ProjectFormatError::FormatError(format!("无法识别源文件格式: {:?}", source.extension()))
+        })?;
+        let to_format = ProjectFormat::from_extension(target).ok_or_else(|| {
+            ProjectFormatError::FormatError(format!(
+                "无法识别目标文件格式: {:?}",
+                target.extension()
+            ))
+        })?;
 
         let data = std::fs::read(source)
             .map_err(|e| ProjectFormatError::IoError(format!("读取源文件失败: {}", e)))?;
@@ -186,10 +188,9 @@ pub struct ProjectLoader;
 impl ProjectLoader {
     /// 自动检测格式并加载项目
     pub fn load_auto(path: &Path) -> Result<Project, ProjectFormatError> {
-        let format = ProjectFormat::from_extension(path)
-            .ok_or_else(|| ProjectFormatError::FormatError(
-                format!("无法识别文件格式: {:?}", path.extension())
-            ))?;
+        let format = ProjectFormat::from_extension(path).ok_or_else(|| {
+            ProjectFormatError::FormatError(format!("无法识别文件格式: {:?}", path.extension()))
+        })?;
 
         let config = match format {
             ProjectFormat::Yaml => YamlSerializer::load(path)?,
@@ -250,16 +251,14 @@ mod tests {
             name: "格式测试".into(),
             sample_rate: 44100.0,
             buffer_size: 256,
-            tracks: vec![
-                TrackConfig {
-                    name: "鼓组".into(),
-                    channels: 2,
-                    volume: 0.8,
-                    pan: 0.0,
-                    muted: false,
-                    plugins: vec!["vc-compressor".into()],
-                },
-            ],
+            tracks: vec![TrackConfig {
+                name: "鼓组".into(),
+                channels: 2,
+                volume: 0.8,
+                pan: 0.0,
+                muted: false,
+                plugins: vec!["vc-compressor".into()],
+            }],
             master_volume: 1.0,
         }
     }
@@ -282,10 +281,7 @@ mod tests {
             ProjectFormat::from_extension(Path::new("test.daw")),
             Some(ProjectFormat::Binary)
         );
-        assert_eq!(
-            ProjectFormat::from_extension(Path::new("test.txt")),
-            None
-        );
+        assert_eq!(ProjectFormat::from_extension(Path::new("test.txt")), None);
     }
 
     #[test]
@@ -320,7 +316,8 @@ mod tests {
     fn test_format_converter_yaml_to_json() {
         let config = test_config();
         let yaml_data = YamlSerializer::serialize(&config).unwrap();
-        let json_data = FormatConverter::convert(&yaml_data, ProjectFormat::Yaml, ProjectFormat::Json).unwrap();
+        let json_data =
+            FormatConverter::convert(&yaml_data, ProjectFormat::Yaml, ProjectFormat::Json).unwrap();
         let loaded = JsonSerializer::deserialize(&json_data).unwrap();
         assert_eq!(loaded.name, config.name);
     }
@@ -329,7 +326,9 @@ mod tests {
     fn test_format_converter_json_to_binary() {
         let config = test_config();
         let json_data = JsonSerializer::serialize(&config).unwrap();
-        let binary_data = FormatConverter::convert(&json_data, ProjectFormat::Json, ProjectFormat::Binary).unwrap();
+        let binary_data =
+            FormatConverter::convert(&json_data, ProjectFormat::Json, ProjectFormat::Binary)
+                .unwrap();
         let loaded = BinarySerializer::deserialize(&binary_data).unwrap();
         assert_eq!(loaded.name, config.name);
     }
@@ -338,8 +337,12 @@ mod tests {
     fn test_format_converter_yaml_to_binary_to_json() {
         let config = test_config();
         let yaml_data = YamlSerializer::serialize(&config).unwrap();
-        let binary_data = FormatConverter::convert(&yaml_data, ProjectFormat::Yaml, ProjectFormat::Binary).unwrap();
-        let json_data = FormatConverter::convert(&binary_data, ProjectFormat::Binary, ProjectFormat::Json).unwrap();
+        let binary_data =
+            FormatConverter::convert(&yaml_data, ProjectFormat::Yaml, ProjectFormat::Binary)
+                .unwrap();
+        let json_data =
+            FormatConverter::convert(&binary_data, ProjectFormat::Binary, ProjectFormat::Json)
+                .unwrap();
         let loaded = JsonSerializer::deserialize(&json_data).unwrap();
         assert_eq!(loaded.name, config.name);
         assert_eq!(loaded.sample_rate, config.sample_rate);
@@ -352,8 +355,18 @@ mod tests {
         let json_size = JsonSerializer::serialize(&config).unwrap().len();
         let binary_size = BinarySerializer::serialize(&config).unwrap().len();
         // Binary格式应比文本格式更紧凑
-        assert!(binary_size < yaml_size, "Binary({}) should be < YAML({})", binary_size, yaml_size);
-        assert!(binary_size < json_size, "Binary({}) should be < JSON({})", binary_size, json_size);
+        assert!(
+            binary_size < yaml_size,
+            "Binary({}) should be < YAML({})",
+            binary_size,
+            yaml_size
+        );
+        assert!(
+            binary_size < json_size,
+            "Binary({}) should be < JSON({})",
+            binary_size,
+            json_size
+        );
     }
 
     #[test]

@@ -29,17 +29,24 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route("/api/v1/mixer/{id}/suggestions", get(mixer_suggestions))
         // Phase 33: Marketplace 端点
         .route("/api/v1/marketplace/search", get(marketplace_search))
-        .route("/api/v1/marketplace/categories", get(marketplace_categories))
+        .route(
+            "/api/v1/marketplace/categories",
+            get(marketplace_categories),
+        )
         .route("/api/v1/marketplace/{id}", get(marketplace_plugin_detail))
-        .route("/api/v1/marketplace/{id}/install", post(marketplace_install))
-        .route("/api/v1/marketplace/{id}/review", post(marketplace_submit_review))
+        .route(
+            "/api/v1/marketplace/{id}/install",
+            post(marketplace_install),
+        )
+        .route(
+            "/api/v1/marketplace/{id}/review",
+            post(marketplace_submit_review),
+        )
         .with_state(state)
 }
 
 /// GET /api/v1/projects — 列出所有项目
-async fn list_projects(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<ProjectInfo>>, ApiError> {
+async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<ProjectInfo>>, ApiError> {
     let projects = state.list_projects().await;
     Ok(Json(projects))
 }
@@ -160,9 +167,7 @@ async fn transcribe_project(
 }
 
 /// GET /api/v1/plugins — 列出可用插件
-async fn list_plugins(
-    State(_state): State<AppState>,
-) -> Json<Vec<PluginInfo>> {
+async fn list_plugins(State(_state): State<AppState>) -> Json<Vec<PluginInfo>> {
     Json(vec![])
 }
 
@@ -223,7 +228,9 @@ async fn marketplace_search(
         .map(|m| {
             let avg = mp.reviews.average_rating(&m.id);
             let rev_count = mp.reviews.get_reviews(&m.id).len();
-            let plat_strings: Vec<String> = m.platforms.iter()
+            let plat_strings: Vec<String> = m
+                .platforms
+                .iter()
                 .map(|p| format!("{}-{}", p.os, p.arch))
                 .collect();
             MarketplacePlugin {
@@ -247,9 +254,7 @@ async fn marketplace_search(
 }
 
 /// GET /api/v1/marketplace/categories — 获取分类列表
-async fn marketplace_categories(
-    State(state): State<AppState>,
-) -> Json<Vec<CategoryItem>> {
+async fn marketplace_categories(State(state): State<AppState>) -> Json<Vec<CategoryItem>> {
     let mp = state.marketplace.read().await;
     let cats = opendaw_core::preset_categories();
     let items: Vec<CategoryItem> = cats
@@ -272,12 +277,18 @@ async fn marketplace_plugin_detail(
     Path(id): Path<String>,
 ) -> Result<Json<PluginDetailResponse>, ApiError> {
     let mp = state.marketplace.read().await;
-    let manifest = mp.registry.get(&id)
+    let manifest = mp
+        .registry
+        .get(&id)
         .ok_or_else(|| ApiError::NotFound(format!("Plugin {}", id)))?;
 
-    let report = mp.registry.check_compatibility(manifest, &mp.compatibility.daw_version);
+    let report = mp
+        .registry
+        .check_compatibility(manifest, &mp.compatibility.daw_version);
     let summary = mp.reviews.get_summary(&id);
-    let plat_strings: Vec<String> = manifest.platforms.iter()
+    let plat_strings: Vec<String> = manifest
+        .platforms
+        .iter()
         .map(|p| format!("{}-{}", p.os, p.arch))
         .collect();
 
@@ -307,7 +318,9 @@ async fn marketplace_install(
     Path(id): Path<String>,
 ) -> Result<Json<InstallResponse>, ApiError> {
     let mp = state.marketplace.read().await;
-    let manifest = mp.registry.get(&id)
+    let manifest = mp
+        .registry
+        .get(&id)
         .ok_or_else(|| ApiError::NotFound(format!("Plugin {}", id)))?;
     let version = manifest.version.clone();
     drop(mp);
@@ -328,7 +341,9 @@ async fn marketplace_submit_review(
     Json(req): Json<SubmitReviewRequest>,
 ) -> Result<Json<ReviewResponse>, ApiError> {
     if req.rating < 1 || req.rating > 5 {
-        return Err(ApiError::BadRequest("Rating must be between 1 and 5".into()));
+        return Err(ApiError::BadRequest(
+            "Rating must be between 1 and 5".into(),
+        ));
     }
 
     let review = PluginReview::new(&id, &req.user_id, req.rating, &req.comment)
@@ -342,7 +357,8 @@ async fn marketplace_submit_review(
     };
 
     let mut mp = state.marketplace.write().await;
-    mp.reviews.add_review(review)
+    mp.reviews
+        .add_review(review)
         .map_err(|e| ApiError::Internal(e))?;
 
     Ok(Json(resp))

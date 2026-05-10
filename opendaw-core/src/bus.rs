@@ -220,7 +220,8 @@ impl BusRouter {
     /// 移除总线
     pub fn remove_bus(&mut self, id: &str) -> Option<Bus> {
         // 同时移除相关路由
-        self.routes.retain(|r| r.source_id != id && r.target_id != id);
+        self.routes
+            .retain(|r| r.source_id != id && r.target_id != id);
         self.buses.remove(id)
     }
 
@@ -237,9 +238,10 @@ impl BusRouter {
     /// 添加路由连接
     pub fn add_route(&mut self, source_id: &str, target_id: &str, gain: f64) {
         // 检查是否已存在
-        let exists = self.routes.iter().any(|r| {
-            r.source_id == source_id && r.target_id == target_id
-        });
+        let exists = self
+            .routes
+            .iter()
+            .any(|r| r.source_id == source_id && r.target_id == target_id);
         if !exists {
             self.routes.push(RouteConnection {
                 source_id: source_id.to_string(),
@@ -252,23 +254,28 @@ impl BusRouter {
 
     /// 移除路由连接
     pub fn remove_route(&mut self, source_id: &str, target_id: &str) {
-        self.routes.retain(|r| !(r.source_id == source_id && r.target_id == target_id));
+        self.routes
+            .retain(|r| !(r.source_id == source_id && r.target_id == target_id));
     }
 
     /// 设置路由增益
     pub fn set_route_gain(&mut self, source_id: &str, target_id: &str, gain: f64) {
-        if let Some(route) = self.routes.iter_mut().find(|r| {
-            r.source_id == source_id && r.target_id == target_id
-        }) {
+        if let Some(route) = self
+            .routes
+            .iter_mut()
+            .find(|r| r.source_id == source_id && r.target_id == target_id)
+        {
             route.gain = gain;
         }
     }
 
     /// 启用/禁用路由
     pub fn set_route_enabled(&mut self, source_id: &str, target_id: &str, enabled: bool) {
-        if let Some(route) = self.routes.iter_mut().find(|r| {
-            r.source_id == source_id && r.target_id == target_id
-        }) {
+        if let Some(route) = self
+            .routes
+            .iter_mut()
+            .find(|r| r.source_id == source_id && r.target_id == target_id)
+        {
             route.enabled = enabled;
         }
     }
@@ -291,7 +298,8 @@ impl BusRouter {
 
     /// 设置延迟补偿
     pub fn set_latency_compensation(&mut self, bus_id: &str, samples: usize) {
-        self.latency_compensation.insert(bus_id.to_string(), samples);
+        self.latency_compensation
+            .insert(bus_id.to_string(), samples);
     }
 
     /// 获取延迟补偿

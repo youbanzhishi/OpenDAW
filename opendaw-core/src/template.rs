@@ -172,14 +172,18 @@ impl ProjectTemplate {
             name: self.name.clone(),
             sample_rate: self.sample_rate,
             buffer_size: self.buffer_size,
-            tracks: self.tracks.iter().map(|t| TrackConfig {
-                name: t.name.clone(),
-                channels: 2,
-                volume: t.volume,
-                pan: t.pan,
-                muted: false,
-                plugins: t.fx_chain.clone(),
-            }).collect(),
+            tracks: self
+                .tracks
+                .iter()
+                .map(|t| TrackConfig {
+                    name: t.name.clone(),
+                    channels: 2,
+                    volume: t.volume,
+                    pan: t.pan,
+                    muted: false,
+                    plugins: t.fx_chain.clone(),
+                })
+                .collect(),
             master_volume: 1.0,
         };
         Project::from_config(&config)
@@ -189,41 +193,68 @@ impl ProjectTemplate {
 
     /// 空项目
     fn empty() -> Self {
-        Self::new("Empty Project", 120.0)
-            .with_description("空项目 — 从零开始创建")
+        Self::new("Empty Project", 120.0).with_description("空项目 — 从零开始创建")
     }
 
     /// 乐队4轨
     fn band() -> Self {
-        let mut tmpl = Self::new("Band Project", 120.0)
-            .with_description("乐队4轨 — 鼓/贝斯/吉他/人声");
-        tmpl.add_track(TemplateTrack::new("Drums", TrackType::Midi)
-            .with_volume(0.8).with_pan(0.0)
-            .with_fx("vc-eq").with_fx("vc-compressor"));
-        tmpl.add_track(TemplateTrack::new("Bass", TrackType::Midi)
-            .with_volume(0.7).with_pan(0.0)
-            .with_fx("vc-eq").with_fx("vc-compressor"));
-        tmpl.add_track(TemplateTrack::new("Guitar", TrackType::Audio)
-            .with_volume(0.65).with_pan(-0.3)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
-        tmpl.add_track(TemplateTrack::new("Vocals", TrackType::Audio)
-            .with_volume(0.75).with_pan(0.0)
-            .with_fx("vc-eq").with_fx("vc-compressor").with_fx("vc-reverb"));
+        let mut tmpl =
+            Self::new("Band Project", 120.0).with_description("乐队4轨 — 鼓/贝斯/吉他/人声");
+        tmpl.add_track(
+            TemplateTrack::new("Drums", TrackType::Midi)
+                .with_volume(0.8)
+                .with_pan(0.0)
+                .with_fx("vc-eq")
+                .with_fx("vc-compressor"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Bass", TrackType::Midi)
+                .with_volume(0.7)
+                .with_pan(0.0)
+                .with_fx("vc-eq")
+                .with_fx("vc-compressor"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Guitar", TrackType::Audio)
+                .with_volume(0.65)
+                .with_pan(-0.3)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Vocals", TrackType::Audio)
+                .with_volume(0.75)
+                .with_pan(0.0)
+                .with_fx("vc-eq")
+                .with_fx("vc-compressor")
+                .with_fx("vc-reverb"),
+        );
         tmpl
     }
 
     /// 播客3轨
     fn podcast() -> Self {
-        let mut tmpl = Self::new("Podcast Project", 120.0)
-            .with_description("播客3轨 — 主持/嘉宾/音效");
-        tmpl.add_track(TemplateTrack::new("Host", TrackType::Audio)
-            .with_volume(0.8).with_pan(-0.2)
-            .with_fx("vc-eq").with_fx("vc-compressor"));
-        tmpl.add_track(TemplateTrack::new("Guest", TrackType::Audio)
-            .with_volume(0.8).with_pan(0.2)
-            .with_fx("vc-eq").with_fx("vc-compressor"));
-        tmpl.add_track(TemplateTrack::new("SFX", TrackType::Audio)
-            .with_volume(0.5).with_pan(0.0));
+        let mut tmpl =
+            Self::new("Podcast Project", 120.0).with_description("播客3轨 — 主持/嘉宾/音效");
+        tmpl.add_track(
+            TemplateTrack::new("Host", TrackType::Audio)
+                .with_volume(0.8)
+                .with_pan(-0.2)
+                .with_fx("vc-eq")
+                .with_fx("vc-compressor"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Guest", TrackType::Audio)
+                .with_volume(0.8)
+                .with_pan(0.2)
+                .with_fx("vc-eq")
+                .with_fx("vc-compressor"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("SFX", TrackType::Audio)
+                .with_volume(0.5)
+                .with_pan(0.0),
+        );
         tmpl
     }
 
@@ -231,25 +262,50 @@ impl ProjectTemplate {
     fn edm() -> Self {
         let mut tmpl = Self::new("EDM Project", 128.0)
             .with_description("电子7轨 — Kick/Snare/HiHat/Bass/Lead/Pad/FX");
-        tmpl.add_track(TemplateTrack::new("Kick", TrackType::Midi)
-            .with_volume(0.9).with_pan(0.0)
-            .with_fx("vc-eq").with_fx("vc-compressor"));
-        tmpl.add_track(TemplateTrack::new("Snare", TrackType::Midi)
-            .with_volume(0.7).with_pan(0.0)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
-        tmpl.add_track(TemplateTrack::new("HiHat", TrackType::Midi)
-            .with_volume(0.5).with_pan(0.1));
-        tmpl.add_track(TemplateTrack::new("Bass", TrackType::Midi)
-            .with_volume(0.75).with_pan(0.0)
-            .with_fx("vc-eq").with_fx("vc-compressor"));
-        tmpl.add_track(TemplateTrack::new("Lead", TrackType::Midi)
-            .with_volume(0.6).with_pan(0.0)
-            .with_fx("vc-reverb").with_fx("vc-delay"));
-        tmpl.add_track(TemplateTrack::new("Pad", TrackType::Midi)
-            .with_volume(0.4).with_pan(0.0)
-            .with_fx("vc-reverb"));
-        tmpl.add_track(TemplateTrack::new("FX", TrackType::Midi)
-            .with_volume(0.3).with_pan(0.0));
+        tmpl.add_track(
+            TemplateTrack::new("Kick", TrackType::Midi)
+                .with_volume(0.9)
+                .with_pan(0.0)
+                .with_fx("vc-eq")
+                .with_fx("vc-compressor"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Snare", TrackType::Midi)
+                .with_volume(0.7)
+                .with_pan(0.0)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("HiHat", TrackType::Midi)
+                .with_volume(0.5)
+                .with_pan(0.1),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Bass", TrackType::Midi)
+                .with_volume(0.75)
+                .with_pan(0.0)
+                .with_fx("vc-eq")
+                .with_fx("vc-compressor"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Lead", TrackType::Midi)
+                .with_volume(0.6)
+                .with_pan(0.0)
+                .with_fx("vc-reverb")
+                .with_fx("vc-delay"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Pad", TrackType::Midi)
+                .with_volume(0.4)
+                .with_pan(0.0)
+                .with_fx("vc-reverb"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("FX", TrackType::Midi)
+                .with_volume(0.3)
+                .with_pan(0.0),
+        );
         tmpl
     }
 
@@ -258,46 +314,88 @@ impl ProjectTemplate {
         let mut tmpl = Self::new("Orchestral Project", 100.0)
             .with_description("管弦乐12轨 — 弦乐/木管/铜管/打击乐/合唱");
         // 弦乐
-        tmpl.add_track(TemplateTrack::new("Violins I", TrackType::Midi)
-            .with_volume(0.7).with_pan(-0.4)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
-        tmpl.add_track(TemplateTrack::new("Violins II", TrackType::Midi)
-            .with_volume(0.65).with_pan(-0.2)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
-        tmpl.add_track(TemplateTrack::new("Violas", TrackType::Midi)
-            .with_volume(0.6).with_pan(0.0)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
-        tmpl.add_track(TemplateTrack::new("Cellos", TrackType::Midi)
-            .with_volume(0.65).with_pan(0.2)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
-        tmpl.add_track(TemplateTrack::new("Basses", TrackType::Midi)
-            .with_volume(0.6).with_pan(0.4)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
+        tmpl.add_track(
+            TemplateTrack::new("Violins I", TrackType::Midi)
+                .with_volume(0.7)
+                .with_pan(-0.4)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Violins II", TrackType::Midi)
+                .with_volume(0.65)
+                .with_pan(-0.2)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Violas", TrackType::Midi)
+                .with_volume(0.6)
+                .with_pan(0.0)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Cellos", TrackType::Midi)
+                .with_volume(0.65)
+                .with_pan(0.2)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Basses", TrackType::Midi)
+                .with_volume(0.6)
+                .with_pan(0.4)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
         // 木管
-        tmpl.add_track(TemplateTrack::new("Woodwinds", TrackType::Midi)
-            .with_volume(0.55).with_pan(-0.1)
-            .with_fx("vc-reverb"));
+        tmpl.add_track(
+            TemplateTrack::new("Woodwinds", TrackType::Midi)
+                .with_volume(0.55)
+                .with_pan(-0.1)
+                .with_fx("vc-reverb"),
+        );
         // 铜管
-        tmpl.add_track(TemplateTrack::new("Brass", TrackType::Midi)
-            .with_volume(0.6).with_pan(0.1)
-            .with_fx("vc-eq").with_fx("vc-reverb"));
+        tmpl.add_track(
+            TemplateTrack::new("Brass", TrackType::Midi)
+                .with_volume(0.6)
+                .with_pan(0.1)
+                .with_fx("vc-eq")
+                .with_fx("vc-reverb"),
+        );
         // 打击乐
-        tmpl.add_track(TemplateTrack::new("Timpani", TrackType::Midi)
-            .with_volume(0.7).with_pan(0.0)
-            .with_fx("vc-compressor"));
-        tmpl.add_track(TemplateTrack::new("Percussion", TrackType::Midi)
-            .with_volume(0.5).with_pan(0.0));
+        tmpl.add_track(
+            TemplateTrack::new("Timpani", TrackType::Midi)
+                .with_volume(0.7)
+                .with_pan(0.0)
+                .with_fx("vc-compressor"),
+        );
+        tmpl.add_track(
+            TemplateTrack::new("Percussion", TrackType::Midi)
+                .with_volume(0.5)
+                .with_pan(0.0),
+        );
         // 键盘
-        tmpl.add_track(TemplateTrack::new("Piano", TrackType::Midi)
-            .with_volume(0.55).with_pan(0.0)
-            .with_fx("vc-reverb"));
+        tmpl.add_track(
+            TemplateTrack::new("Piano", TrackType::Midi)
+                .with_volume(0.55)
+                .with_pan(0.0)
+                .with_fx("vc-reverb"),
+        );
         // 合唱
-        tmpl.add_track(TemplateTrack::new("Choir", TrackType::Midi)
-            .with_volume(0.5).with_pan(0.0)
-            .with_fx("vc-reverb"));
+        tmpl.add_track(
+            TemplateTrack::new("Choir", TrackType::Midi)
+                .with_volume(0.5)
+                .with_pan(0.0)
+                .with_fx("vc-reverb"),
+        );
         // 指挥
-        tmpl.add_track(TemplateTrack::new("Conductor", TrackType::Audio)
-            .with_volume(1.0).with_pan(0.0));
+        tmpl.add_track(
+            TemplateTrack::new("Conductor", TrackType::Audio)
+                .with_volume(1.0)
+                .with_pan(0.0),
+        );
         tmpl
     }
 }

@@ -15,7 +15,9 @@ use tracing_subscriber::{fmt, EnvFilter};
 async fn main() {
     // 初始化日志
     fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive("opendaw_api=debug".parse().unwrap()))
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive("opendaw_api=debug".parse().unwrap()),
+        )
         .init();
 
     let app_state = state::AppState::new();

@@ -32,7 +32,7 @@ enum Token {
     Comma,
     Question,
     Colon,
-    Dollar,  // $ prefix
+    Dollar, // $ prefix
 }
 
 impl JsfxParser {
@@ -88,8 +88,11 @@ impl JsfxParser {
             }
 
             if line.starts_with("tags:") {
-                program.tags = line[5..].trim().split_whitespace()
-                    .map(|s| s.to_string()).collect();
+                program.tags = line[5..]
+                    .trim()
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect();
                 line_idx += 1;
                 continue;
             }
@@ -115,7 +118,8 @@ impl JsfxParser {
 
     /// 预处理器：处理 #define, #ifdef, #ifndef, #else, #endif, #undef
     fn preprocess(source: &str) -> Result<String, JsfxError> {
-        let mut defines: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut defines: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
         let mut result = String::new();
         let mut cond_stack: Vec<(bool, bool)> = Vec::new(); // (is_active, has_been_true)
 
@@ -264,7 +268,10 @@ impl JsfxParser {
         };
 
         if index == 0 || index > 256 {
-            return Err(JsfxError::parse(line_num, format!("slider索引超出范围: {}", index)));
+            return Err(JsfxError::parse(
+                line_num,
+                format!("slider索引超出范围: {}", index),
+            ));
         }
 
         let lt_pos = match remainder.find('<') {
@@ -292,22 +299,45 @@ impl JsfxParser {
         let range_str = &remainder[lt_pos + 1..gt_pos];
         let range_parts: Vec<&str> = range_str.split(',').collect();
 
-        let min: f64 = range_parts.first().and_then(|s| s.trim().parse().ok()).unwrap_or(0.0);
-        let max: f64 = range_parts.get(1).and_then(|s| s.trim().parse().ok()).unwrap_or(1.0);
-        let step: f64 = range_parts.get(2).and_then(|s| s.trim().parse().ok()).unwrap_or(0.001);
+        let min: f64 = range_parts
+            .first()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(0.0);
+        let max: f64 = range_parts
+            .get(1)
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(1.0);
+        let step: f64 = range_parts
+            .get(2)
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(0.001);
 
         let name = if remainder.len() > gt_pos + 1 {
             let n = remainder[gt_pos + 1..].trim();
-            if n.is_empty() { None } else { Some(n.to_string()) }
+            if n.is_empty() {
+                None
+            } else {
+                Some(n.to_string())
+            }
         } else {
             None
         };
 
-        Ok(Some(SliderDef { index, name, default, min, max, step }))
+        Ok(Some(SliderDef {
+            index,
+            name,
+            default,
+            min,
+            max,
+            step,
+        }))
     }
 
     /// 解析函数头
-    fn parse_function_header(line: &str, line_num: usize) -> Result<(String, Vec<String>), JsfxError> {
+    fn parse_function_header(
+        line: &str,
+        line_num: usize,
+    ) -> Result<(String, Vec<String>), JsfxError> {
         let line = line.trim();
         let after_fn = &line[8..].trim_start();
 
@@ -326,7 +356,8 @@ impl JsfxParser {
         let params: Vec<String> = if params_str.trim().is_empty() {
             Vec::new()
         } else {
-            params_str.split(',')
+            params_str
+                .split(',')
                 .map(|p| p.trim().to_lowercase())
                 .collect()
         };
@@ -364,7 +395,9 @@ impl JsfxParser {
             }
 
             // 检测while循环
-            if line.to_lowercase().starts_with("while ") || line.to_lowercase().starts_with("while(") {
+            if line.to_lowercase().starts_with("while ")
+                || line.to_lowercase().starts_with("while(")
+            {
                 match Self::parse_while_statement(lines, i) {
                     Ok((stmt, advance)) => {
                         statements.push(stmt);
@@ -380,7 +413,8 @@ impl JsfxParser {
             }
 
             // 检测loop
-            if line.to_lowercase().starts_with("loop(") || line.to_lowercase().starts_with("loop (") {
+            if line.to_lowercase().starts_with("loop(") || line.to_lowercase().starts_with("loop (")
+            {
                 match Self::parse_loop_statement(lines, i) {
                     Ok((stmt, advance)) => {
                         statements.push(stmt);
@@ -404,7 +438,7 @@ impl JsfxParser {
             // 普通语句行 — 错误恢复：单行解析失败时跳过该行而非中断整个块
             match Self::parse_single_line(line, i + 1) {
                 Ok(Some(stmt)) => statements.push(stmt),
-                Ok(None) => {},
+                Ok(None) => {}
                 Err(e) => {
                     // 词法/语法错误恢复：记录警告但跳过该行继续解析
                     eprintln!("JSFX解析警告 行{}: {} — 跳过该行", i + 1, e);
@@ -417,7 +451,10 @@ impl JsfxParser {
     }
 
     /// 解析if语句（支持单行和多行）
-    fn parse_if_statement(lines: &[String], offset: usize) -> Result<(Statement, usize), JsfxError> {
+    fn parse_if_statement(
+        lines: &[String],
+        offset: usize,
+    ) -> Result<(Statement, usize), JsfxError> {
         let line = Self::strip_comment(lines[offset].trim());
         let lower = line.to_lowercase();
 
@@ -438,7 +475,8 @@ impl JsfxParser {
                 // 检查后面是否有多行块
                 if after_cond.starts_with('(') {
                     // 多行 then 块
-                    let (then_stmts, else_stmts, adv) = Self::parse_if_multiline(cond_str, end + 1, lines, offset)?;
+                    let (then_stmts, else_stmts, adv) =
+                        Self::parse_if_multiline(cond_str, end + 1, lines, offset)?;
                     (cond_expr, then_stmts, else_stmts, adv)
                 } else if !after_cond.is_empty() {
                     // 单行then
@@ -458,32 +496,46 @@ impl JsfxParser {
                             adv += 1;
                             while offset + adv < lines.len() {
                                 let el = lines[offset + adv].trim();
-                                if el.to_lowercase().starts_with("if ") ||
-                                   el.to_lowercase().starts_with("while ") ||
-                                   el.to_lowercase().starts_with("loop(") ||
-                                   el.is_empty() && adv > offset + 1 {
+                                if el.to_lowercase().starts_with("if ")
+                                    || el.to_lowercase().starts_with("while ")
+                                    || el.to_lowercase().starts_with("loop(")
+                                    || el.is_empty() && adv > offset + 1
+                                {
                                     break;
                                 }
-                                if el.is_empty() { adv += 1; continue; }
+                                if el.is_empty() {
+                                    adv += 1;
+                                    continue;
+                                }
                                 else_lines.push(el.to_string());
                                 adv += 1;
                             }
                             break;
                         }
-                        if next.to_lowercase().starts_with("if ") ||
-                           next.to_lowercase().starts_with("while ") ||
-                           next.to_lowercase().starts_with("loop(") ||
-                           next.starts_with('@') {
+                        if next.to_lowercase().starts_with("if ")
+                            || next.to_lowercase().starts_with("while ")
+                            || next.to_lowercase().starts_with("loop(")
+                            || next.starts_with('@')
+                        {
                             break;
                         }
-                        if next.is_empty() && then_lines.is_empty() { adv += 1; continue; }
-                        if next.is_empty() { break; }
+                        if next.is_empty() && then_lines.is_empty() {
+                            adv += 1;
+                            continue;
+                        }
+                        if next.is_empty() {
+                            break;
+                        }
                         then_lines.push(next.to_string());
                         adv += 1;
                     }
 
                     let then_block = Self::parse_statement_block(&then_lines)?;
-                    let else_block = if else_lines.is_empty() { None } else { Some(Self::parse_statement_block(&else_lines)?) };
+                    let else_block = if else_lines.is_empty() {
+                        None
+                    } else {
+                        Some(Self::parse_statement_block(&else_lines)?)
+                    };
                     (cond_expr, then_block, else_block, adv)
                 }
             } else {
@@ -512,7 +564,8 @@ impl JsfxParser {
         if after.starts_with('(') {
             if let Some(end) = Self::find_matching_paren(after, 0) {
                 let then_str = &after[1..end];
-                let then_lines: Vec<String> = then_str.lines()
+                let then_lines: Vec<String> = then_str
+                    .lines()
                     .map(|l| l.trim().to_string())
                     .filter(|l| !l.is_empty())
                     .collect();
@@ -524,7 +577,8 @@ impl JsfxParser {
                     if else_part.starts_with('(') {
                         if let Some(else_end) = Self::find_matching_paren(else_part, 0) {
                             let else_str = &else_part[1..else_end];
-                            let else_lines: Vec<String> = else_str.lines()
+                            let else_lines: Vec<String> = else_str
+                                .lines()
                                 .map(|l| l.trim().to_string())
                                 .filter(|l| !l.is_empty())
                                 .collect();
@@ -546,7 +600,10 @@ impl JsfxParser {
     }
 
     /// 解析while语句
-    fn parse_while_statement(lines: &[String], offset: usize) -> Result<(Statement, usize), JsfxError> {
+    fn parse_while_statement(
+        lines: &[String],
+        offset: usize,
+    ) -> Result<(Statement, usize), JsfxError> {
         let line = Self::strip_comment(lines[offset].trim());
         let lower = line.to_lowercase();
 
@@ -562,7 +619,8 @@ impl JsfxParser {
                     // 多行while体
                     if let Some(body_end) = Self::find_matching_paren(after, 0) {
                         let body_str = &after[1..body_end];
-                        let body_lines: Vec<String> = body_str.lines()
+                        let body_lines: Vec<String> = body_str
+                            .lines()
                             .map(|l| l.trim().to_string())
                             .filter(|l| !l.is_empty())
                             .collect();
@@ -580,7 +638,9 @@ impl JsfxParser {
                     let mut adv = 1;
                     while offset + adv < lines.len() {
                         let next = lines[offset + adv].trim();
-                        if next.is_empty() || next.starts_with('@') { break; }
+                        if next.is_empty() || next.starts_with('@') {
+                            break;
+                        }
                         body_lines.push(next.to_string());
                         adv += 1;
                     }
@@ -600,16 +660,24 @@ impl JsfxParser {
     }
 
     /// 解析loop语句
-    fn parse_loop_statement(lines: &[String], offset: usize) -> Result<(Statement, usize), JsfxError> {
+    fn parse_loop_statement(
+        lines: &[String],
+        offset: usize,
+    ) -> Result<(Statement, usize), JsfxError> {
         let line = Self::strip_comment(lines[offset].trim());
 
-        let paren_start = line.find('(').ok_or_else(|| JsfxError::parse(offset + 1, "loop缺少("))?;
-        let paren_end = Self::find_matching_paren(&line, paren_start).ok_or_else(|| JsfxError::parse(offset + 1, "loop缺少)"))?;
+        let paren_start = line
+            .find('(')
+            .ok_or_else(|| JsfxError::parse(offset + 1, "loop缺少("))?;
+        let paren_end = Self::find_matching_paren(&line, paren_start)
+            .ok_or_else(|| JsfxError::parse(offset + 1, "loop缺少)"))?;
 
         let inner = &line[paren_start + 1..paren_end];
 
         // loop(count, body) 格式
-        let comma_pos = inner.find(',').ok_or_else(|| JsfxError::parse(offset + 1, "loop缺少逗号分隔count和body"))?;
+        let comma_pos = inner
+            .find(',')
+            .ok_or_else(|| JsfxError::parse(offset + 1, "loop缺少逗号分隔count和body"))?;
 
         let count_expr_str = inner[..comma_pos].trim();
         let after_paren = inner[comma_pos + 1..].trim();
@@ -698,7 +766,9 @@ impl JsfxParser {
         ));
 
         if let Some(pos) = assign_pos {
-            if pos == 0 { return Ok(None); }
+            if pos == 0 {
+                return Ok(None);
+            }
 
             let op_str = match &tokens[pos] {
                 Token::Op(s) => s.clone(),
@@ -768,39 +838,58 @@ impl JsfxParser {
 
                 // memory[idx] = expr;
                 if matches!(tokens[1], Token::LBracket) {
-                    if let Some(rbracket_pos) = tokens[2..].iter().position(|t| matches!(t, Token::RBracket)) {
+                    if let Some(rbracket_pos) = tokens[2..]
+                        .iter()
+                        .position(|t| matches!(t, Token::RBracket))
+                    {
                         let rb_pos = rbracket_pos + 2;
-                        if rb_pos + 1 < tokens.len() && matches!(&tokens[rb_pos + 1], Token::Op(s) if s == "=") {
+                        if rb_pos + 1 < tokens.len()
+                            && matches!(&tokens[rb_pos + 1], Token::Op(s) if s == "=")
+                        {
                             let idx_tokens = &tokens[2..rb_pos];
                             let mut idx_pos = 0;
-                            let idx_expr = Self::parse_expr_from_tokens(idx_tokens, &mut idx_pos, line_num)?;
+                            let idx_expr =
+                                Self::parse_expr_from_tokens(idx_tokens, &mut idx_pos, line_num)?;
 
                             let val_tokens = &tokens[rb_pos + 2..];
                             let mut val_pos = 0;
-                            let val_expr = Self::parse_expr_from_tokens(val_tokens, &mut val_pos, line_num)?;
+                            let val_expr =
+                                Self::parse_expr_from_tokens(val_tokens, &mut val_pos, line_num)?;
 
                             if name_lower == "spl" {
                                 return Ok(Some(Statement::SplAssign(idx_expr, val_expr)));
                             }
-                            return Ok(Some(Statement::ArrayAssign(name_lower, idx_expr, val_expr)));
+                            return Ok(Some(Statement::ArrayAssign(
+                                name_lower, idx_expr, val_expr,
+                            )));
                         }
                     }
                 }
 
                 // spl(ch) = expr; 形式
                 if name_lower == "spl" && matches!(tokens[1], Token::LParen) {
-                    if let Some(rparen_pos) = tokens[2..].iter().position(|t| matches!(t, Token::RParen)) {
+                    if let Some(rparen_pos) =
+                        tokens[2..].iter().position(|t| matches!(t, Token::RParen))
+                    {
                         let rp_pos = rparen_pos + 2;
                         if rp_pos + 1 < tokens.len() {
                             if let Token::Op(s) = &tokens[rp_pos + 1] {
                                 if s == "=" {
                                     let ch_tokens = &tokens[2..rp_pos];
                                     let mut ch_pos = 0;
-                                    let ch_expr = Self::parse_expr_from_tokens(ch_tokens, &mut ch_pos, line_num)?;
+                                    let ch_expr = Self::parse_expr_from_tokens(
+                                        ch_tokens,
+                                        &mut ch_pos,
+                                        line_num,
+                                    )?;
 
                                     let val_tokens = &tokens[rp_pos + 2..];
                                     let mut val_pos = 0;
-                                    let val_expr = Self::parse_expr_from_tokens(val_tokens, &mut val_pos, line_num)?;
+                                    let val_expr = Self::parse_expr_from_tokens(
+                                        val_tokens,
+                                        &mut val_pos,
+                                        line_num,
+                                    )?;
 
                                     return Ok(Some(Statement::SplAssign(ch_expr, val_expr)));
                                 }
@@ -821,7 +910,7 @@ impl JsfxParser {
         let chars: Vec<char> = line.chars().collect();
         let mut i = 0;
         while i + 1 < chars.len() {
-            if chars[i] == '"' && (i == 0 || chars[i-1] != '\\') {
+            if chars[i] == '"' && (i == 0 || chars[i - 1] != '\\') {
                 in_string = !in_string;
             }
             if !in_string && chars[i] == '/' && chars[i + 1] == '/' {
@@ -835,21 +924,27 @@ impl JsfxParser {
     /// 找匹配的括号
     fn find_matching_paren(s: &str, start: usize) -> Option<usize> {
         let chars: Vec<char> = s.chars().collect();
-        if start >= chars.len() || chars[start] != '(' { return None; }
+        if start >= chars.len() || chars[start] != '(' {
+            return None;
+        }
 
         let mut depth = 0;
         let mut in_string = false;
         for i in start..chars.len() {
-            if chars[i] == '"' && (i == 0 || chars[i-1] != '\\') {
+            if chars[i] == '"' && (i == 0 || chars[i - 1] != '\\') {
                 in_string = !in_string;
             }
-            if in_string { continue; }
+            if in_string {
+                continue;
+            }
 
             match chars[i] {
                 '(' => depth += 1,
                 ')' => {
                     depth -= 1;
-                    if depth == 0 { return Some(i); }
+                    if depth == 0 {
+                        return Some(i);
+                    }
                 }
                 _ => {}
             }
@@ -890,7 +985,10 @@ impl JsfxParser {
                             't' => s.push('\t'),
                             '\\' => s.push('\\'),
                             '"' => s.push('"'),
-                            _ => { s.push(chars[i]); s.push(chars[i + 1]); }
+                            _ => {
+                                s.push(chars[i]);
+                                s.push(chars[i + 1]);
+                            }
                         }
                         i += 2;
                     } else {
@@ -898,7 +996,9 @@ impl JsfxParser {
                         i += 1;
                     }
                 }
-                if i < chars.len() { i += 1; } // 跳过结尾"
+                if i < chars.len() {
+                    i += 1;
+                } // 跳过结尾"
                 tokens.push(Token::StringLit(s));
                 continue;
             }
@@ -918,7 +1018,9 @@ impl JsfxParser {
             }
 
             // 数字字面量
-            if c.is_ascii_digit() || (c == '.' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit()) {
+            if c.is_ascii_digit()
+                || (c == '.' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit())
+            {
                 let mut num = String::new();
                 let mut has_dot = false;
                 let mut has_e = false;
@@ -975,13 +1077,41 @@ impl JsfxParser {
 
             // 单字符token
             match c {
-                '(' => { tokens.push(Token::LParen); i += 1; continue; }
-                ')' => { tokens.push(Token::RParen); i += 1; continue; }
-                '[' => { tokens.push(Token::LBracket); i += 1; continue; }
-                ']' => { tokens.push(Token::RBracket); i += 1; continue; }
-                ',' => { tokens.push(Token::Comma); i += 1; continue; }
-                '?' => { tokens.push(Token::Question); i += 1; continue; }
-                ':' => { tokens.push(Token::Colon); i += 1; continue; }
+                '(' => {
+                    tokens.push(Token::LParen);
+                    i += 1;
+                    continue;
+                }
+                ')' => {
+                    tokens.push(Token::RParen);
+                    i += 1;
+                    continue;
+                }
+                '[' => {
+                    tokens.push(Token::LBracket);
+                    i += 1;
+                    continue;
+                }
+                ']' => {
+                    tokens.push(Token::RBracket);
+                    i += 1;
+                    continue;
+                }
+                ',' => {
+                    tokens.push(Token::Comma);
+                    i += 1;
+                    continue;
+                }
+                '?' => {
+                    tokens.push(Token::Question);
+                    i += 1;
+                    continue;
+                }
+                ':' => {
+                    tokens.push(Token::Colon);
+                    i += 1;
+                    continue;
+                }
                 _ => {}
             }
 
@@ -989,7 +1119,8 @@ impl JsfxParser {
             if i + 1 < chars.len() {
                 let two = &code[i..i + 2];
                 match two {
-                    "==" | "!=" | "<=" | ">=" | "&&" | "||" | "+=" | "-=" | "*=" | "/=" | "^=" | "%=" => {
+                    "==" | "!=" | "<=" | ">=" | "&&" | "||" | "+=" | "-=" | "*=" | "/=" | "^="
+                    | "%=" => {
                         tokens.push(Token::Op(two.to_string()));
                         i += 2;
                         continue;
@@ -1016,12 +1147,20 @@ impl JsfxParser {
     }
 
     /// 从token列表解析表达式
-    fn parse_expr_from_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_expr_from_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         Self::parse_ternary_tokens(tokens, pos, line_num)
     }
 
     /// 解析三目运算
-    fn parse_ternary_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_ternary_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let cond = Self::parse_or_tokens(tokens, pos, line_num)?;
 
         if *pos < tokens.len() && matches!(tokens[*pos], Token::Question) {
@@ -1033,14 +1172,22 @@ impl JsfxParser {
             }
 
             let false_expr = Self::parse_ternary_tokens(tokens, pos, line_num)?;
-            Ok(Expr::Ternary(Box::new(cond), Box::new(true_expr), Box::new(false_expr)))
+            Ok(Expr::Ternary(
+                Box::new(cond),
+                Box::new(true_expr),
+                Box::new(false_expr),
+            ))
         } else {
             Ok(cond)
         }
     }
 
     /// 解析 ||
-    fn parse_or_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_or_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let mut left = Self::parse_and_tokens(tokens, pos, line_num)?;
 
         while *pos < tokens.len() && matches!(tokens[*pos], Token::Op(ref s) if s == "||") {
@@ -1053,7 +1200,11 @@ impl JsfxParser {
     }
 
     /// 解析 &&
-    fn parse_and_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_and_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let mut left = Self::parse_bitwise_or_tokens(tokens, pos, line_num)?;
 
         while *pos < tokens.len() && matches!(tokens[*pos], Token::Op(ref s) if s == "&&") {
@@ -1066,7 +1217,11 @@ impl JsfxParser {
     }
 
     /// 解析 | (按位或)
-    fn parse_bitwise_or_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_bitwise_or_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let mut left = Self::parse_bitwise_and_tokens(tokens, pos, line_num)?;
 
         while *pos < tokens.len() && matches!(tokens[*pos], Token::Op(ref s) if s == "|") {
@@ -1079,7 +1234,11 @@ impl JsfxParser {
     }
 
     /// 解析 & (按位与)
-    fn parse_bitwise_and_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_bitwise_and_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let mut left = Self::parse_comparison_tokens(tokens, pos, line_num)?;
 
         while *pos < tokens.len() && matches!(tokens[*pos], Token::Op(ref s) if s == "&") {
@@ -1092,7 +1251,11 @@ impl JsfxParser {
     }
 
     /// 解析比较运算
-    fn parse_comparison_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_comparison_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let mut left = Self::parse_addition_tokens(tokens, pos, line_num)?;
 
         while *pos < tokens.len() {
@@ -1122,7 +1285,11 @@ impl JsfxParser {
     }
 
     /// 解析加减
-    fn parse_addition_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_addition_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let mut left = Self::parse_multiplication_tokens(tokens, pos, line_num)?;
 
         while *pos < tokens.len() {
@@ -1148,7 +1315,11 @@ impl JsfxParser {
     }
 
     /// 解析乘除取模
-    fn parse_multiplication_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_multiplication_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let mut left = Self::parse_power_tokens(tokens, pos, line_num)?;
 
         while *pos < tokens.len() {
@@ -1175,7 +1346,11 @@ impl JsfxParser {
     }
 
     /// 解析幂运算
-    fn parse_power_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_power_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         let left = Self::parse_unary_tokens(tokens, pos, line_num)?;
 
         if *pos < tokens.len() && matches!(tokens[*pos], Token::Op(ref s) if s == "^") {
@@ -1188,7 +1363,11 @@ impl JsfxParser {
     }
 
     /// 解析一元运算
-    fn parse_unary_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_unary_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         if *pos < tokens.len() {
             match &tokens[*pos] {
                 Token::Op(s) if s == "-" => {
@@ -1214,7 +1393,11 @@ impl JsfxParser {
     }
 
     /// 解析基本表达式
-    fn parse_primary_tokens(tokens: &[Token], pos: &mut usize, line_num: usize) -> Result<Expr, JsfxError> {
+    fn parse_primary_tokens(
+        tokens: &[Token],
+        pos: &mut usize,
+        line_num: usize,
+    ) -> Result<Expr, JsfxError> {
         if *pos >= tokens.len() {
             return Ok(Expr::Number(0.0));
         }
@@ -1272,7 +1455,9 @@ impl JsfxParser {
                             let ch = *ch as usize;
                             return Ok(Expr::SplAccess(Box::new(Expr::Number(ch as f64))));
                         }
-                        return Ok(Expr::SplAccess(Box::new(args.into_iter().next().unwrap_or(Expr::Number(0.0)))));
+                        return Ok(Expr::SplAccess(Box::new(
+                            args.into_iter().next().unwrap_or(Expr::Number(0.0)),
+                        )));
                     }
 
                     Ok(Expr::FunctionCall(name, args))
@@ -1287,8 +1472,7 @@ impl JsfxParser {
                     }
 
                     Ok(Expr::ArrayAccess(name, Box::new(idx)))
-                }
-                else {
+                } else {
                     Ok(Expr::Variable(name))
                 }
             }
@@ -1337,7 +1521,9 @@ spl1 *= gain;
 
     #[test]
     fn test_parse_slider() {
-        let slider = JsfxParser::parse_slider_line("1:5<0,10,1>slider name", 1).unwrap().unwrap();
+        let slider = JsfxParser::parse_slider_line("1:5<0,10,1>slider name", 1)
+            .unwrap()
+            .unwrap();
         assert_eq!(slider.index, 1);
         assert_eq!(slider.default, 5.0);
         assert_eq!(slider.name, Some("slider name".to_string()));
@@ -1347,7 +1533,7 @@ spl1 *= gain;
     fn test_parse_expression() {
         let expr = JsfxParser::parse_expression("2^(slider1/6)", 1).unwrap();
         match expr {
-            Expr::BinaryOp(BinOp::Pow, _, _) => {},
+            Expr::BinaryOp(BinOp::Pow, _, _) => {}
             _ => panic!("期望幂运算"),
         }
     }
@@ -1356,7 +1542,7 @@ spl1 *= gain;
     fn test_parse_ternary() {
         let expr = JsfxParser::parse_expression("x > 0 ? x : -x", 1).unwrap();
         match expr {
-            Expr::Ternary(_, _, _) => {},
+            Expr::Ternary(_, _, _) => {}
             _ => panic!("期望三目运算"),
         }
     }

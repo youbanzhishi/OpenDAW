@@ -3,10 +3,9 @@
 //! 测试多插件串行处理、信号链 bypass、参数管理、预设等端到端场景
 
 use plugin_host::{
-    PluginHost, PluginChain, ParamManager, PresetManager, PluginLoader,
-    VcPlugin, PluginType, AudioBuffer, ParamInfo, PluginError,
-    PluginParameter, ParameterValue, ParameterType,
-    PluginFormat, ScannedPlugin,
+    AudioBuffer, ParamInfo, ParamManager, ParameterType, ParameterValue, PluginChain, PluginError,
+    PluginFormat, PluginHost, PluginLoader, PluginParameter, PluginType, PresetManager,
+    ScannedPlugin, VcPlugin,
 };
 
 // ── 测试用插件 ─────────────────────────────────────────────────────────
@@ -19,15 +18,26 @@ struct GainPlugin {
 
 impl GainPlugin {
     fn new(gain: f64) -> Self {
-        Self { gain, initialized: false }
+        Self {
+            gain,
+            initialized: false,
+        }
     }
 }
 
 impl VcPlugin for GainPlugin {
-    fn plugin_id(&self) -> &str { "gain" }
-    fn plugin_name(&self) -> &str { "Gain" }
-    fn plugin_type(&self) -> PluginType { PluginType::Effect }
-    fn version(&self) -> &str { "1.0.0" }
+    fn plugin_id(&self) -> &str {
+        "gain"
+    }
+    fn plugin_name(&self) -> &str {
+        "Gain"
+    }
+    fn plugin_type(&self) -> PluginType {
+        PluginType::Effect
+    }
+    fn version(&self) -> &str {
+        "1.0.0"
+    }
     fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
         self.initialized = true;
         Ok(())
@@ -51,7 +61,11 @@ impl VcPlugin for GainPlugin {
         }
     }
     fn get_param(&self, id: &str) -> Option<f64> {
-        if id == "gain" { Some(self.gain) } else { None }
+        if id == "gain" {
+            Some(self.gain)
+        } else {
+            None
+        }
     }
     fn destroy(&mut self) {
         self.initialized = false;
@@ -66,16 +80,29 @@ struct BypassableGainPlugin {
 
 impl BypassableGainPlugin {
     fn new(gain: f64) -> Self {
-        Self { gain, bypass: false }
+        Self {
+            gain,
+            bypass: false,
+        }
     }
 }
 
 impl VcPlugin for BypassableGainPlugin {
-    fn plugin_id(&self) -> &str { "bypass-gain" }
-    fn plugin_name(&self) -> &str { "Bypassable Gain" }
-    fn plugin_type(&self) -> PluginType { PluginType::Effect }
-    fn version(&self) -> &str { "1.0.0" }
-    fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
+    fn plugin_id(&self) -> &str {
+        "bypass-gain"
+    }
+    fn plugin_name(&self) -> &str {
+        "Bypassable Gain"
+    }
+    fn plugin_type(&self) -> PluginType {
+        PluginType::Effect
+    }
+    fn version(&self) -> &str {
+        "1.0.0"
+    }
+    fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
+        Ok(())
+    }
     fn process(&mut self, input: &AudioBuffer, output: &mut AudioBuffer) {
         if self.bypass {
             output.copy_from(input);
@@ -95,9 +122,15 @@ impl VcPlugin for BypassableGainPlugin {
     }
     fn set_param(&mut self, id: &str, value: f64) -> Result<(), PluginError> {
         match id {
-            "gain" => { self.gain = value.clamp(0.0, 10.0); Ok(()) }
-            "bypass" => { self.bypass = value >= 0.5; Ok(()) }
-            _ => Err(PluginError::ParamNotFound(id.to_string()))
+            "gain" => {
+                self.gain = value.clamp(0.0, 10.0);
+                Ok(())
+            }
+            "bypass" => {
+                self.bypass = value >= 0.5;
+                Ok(())
+            }
+            _ => Err(PluginError::ParamNotFound(id.to_string())),
         }
     }
     fn get_param(&self, id: &str) -> Option<f64> {
@@ -119,15 +152,26 @@ struct DelayPlugin {
 impl DelayPlugin {
     #[allow(dead_code)]
     fn new() -> Self {
-        Self { initialized: false, prev: (0.0, 0.0) }
+        Self {
+            initialized: false,
+            prev: (0.0, 0.0),
+        }
     }
 }
 
 impl VcPlugin for DelayPlugin {
-    fn plugin_id(&self) -> &str { "delay" }
-    fn plugin_name(&self) -> &str { "Delay" }
-    fn plugin_type(&self) -> PluginType { PluginType::Effect }
-    fn version(&self) -> &str { "1.0.0" }
+    fn plugin_id(&self) -> &str {
+        "delay"
+    }
+    fn plugin_name(&self) -> &str {
+        "Delay"
+    }
+    fn plugin_type(&self) -> PluginType {
+        PluginType::Effect
+    }
+    fn version(&self) -> &str {
+        "1.0.0"
+    }
     fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
         self.initialized = true;
         Ok(())
@@ -138,30 +182,57 @@ impl VcPlugin for DelayPlugin {
             let old_prev = self.prev;
             output.set_sample(0, 0, old_prev.0);
             output.set_sample(1, 0, old_prev.1);
-            self.prev = (input.sample(0, input.frames - 1), input.sample(1, input.frames - 1));
+            self.prev = (
+                input.sample(0, input.frames - 1),
+                input.sample(1, input.frames - 1),
+            );
         }
     }
-    fn get_params(&self) -> Vec<ParamInfo> { vec![] }
-    fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> { Ok(()) }
-    fn get_param(&self, _id: &str) -> Option<f64> { None }
-    fn destroy(&mut self) { self.initialized = false; }
+    fn get_params(&self) -> Vec<ParamInfo> {
+        vec![]
+    }
+    fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> {
+        Ok(())
+    }
+    fn get_param(&self, _id: &str) -> Option<f64> {
+        None
+    }
+    fn destroy(&mut self) {
+        self.initialized = false;
+    }
 }
 
 /// 静音插件：将所有输出设为0
 struct MutePlugin;
 
 impl VcPlugin for MutePlugin {
-    fn plugin_id(&self) -> &str { "mute" }
-    fn plugin_name(&self) -> &str { "Mute" }
-    fn plugin_type(&self) -> PluginType { PluginType::Effect }
-    fn version(&self) -> &str { "1.0.0" }
-    fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
+    fn plugin_id(&self) -> &str {
+        "mute"
+    }
+    fn plugin_name(&self) -> &str {
+        "Mute"
+    }
+    fn plugin_type(&self) -> PluginType {
+        PluginType::Effect
+    }
+    fn version(&self) -> &str {
+        "1.0.0"
+    }
+    fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
+        Ok(())
+    }
     fn process(&mut self, _input: &AudioBuffer, output: &mut AudioBuffer) {
         output.clear();
     }
-    fn get_params(&self) -> Vec<ParamInfo> { vec![] }
-    fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> { Ok(()) }
-    fn get_param(&self, _id: &str) -> Option<f64> { None }
+    fn get_params(&self) -> Vec<ParamInfo> {
+        vec![]
+    }
+    fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> {
+        Ok(())
+    }
+    fn get_param(&self, _id: &str) -> Option<f64> {
+        None
+    }
     fn destroy(&mut self) {}
 }
 
@@ -370,7 +441,8 @@ fn test_enhanced_params_loaded() {
 #[test]
 fn test_bool_param_inference() {
     let mut host = PluginHost::new(44100.0, 256, 2);
-    host.load_plugin(Box::new(BypassableGainPlugin::new(1.0))).unwrap();
+    host.load_plugin(Box::new(BypassableGainPlugin::new(1.0)))
+        .unwrap();
 
     let params = host.get_plugin_params("bypass-gain").unwrap();
     assert_eq!(params.len(), 2);
@@ -390,7 +462,8 @@ fn test_set_enhanced_param() {
     host.load_plugin(Box::new(GainPlugin::new(1.0))).unwrap();
 
     // 使用增强参数接口设置
-    host.set_enhanced_param("gain", "gain", &ParameterValue::Float(3.5)).unwrap();
+    host.set_enhanced_param("gain", "gain", &ParameterValue::Float(3.5))
+        .unwrap();
 
     // 传统接口也应该反映变更
     assert!((host.get_plugin_param("gain", "gain").unwrap() - 3.5).abs() < 1e-10);
@@ -474,10 +547,7 @@ fn test_loader_load_vc_by_id_nonexistent() {
 #[test]
 fn test_loader_lv2_unsupported() {
     let loader = PluginLoader::new();
-    let result = loader.load_with_format(
-        std::path::Path::new("/tmp/test.lv2"),
-        &PluginFormat::Lv2,
-    );
+    let result = loader.load_with_format(std::path::Path::new("/tmp/test.lv2"), &PluginFormat::Lv2);
     assert!(result.is_err());
 }
 

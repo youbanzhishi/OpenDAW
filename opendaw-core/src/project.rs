@@ -108,14 +108,18 @@ impl Project {
             name: self.name.clone(),
             sample_rate: self.sample_rate,
             buffer_size: self.buffer_size,
-            tracks: self.tracks.iter().map(|t| TrackConfig {
-                name: t.name.clone(),
-                channels: t.channels,
-                volume: t.volume,
-                pan: t.pan,
-                muted: t.muted,
-                plugins: vec![],
-            }).collect(),
+            tracks: self
+                .tracks
+                .iter()
+                .map(|t| TrackConfig {
+                    name: t.name.clone(),
+                    channels: t.channels,
+                    volume: t.volume,
+                    pan: t.pan,
+                    muted: t.muted,
+                    plugins: vec![],
+                })
+                .collect(),
             master_volume: self.master_volume,
         };
         let yaml = serde_yaml::to_string(&config)
@@ -159,7 +163,10 @@ impl Project {
     pub fn duration_info(&self) -> String {
         format!(
             "项目: {} | {} 轨道 | {}Hz | {}帧缓冲",
-            self.name, self.tracks.len(), self.sample_rate, self.buffer_size
+            self.name,
+            self.tracks.len(),
+            self.sample_rate,
+            self.buffer_size
         )
     }
 
@@ -199,14 +206,18 @@ impl Project {
             name: self.name.clone(),
             sample_rate: self.sample_rate,
             buffer_size: self.buffer_size,
-            tracks: self.tracks.iter().map(|t| TrackConfig {
-                name: t.name.clone(),
-                channels: t.channels,
-                volume: t.volume,
-                pan: t.pan,
-                muted: t.muted,
-                plugins: vec![],
-            }).collect(),
+            tracks: self
+                .tracks
+                .iter()
+                .map(|t| TrackConfig {
+                    name: t.name.clone(),
+                    channels: t.channels,
+                    volume: t.volume,
+                    pan: t.pan,
+                    muted: t.muted,
+                    plugins: vec![],
+                })
+                .collect(),
             master_volume: self.master_volume,
         }
     }

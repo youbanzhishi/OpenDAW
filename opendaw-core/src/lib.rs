@@ -43,37 +43,37 @@
 //! - 音频导出增强（WAV/FLAC/MP3-stub/OGG-stub）
 
 // Phase 20-25: 核心引擎层
-pub mod project;
-pub mod mixer;
-pub mod render;
 pub mod bridge;
+pub mod mixer;
+pub mod project;
+pub mod render;
 
 // Phase 26: 项目格式升级
-pub mod project_format;
 pub mod command;
+pub mod project_format;
 
 // Phase 27: 高级混音功能
-pub mod sidechain;
-pub mod bus;
 pub mod automation;
+pub mod bus;
+pub mod sidechain;
 
 // Phase 28: 编曲引擎增强
-pub mod pattern;
 pub mod chord;
+pub mod pattern;
 pub mod timeline;
 
 // Phase 29: AI引擎深度集成
-pub mod transcription;
 pub mod smart_mix;
 pub mod style_transfer;
+pub mod transcription;
 
 // Phase 30: 跨DAW格式兼容
 // Phase 31-32: 接口层后端
 // Phase 33: 插件市场完善
 pub mod marketplace;
 
-pub mod import;
 pub mod export;
+pub mod import;
 
 // Phase 35: v1.0发布准备
 pub mod docs;
@@ -85,104 +85,89 @@ pub mod python;
 
 // 桥接函数重导出
 pub use bridge::{
-    engine_to_ext, ext_to_engine,
-    engine_to_ext_full, ext_to_engine_full,
-    engine_to_ext_new, ext_to_engine_new,
+    engine_to_ext, engine_to_ext_full, engine_to_ext_new, ext_to_engine, ext_to_engine_full,
+    ext_to_engine_new,
 };
 
 // 重导出核心类型
-pub use opendaw_extension::{
-    ExtensionRegistry, VcPlugin, ScriptEngine, ModelBackend,
-    HookSystem, HookContext, AudioBuffer as ExtAudioBuffer, ParamInfo, PluginType,
-    ModelInput, ModelOutput, ScriptValue,
-};
 pub use audio_engine::{
-    AudioEngine, AudioBuffer as EngineAudioBuffer, Scheduler, Track, EngineState,
+    AudioBuffer as EngineAudioBuffer, AudioEngine, EngineState, Scheduler, Track,
+};
+pub use opendaw_extension::{
+    AudioBuffer as ExtAudioBuffer, ExtensionRegistry, HookContext, HookSystem, ModelBackend,
+    ModelInput, ModelOutput, ParamInfo, PluginType, ScriptEngine, ScriptValue, VcPlugin,
 };
 pub use plugin_host::{
-    PluginHost, PluginChain, ParamManager, PresetManager, VcPluginAdapter,
-    PluginScanner, ScannedPlugin, PluginFormat,
+    ParamManager, PluginChain, PluginFormat, PluginHost, PluginScanner, PresetManager,
+    ScannedPlugin, VcPluginAdapter,
 };
 
 // Phase 20-25 重导出
-pub use project::Project;
 pub use mixer::Mixer;
+pub use project::Project;
 pub use render::OfflineRenderer;
 
 // Phase 26 重导出
-pub use project_format::{
-    ProjectFormat, ProjectSerializer, YamlSerializer, JsonSerializer, BinarySerializer,
-    FormatConverter, ProjectLoader, ProjectFormatError,
-};
 pub use command::{
-    Command, CommandContext, CommandHistory, MergeStrategy, Transaction,
-    AddTrackCommand, RemoveTrackCommand, MoveClipCommand,
-    SetVolumeCommand, SetPanCommand, AddPluginCommand, RemovePluginCommand,
+    AddPluginCommand, AddTrackCommand, Command, CommandContext, CommandHistory, MergeStrategy,
+    MoveClipCommand, RemovePluginCommand, RemoveTrackCommand, SetPanCommand, SetVolumeCommand,
+    Transaction,
+};
+pub use project_format::{
+    BinarySerializer, FormatConverter, JsonSerializer, ProjectFormat, ProjectFormatError,
+    ProjectLoader, ProjectSerializer, YamlSerializer,
 };
 
 // Phase 27 重导出
-pub use sidechain::{
-    SidechainRouter, SidechainBus, SidechainLink, SidechainSource,
-    SidechainBuffer, SidechainBusSource,
-};
-pub use bus::{Bus, BusType, BusConfig, BusRouter, BusTemplate, RouteConnection};
 pub use automation::{
-    AutomationLane, AutomationPoint, AutomationEnvelope, CurveType, ParameterAutomation,
+    AutomationEnvelope, AutomationLane, AutomationPoint, CurveType, ParameterAutomation,
+};
+pub use bus::{Bus, BusConfig, BusRouter, BusTemplate, BusType, RouteConnection};
+pub use sidechain::{
+    SidechainBuffer, SidechainBus, SidechainBusSource, SidechainLink, SidechainRouter,
+    SidechainSource,
 };
 
 // Phase 28 重导出
-pub use pattern::{
-    Pattern, PatternType, PatternLibrary, PatternInstance,
-    MidiNote, AudioRegion,
-};
 pub use chord::{
-    Chord, ChordType, ChordProgression, ChordGenerator, VoicingStrategy,
-    NoteName, Mode,
+    Chord, ChordGenerator, ChordProgression, ChordType, Mode, NoteName, VoicingStrategy,
 };
+pub use pattern::{AudioRegion, MidiNote, Pattern, PatternInstance, PatternLibrary, PatternType};
 pub use timeline::{
-    Timeline, TimelineCursor, TimeSignature, TimeSignatureChange,
-    TempoChange, TempoChangeType, TimePosition,
+    TempoChange, TempoChangeType, TimePosition, TimeSignature, TimeSignatureChange, Timeline,
+    TimelineCursor,
 };
 
 // Phase 29 重导出
-pub use transcription::{
-    TranscriptionEngine, TranscriptionConfig, TranscriptionResult,
-    TranscribedNote, PitchDetector, PitchDetection,
-    BeatDetector, BeatDetection, OnsetMethod,
-    TranscriptionToProject, TrackAllocationStrategy, TrackSuggestion,
-    KeyEstimate,
-};
 pub use smart_mix::{
-    SmartMixEngine, FrequencyAnalyzer, SpectrumAnalysis, OctaveAnalysis,
-    MixSuggestion, EqSuggestion, CompressionSuggestion,
-    AutoMixProfile, MixStyle, PanStrategy, CompressionPreset, EqCharacter,
-    LoudnessNormalizer, LoudnessResult,
-    TrackAnalysis, TrackRole,
+    AutoMixProfile, CompressionPreset, CompressionSuggestion, EqCharacter, EqSuggestion,
+    FrequencyAnalyzer, LoudnessNormalizer, LoudnessResult, MixStyle, MixSuggestion, OctaveAnalysis,
+    PanStrategy, SmartMixEngine, SpectrumAnalysis, TrackAnalysis, TrackRole,
 };
 pub use style_transfer::{
-    StyleTransferEngine, StyleProfile, StyleMorpher, MorphParams,
-    StyleFeatures, RhythmFeatures, HarmonyFeatures, TimbreFeatures,
+    HarmonyFeatures, MorphParams, RhythmFeatures, StyleFeatures, StyleMorpher, StyleProfile,
+    StyleTransferEngine, TimbreFeatures,
+};
+pub use transcription::{
+    BeatDetection, BeatDetector, KeyEstimate, OnsetMethod, PitchDetection, PitchDetector,
+    TrackAllocationStrategy, TrackSuggestion, TranscribedNote, TranscriptionConfig,
+    TranscriptionEngine, TranscriptionResult, TranscriptionToProject,
 };
 
 // Phase 30 重导出
-pub use import::{
-    ImportRegistry, ExportRegistry,
-    ImportFormat, ExportFormat, FormatDetector,
-    ImportError, ExportError,
+pub use export::{MidiEvent, MidiExportConfig, MidiExporter, MidiTrack};
+pub use import::ableton::{
+    AbletonClip, AbletonClipContent, AbletonDevice, AbletonDeviceType, AbletonMidiNote,
+    AbletonParameter, AbletonParseError, AbletonProject, AbletonProjectParser, AbletonSend,
+    AbletonToProject, AbletonTrack, AbletonTrackType,
 };
 pub use import::reaper::{
-    ReaperProjectParser, ReaperProject, ReaperTrack, ReaperFx, ReaperFxType,
-    ReaperMidiItem, ReaperAudioItem, ReaperSend, ReaperMarker,
-    ReaperToProject, FxMapper, ReaperParseError,
+    FxMapper, ReaperAudioItem, ReaperFx, ReaperFxType, ReaperMarker, ReaperMidiItem,
+    ReaperParseError, ReaperProject, ReaperProjectParser, ReaperSend, ReaperToProject, ReaperTrack,
 };
-pub use import::ableton::{
-    AbletonProjectParser, AbletonProject, AbletonTrack, AbletonTrackType,
-    AbletonDevice, AbletonDeviceType, AbletonParameter,
-    AbletonClip, AbletonClipContent, AbletonMidiNote, AbletonSend,
-    AbletonToProject, AbletonParseError,
-};
-pub use export::{
-    MidiExporter, MidiExportConfig, MidiEvent, MidiTrack,
+pub use import::{
+    ExportError, ExportFormat, ExportRegistry, FormatDetector, ImportError, ImportFormat,
+    ImportRegistry,
 };
 
 // 兼容性别名
@@ -191,25 +176,34 @@ pub type AudioBuffer = opendaw_extension::AudioBuffer;
 
 // Phase 31-33 重导出
 pub use marketplace::{
-    PluginRegistry, PluginManifest, PluginCategory, Dependency,
-    PluginInstaller, InstallStatus, InstallProgress, CompatibilityReport,
-    // Phase 33 新增
-    PluginRepository, RepositorySource, CachedIndex,
-    PluginReview, ReviewManager, RatingSummary,
-    PluginCompatibility, PlatformTarget,
-    EffectSubcategory, InstrumentSubcategory, UtilitySubcategory,
     preset_categories,
+    CachedIndex,
+    CompatibilityReport,
+    Dependency,
+    EffectSubcategory,
+    InstallProgress,
+    InstallStatus,
+    InstrumentSubcategory,
+    PlatformTarget,
+    PluginCategory,
+    PluginCompatibility,
+    PluginInstaller,
+    PluginManifest,
+    PluginRegistry,
+    // Phase 33 新增
+    PluginRepository,
+    PluginReview,
+    RatingSummary,
+    RepositorySource,
+    ReviewManager,
+    UtilitySubcategory,
 };
 
 // Phase 35 重导出
-pub use docs::{
-    ApiEndpoint, HttpMethod, ApiDocGenerator,
-};
-pub use template::{
-    ProjectTemplate, TemplateTrack, TrackType, PresetName,
-};
+pub use docs::{ApiDocGenerator, ApiEndpoint, HttpMethod};
 pub use export::audio_export::{
     AudioExporter, AudioFormat, BitDepth, ExportConfig as AudioExportConfig,
-    ExportResult as AudioExportResult, ExportError as AudioExportError,
-    ExportProgress, RenderPipeline,
+    ExportError as AudioExportError, ExportProgress, ExportResult as AudioExportResult,
+    RenderPipeline,
 };
+pub use template::{PresetName, ProjectTemplate, TemplateTrack, TrackType};

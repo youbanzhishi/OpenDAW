@@ -13,8 +13,8 @@
 //! - `engine_to_ext`: f32 → f64，直接 cast
 //! - 数据布局相同，无需重排
 
-use opendaw_extension::AudioBuffer as ExtAudioBuffer;
 use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
+use opendaw_extension::AudioBuffer as ExtAudioBuffer;
 
 /// Extension AudioBuffer (f64) → Engine AudioBuffer (f32)
 ///
@@ -27,9 +27,12 @@ use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
 pub fn ext_to_engine(ext: &ExtAudioBuffer, engine: &mut EngineAudioBuffer) {
     let total = ext.channels * ext.frames;
     assert_eq!(
-        total, ext.data.len(),
+        total,
+        ext.data.len(),
         "Extension buffer 数据大小不匹配: {}x{} vs {}",
-        ext.channels, ext.frames, ext.data.len()
+        ext.channels,
+        ext.frames,
+        ext.data.len()
     );
 
     // 确保目标缓冲区大小匹配
@@ -76,9 +79,12 @@ pub fn ext_to_engine(ext: &ExtAudioBuffer, engine: &mut EngineAudioBuffer) {
 pub fn engine_to_ext(engine: &EngineAudioBuffer, ext: &mut ExtAudioBuffer) {
     let total = engine.channels * engine.frames;
     assert_eq!(
-        total, engine.as_slice().len(),
+        total,
+        engine.as_slice().len(),
         "Engine buffer 数据大小不匹配: {}x{} vs {}",
-        engine.channels, engine.frames, engine.as_slice().len()
+        engine.channels,
+        engine.frames,
+        engine.as_slice().len()
     );
 
     // 确保目标缓冲区大小匹配
@@ -159,9 +165,13 @@ mod tests {
         // 验证数据
         let engine_data = engine.as_slice();
         for i in 0..8 {
-            assert!((engine_data[i] - (i as f32) * 0.5).abs() < 1e-6,
+            assert!(
+                (engine_data[i] - (i as f32) * 0.5).abs() < 1e-6,
                 "Index {}: expected {}, got {}",
-                i, (i as f32) * 0.5, engine_data[i]);
+                i,
+                (i as f32) * 0.5,
+                engine_data[i]
+            );
         }
     }
 
@@ -179,9 +189,13 @@ mod tests {
 
         // 验证数据
         for i in 0..8 {
-            assert!((ext.data[i] - (i as f64) * 0.25).abs() < 1e-9,
+            assert!(
+                (ext.data[i] - (i as f64) * 0.25).abs() < 1e-9,
                 "Index {}: expected {}, got {}",
-                i, (i as f64) * 0.25, ext.data[i]);
+                i,
+                (i as f64) * 0.25,
+                ext.data[i]
+            );
         }
     }
 

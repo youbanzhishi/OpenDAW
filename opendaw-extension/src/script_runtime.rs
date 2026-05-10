@@ -17,7 +17,9 @@ pub trait ScriptEngine: Send + Sync {
     fn lang(&self) -> &str;
 
     /// 引擎版本
-    fn engine_version(&self) -> &str { "unknown" }
+    fn engine_version(&self) -> &str {
+        "unknown"
+    }
 
     /// 执行一段脚本代码，返回结果
     fn eval(&mut self, code: &str) -> Result<ScriptValue, ScriptError>;
@@ -52,7 +54,10 @@ pub trait ScriptEngine: Send + Sync {
 /// 只支持基本数学运算和变量赋值
 pub struct SimpleScriptEngine {
     variables: std::collections::HashMap<String, ScriptValue>,
-    functions: std::collections::HashMap<String, Box<dyn Fn(&[ScriptValue]) -> Result<ScriptValue, ScriptError> + Send + Sync>>,
+    functions: std::collections::HashMap<
+        String,
+        Box<dyn Fn(&[ScriptValue]) -> Result<ScriptValue, ScriptError> + Send + Sync>,
+    >,
     loaded_scripts: Vec<String>,
 }
 
@@ -90,7 +95,7 @@ impl ScriptEngine for SimpleScriptEngine {
             let value_str = trimmed[eq_pos + 1..].trim();
 
             let value = if value_str.starts_with('"') && value_str.ends_with('"') {
-                ScriptValue::Str(value_str[1..value_str.len()-1].to_string())
+                ScriptValue::Str(value_str[1..value_str.len() - 1].to_string())
             } else if let Ok(i) = value_str.parse::<i64>() {
                 ScriptValue::Int(i)
             } else if let Ok(f) = value_str.parse::<f64>() {
@@ -102,9 +107,10 @@ impl ScriptEngine for SimpleScriptEngine {
             } else if value_str == "null" {
                 ScriptValue::Null
             } else {
-                return Err(ScriptError::SyntaxError(
-                    format!("无法解析值: {}", value_str)
-                ));
+                return Err(ScriptError::SyntaxError(format!(
+                    "无法解析值: {}",
+                    value_str
+                )));
             };
 
             self.variables.insert(var_name, value.clone());
@@ -116,9 +122,7 @@ impl ScriptEngine for SimpleScriptEngine {
             return Ok(val.clone());
         }
 
-        Err(ScriptError::SyntaxError(
-            format!("无法执行: {}", trimmed)
-        ))
+        Err(ScriptError::SyntaxError(format!("无法执行: {}", trimmed)))
     }
 
     fn call_function(
@@ -134,8 +138,8 @@ impl ScriptEngine for SimpleScriptEngine {
     }
 
     fn load_script(&mut self, path: &Path) -> Result<(), ScriptError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ScriptError::LoadFailed(format!("{}", e)))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| ScriptError::LoadFailed(format!("{}", e)))?;
         // 逐行执行
         for line in content.lines() {
             let line = line.trim();
@@ -192,16 +196,28 @@ mod tests {
     #[test]
     fn test_simple_engine_register_api() {
         let mut engine = SimpleScriptEngine::new();
-        engine.register_api("add", Box::new(|args| {
-            if args.len() != 2 {
-                return Err(ScriptError::ArgCountMismatch { expected: 2, actual: args.len() });
-            }
-            let a = args[0].as_float().ok_or(ScriptError::TypeError("参数1不是数字".into()))?;
-            let b = args[1].as_float().ok_or(ScriptError::TypeError("参数2不是数字".into()))?;
-            Ok(ScriptValue::Float(a + b))
-        }));
+        engine.register_api(
+            "add",
+            Box::new(|args| {
+                if args.len() != 2 {
+                    return Err(ScriptError::ArgCountMismatch {
+                        expected: 2,
+                        actual: args.len(),
+                    });
+                }
+                let a = args[0]
+                    .as_float()
+                    .ok_or(ScriptError::TypeError("参数1不是数字".into()))?;
+                let b = args[1]
+                    .as_float()
+                    .ok_or(ScriptError::TypeError("参数2不是数字".into()))?;
+                Ok(ScriptValue::Float(a + b))
+            }),
+        );
 
-        let result = engine.call_function("add", &[ScriptValue::Float(1.0), ScriptValue::Float(2.0)]).unwrap();
+        let result = engine
+            .call_function("add", &[ScriptValue::Float(1.0), ScriptValue::Float(2.0)])
+            .unwrap();
         assert_eq!(result.as_float(), Some(3.0));
     }
 }

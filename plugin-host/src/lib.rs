@@ -49,13 +49,13 @@
 //! - `vst3` — 启用 VST3 插件支持（需要 vst3 FFI 依赖）
 //! - `jsfx` — 启用 JSFX 插件支持（需要 jsfx-engine crate）
 
-pub mod host;
 pub mod chain;
+pub mod host;
+pub mod loader;
 pub mod param;
-pub mod vc_adapter;
 pub mod preset;
 pub mod scanner;
-pub mod loader;
+pub mod vc_adapter;
 
 // JSFX 适配器（总是编译，内部有 feature 门控）
 pub mod jsfx_adapter;
@@ -67,14 +67,14 @@ pub mod clap_adapter;
 pub mod vst3_adapter;
 
 // 公共接口重导出
-pub use host::PluginHost;
 pub use chain::PluginChain;
-pub use param::ParamManager;
-pub use vc_adapter::{VcPluginAdapter, all_known_plugin_ids};
-pub use preset::PresetManager;
-pub use scanner::{PluginScanner, ScannedPlugin, PluginFormat, ScanStats};
-pub use loader::PluginLoader;
+pub use host::PluginHost;
 pub use jsfx_adapter::JsfxAdapter;
+pub use loader::PluginLoader;
+pub use param::ParamManager;
+pub use preset::PresetManager;
+pub use scanner::{PluginFormat, PluginScanner, ScanStats, ScannedPlugin};
+pub use vc_adapter::{all_known_plugin_ids, VcPluginAdapter};
 
 // 条件导出适配器
 #[cfg(feature = "clap")]
@@ -84,6 +84,6 @@ pub use vst3_adapter::Vst3Adapter;
 
 // 重导出 opendaw-extension 的核心类型，方便下游使用
 pub use opendaw_extension::{
-    VcPlugin, PluginInfo, PluginType, AudioBuffer, ParamInfo, PluginError,
-    PluginParameter, ParameterValue, ParameterType,
+    AudioBuffer, ParamInfo, ParameterType, ParameterValue, PluginError, PluginInfo,
+    PluginParameter, PluginType, VcPlugin,
 };

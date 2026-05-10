@@ -17,7 +17,9 @@ pub trait ModelBackend: Send + Sync {
     fn backend_id(&self) -> &str;
 
     /// 后端版本
-    fn backend_version(&self) -> &str { "unknown" }
+    fn backend_version(&self) -> &str {
+        "unknown"
+    }
 
     /// 单次推理
     fn predict(&mut self, input: &ModelInput) -> Result<ModelOutput, ModelError>;
@@ -66,9 +68,13 @@ impl LocalBackend {
 }
 
 impl ModelBackend for LocalBackend {
-    fn backend_id(&self) -> &str { "local" }
+    fn backend_id(&self) -> &str {
+        "local"
+    }
 
-    fn backend_version(&self) -> &str { "0.1.0" }
+    fn backend_version(&self) -> &str {
+        "0.1.0"
+    }
 
     fn predict(&mut self, input: &ModelInput) -> Result<ModelOutput, ModelError> {
         if !self.loaded {
@@ -92,9 +98,10 @@ impl ModelBackend for LocalBackend {
 
     fn load_model(&mut self, path: &Path) -> Result<(), ModelError> {
         if !path.exists() {
-            return Err(ModelError::LoadFailed(
-                format!("模型文件不存在: {}", path.display())
-            ));
+            return Err(ModelError::LoadFailed(format!(
+                "模型文件不存在: {}",
+                path.display()
+            )));
         }
         self.model_path = Some(path.display().to_string());
         self.loaded = true;
@@ -136,9 +143,13 @@ impl ApiBackend {
 }
 
 impl ModelBackend for ApiBackend {
-    fn backend_id(&self) -> &str { "api" }
+    fn backend_id(&self) -> &str {
+        "api"
+    }
 
-    fn backend_version(&self) -> &str { "0.1.0" }
+    fn backend_version(&self) -> &str {
+        "0.1.0"
+    }
 
     fn predict(&mut self, input: &ModelInput) -> Result<ModelOutput, ModelError> {
         if !self.loaded {
@@ -182,7 +193,9 @@ mod tests {
 
         // 未加载时应该报错
         assert!(!backend.is_ready());
-        assert!(backend.predict(&ModelInput::from_features(vec![1.0])).is_err());
+        assert!(backend
+            .predict(&ModelInput::from_features(vec![1.0]))
+            .is_err());
 
         // 模拟加载（使用临时文件）
         let tmp = std::env::temp_dir().join("test_model.onnx");

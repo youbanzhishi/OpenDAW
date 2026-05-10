@@ -18,7 +18,11 @@ pub enum JsfxError {
     /// 未定义函数
     UndefinedFunction(String),
     /// 参数数量不匹配
-    ArgCountMismatch { func: String, expected: usize, actual: usize },
+    ArgCountMismatch {
+        func: String,
+        expected: usize,
+        actual: usize,
+    },
     /// 除零错误
     DivisionByZero,
     /// 内存越界
@@ -37,8 +41,16 @@ impl fmt::Display for JsfxError {
             JsfxError::RuntimeError(msg) => write!(f, "运行时错误: {}", msg),
             JsfxError::UndefinedVariable(name) => write!(f, "未定义变量: {}", name),
             JsfxError::UndefinedFunction(name) => write!(f, "未定义函数: {}", name),
-            JsfxError::ArgCountMismatch { func, expected, actual } => {
-                write!(f, "参数数量不匹配: 函数{}期望{}个参数, 实际{}个", func, expected, actual)
+            JsfxError::ArgCountMismatch {
+                func,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "参数数量不匹配: 函数{}期望{}个参数, 实际{}个",
+                    func, expected, actual
+                )
             }
             JsfxError::DivisionByZero => write!(f, "除零错误"),
             JsfxError::MemoryOutOfBounds { index, size } => {
@@ -67,6 +79,9 @@ impl From<std::io::Error> for JsfxError {
 impl JsfxError {
     /// 创建解析错误的便捷方法
     pub fn parse(line: usize, msg: impl Into<String>) -> Self {
-        JsfxError::ParseError { line, message: msg.into() }
+        JsfxError::ParseError {
+            line,
+            message: msg.into(),
+        }
     }
 }

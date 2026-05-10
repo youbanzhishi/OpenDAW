@@ -21,9 +21,9 @@ use opendaw_extension::PluginError;
 // 有条件地导入适配器
 #[cfg(feature = "clap")]
 use crate::clap_adapter::ClapAdapter;
+use crate::vc_adapter::VcPluginAdapter;
 #[cfg(feature = "vst3")]
 use crate::vst3_adapter::Vst3Adapter;
-use crate::vc_adapter::VcPluginAdapter;
 
 use opendaw_extension::VcPlugin;
 
@@ -347,9 +347,10 @@ impl PluginScanner {
                 }
                 #[cfg(not(feature = "vst3"))]
                 {
-                    Err(PluginError::InitFailed(
-                        format!("VST3 支持未启用，请启用 'vst3' feature: {}", info.path.display())
-                    ))
+                    Err(PluginError::InitFailed(format!(
+                        "VST3 支持未启用，请启用 'vst3' feature: {}",
+                        info.path.display()
+                    )))
                 }
             }
             PluginFormat::Clap => {
@@ -360,9 +361,10 @@ impl PluginScanner {
                 }
                 #[cfg(not(feature = "clap"))]
                 {
-                    Err(PluginError::InitFailed(
-                        format!("CLAP 支持未启用，请启用 'clap' feature: {}", info.path.display())
-                    ))
+                    Err(PluginError::InitFailed(format!(
+                        "CLAP 支持未启用，请启用 'clap' feature: {}",
+                        info.path.display()
+                    )))
                 }
             }
             PluginFormat::VcCli => {
@@ -380,16 +382,13 @@ impl PluginScanner {
                 }
                 #[cfg(not(feature = "jsfx"))]
                 {
-                    Err(PluginError::InitFailed(
-                        format!("JSFX 支持未启用，请启用 'jsfx' feature: {}", info.path.display())
-                    ))
+                    Err(PluginError::InitFailed(format!(
+                        "JSFX 支持未启用，请启用 'jsfx' feature: {}",
+                        info.path.display()
+                    )))
                 }
             }
-            PluginFormat::Lv2 => {
-                Err(PluginError::InitFailed(
-                    "LV2 格式暂不支持".to_string()
-                ))
-            }
+            PluginFormat::Lv2 => Err(PluginError::InitFailed("LV2 格式暂不支持".to_string())),
         }
     }
 
@@ -401,11 +400,7 @@ impl PluginScanner {
     // ── 内部方法 ──────────────────────────────────────────────────────
 
     /// 扫描 VC-CLI 插件目录
-    fn scan_vc_cli_directory(
-        dir: &Path,
-        results: &mut Vec<ScannedPlugin>,
-        stats: &mut ScanStats,
-    ) {
+    fn scan_vc_cli_directory(dir: &Path, results: &mut Vec<ScannedPlugin>, stats: &mut ScanStats) {
         if !dir.exists() {
             return;
         }
@@ -422,7 +417,8 @@ impl PluginScanner {
             }
 
             // 查找 CLI-Standalone 二进制
-            let dir_name = path.file_name()
+            let dir_name = path
+                .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_default();
 
@@ -447,11 +443,7 @@ impl PluginScanner {
     }
 
     /// 扫描 JSFX 目录
-    fn scan_jsfx_directory(
-        dir: &Path,
-        results: &mut Vec<ScannedPlugin>,
-        stats: &mut ScanStats,
-    ) {
+    fn scan_jsfx_directory(dir: &Path, results: &mut Vec<ScannedPlugin>, stats: &mut ScanStats) {
         if !dir.exists() {
             return;
         }
@@ -463,22 +455,18 @@ impl PluginScanner {
 
         for entry in entries.flatten() {
             let path = entry.path();
-            
+
             // 检查是否是 .jsfx 文件
             if path.is_file() {
                 if let Some(ext) = path.extension() {
                     if ext == "jsfx" {
-                        let name = path.file_stem()
+                        let name = path
+                            .file_stem()
                             .map(|s| s.to_string_lossy().to_string())
                             .unwrap_or_default();
                         let id = format!("jsfx-{}", name.to_lowercase().replace(' ', "-"));
-                        
-                        results.push(ScannedPlugin::new(
-                            &id,
-                            &name,
-                            PluginFormat::Jsfx,
-                            path,
-                        ));
+
+                        results.push(ScannedPlugin::new(&id, &name, PluginFormat::Jsfx, path));
                         *stats.by_format.entry("JSFX".to_string()).or_insert(0) += 1;
                         stats.plugins_found += 1;
                     }
@@ -492,11 +480,7 @@ impl PluginScanner {
     /// 当 vst3 feature 未启用时，仅发现 .vst3 文件/目录，
     /// 不尝试加载插件。
     #[cfg(not(feature = "vst3"))]
-    fn scan_vst3_files(
-        dir: &Path,
-        results: &mut Vec<ScannedPlugin>,
-        stats: &mut ScanStats,
-    ) {
+    fn scan_vst3_files(dir: &Path, results: &mut Vec<ScannedPlugin>, stats: &mut ScanStats) {
         if !dir.exists() {
             return;
         }
@@ -511,17 +495,13 @@ impl PluginScanner {
             let is_vst3 = path.extension().map(|e| e == "vst3").unwrap_or(false);
 
             if is_vst3 {
-                let name = path.file_stem()
+                let name = path
+                    .file_stem()
                     .map(|s| s.to_string_lossy().to_string())
                     .unwrap_or_default();
                 let id = name.to_lowercase().replace(' ', "-");
 
-                results.push(ScannedPlugin::new(
-                    &id,
-                    &name,
-                    PluginFormat::Vst3,
-                    path,
-                ));
+                results.push(ScannedPlugin::new(&id, &name, PluginFormat::Vst3, path));
                 *stats.by_format.entry("VST3".to_string()).or_insert(0) += 1;
                 stats.plugins_found += 1;
             }
@@ -533,11 +513,7 @@ impl PluginScanner {
     /// 当 clap feature 未启用时，仅发现 .clap 文件/目录，
     /// 不尝试加载插件。
     #[cfg(not(feature = "clap"))]
-    fn scan_clap_files(
-        dir: &Path,
-        results: &mut Vec<ScannedPlugin>,
-        stats: &mut ScanStats,
-    ) {
+    fn scan_clap_files(dir: &Path, results: &mut Vec<ScannedPlugin>, stats: &mut ScanStats) {
         if !dir.exists() {
             return;
         }
@@ -552,17 +528,13 @@ impl PluginScanner {
             let is_clap = path.extension().map(|e| e == "clap").unwrap_or(false);
 
             if is_clap {
-                let name = path.file_stem()
+                let name = path
+                    .file_stem()
                     .map(|s| s.to_string_lossy().to_string())
                     .unwrap_or_default();
                 let id = name.to_lowercase().replace(' ', "-");
 
-                results.push(ScannedPlugin::new(
-                    &id,
-                    &name,
-                    PluginFormat::Clap,
-                    path,
-                ));
+                results.push(ScannedPlugin::new(&id, &name, PluginFormat::Clap, path));
                 *stats.by_format.entry("CLAP".to_string()).or_insert(0) += 1;
                 stats.plugins_found += 1;
             }
@@ -604,10 +576,10 @@ mod tests {
     fn test_scanner_jsfx_toggle() {
         let mut scanner = PluginScanner::new();
         assert!(scanner.include_jsfx);
-        
+
         scanner.set_jsfx_scan(false);
         assert!(!scanner.include_jsfx);
-        
+
         scanner.set_jsfx_scan(true);
         assert!(scanner.include_jsfx);
     }

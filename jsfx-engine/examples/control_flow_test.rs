@@ -4,7 +4,7 @@ use jsfx_engine::{JsfxParser, JsfxVm};
 
 fn main() {
     println!("=== JSFX 控制流测试 ===\n");
-    
+
     // 测试 if 语句
     println!("测试 1: if 语句");
     let source = r#"
@@ -22,7 +22,7 @@ x = 1 > 0 ? 100 : 200;
     println!("  x = {} (期望 100)", x);
     assert!((x - 100.0).abs() < 0.001);
     println!("  ✓ 通过\n");
-    
+
     // 测试 loop 循环 - 单行格式
     println!("测试 2: loop 循环 (单行)");
     let source = r#"
@@ -40,7 +40,7 @@ loop(5, sum += 1;);
     println!("  sum = {} (期望 5)", sum);
     assert!((sum - 5.0).abs() < 0.001);
     println!("  ✓ 通过\n");
-    
+
     // 测试 spl(ch) 多通道访问
     println!("测试 3: spl(ch) 多通道访问");
     let source = r#"
@@ -60,7 +60,7 @@ spl1 = tmp;
     assert!((out0 - 0.3).abs() < 0.001);
     assert!((out1 - 0.7).abs() < 0.001);
     println!("  ✓ 通过\n");
-    
+
     // 测试 while 循环 - 单行格式
     println!("测试 4: while 循环 (单行)");
     let source = r#"
@@ -79,6 +79,6 @@ while(i < 10, sum += i; i += 1;);
     println!("  sum = {} (期望 45)", sum);
     assert!((sum - 45.0).abs() < 0.001);
     println!("  ✓ 通过\n");
-    
+
     println!("=== 全部控制流测试通过! ===");
 }

@@ -161,10 +161,9 @@ impl Vst3Adapter {
             return Ok(adapters);
         }
 
-        let entries = std::fs::read_dir(dir)
-            .map_err(|e| PluginError::InitFailed(
-                format!("读取目录失败 {}: {}", dir.display(), e)
-            ))?;
+        let entries = std::fs::read_dir(dir).map_err(|e| {
+            PluginError::InitFailed(format!("读取目录失败 {}: {}", dir.display(), e))
+        })?;
 
         for entry in entries.flatten() {
             let path = entry.path();
@@ -187,7 +186,11 @@ impl Vst3Adapter {
             }
         }
 
-        log::info!("VST3 扫描完成: {} 发现 {} 个插件", dir.display(), adapters.len());
+        log::info!(
+            "VST3 扫描完成: {} 发现 {} 个插件",
+            dir.display(),
+            adapters.len()
+        );
         Ok(adapters)
     }
 
@@ -206,10 +209,11 @@ impl Vst3Adapter {
         }
 
         // bundle 目录结构
-        let stem = path.file_stem()
-            .ok_or_else(|| PluginError::InitFailed(
-                format!("无法解析 VST3 文件名: {}", path.display())
-            ))?
+        let stem = path
+            .file_stem()
+            .ok_or_else(|| {
+                PluginError::InitFailed(format!("无法解析 VST3 文件名: {}", path.display()))
+            })?
             .to_string_lossy()
             .to_string();
 
@@ -243,7 +247,8 @@ impl Vst3Adapter {
 
     /// 从路径推断插件信息
     fn infer_plugin_info(path: &Path) -> (String, String) {
-        let stem = path.file_stem()
+        let stem = path
+            .file_stem()
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
 
@@ -321,7 +326,9 @@ impl VcPlugin for Vst3Adapter {
 
         log::info!(
             "VST3 插件初始化成功: {} ({}Hz, {} frames)",
-            self.plugin_id, sample_rate, buffer_size
+            self.plugin_id,
+            sample_rate,
+            buffer_size
         );
 
         Ok(())
@@ -369,9 +376,10 @@ impl VcPlugin for Vst3Adapter {
         let clamped = if let Some(param) = self.params.iter().find(|p| p.id == id) {
             param.clamp_value(value)
         } else {
-            return Err(PluginError::ParamNotFound(
-                format!("VST3 参数未找到: {}", id)
-            ));
+            return Err(PluginError::ParamNotFound(format!(
+                "VST3 参数未找到: {}",
+                id
+            )));
         };
 
         self.param_values.insert(id.to_string(), clamped);
@@ -380,7 +388,7 @@ impl VcPlugin for Vst3Adapter {
         // VST3 使用归一化值 [0.0, 1.0]
         // let normalized = (value - min) / (max - min);
         // component.setParamNormalized(param_id, normalized);
-        // 
+        //
         // 注意：VST3 要求在 edit controller 上设置参数，
         // 需要同步到 processor（通过 IComponent::setParamNormalized）
 
@@ -416,15 +424,12 @@ mod tests {
 
     #[test]
     fn test_infer_plugin_info() {
-        let (id, name) = Vst3Adapter::infer_plugin_info(
-            Path::new("/Library/Audio/Plug-Ins/VST3/Surge.vst3")
-        );
+        let (id, name) =
+            Vst3Adapter::infer_plugin_info(Path::new("/Library/Audio/Plug-Ins/VST3/Surge.vst3"));
         assert_eq!(id, "surge");
         assert_eq!(name, "Surge");
 
-        let (id2, name2) = Vst3Adapter::infer_plugin_info(
-            Path::new("/usr/lib/vst3/Vital.vst3")
-        );
+        let (id2, name2) = Vst3Adapter::infer_plugin_info(Path::new("/usr/lib/vst3/Vital.vst3"));
         assert_eq!(id2, "vital");
         assert_eq!(name2, "Vital");
     }

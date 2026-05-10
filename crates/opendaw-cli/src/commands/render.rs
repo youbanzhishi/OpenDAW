@@ -34,7 +34,13 @@ struct RenderResult {
 
 pub fn run(action: RenderAction, format: &OutputFormat) -> Result<(), Box<dyn std::error::Error>> {
     match action {
-        RenderAction::Render { project, output, format: fmt, start, end } => {
+        RenderAction::Render {
+            project,
+            output,
+            format: fmt,
+            start,
+            end,
+        } => {
             let result = RenderResult {
                 action: "render".into(),
                 project: project.clone(),
@@ -47,7 +53,9 @@ pub fn run(action: RenderAction, format: &OutputFormat) -> Result<(), Box<dyn st
                 format.print_success(&format!(
                     "Rendering {} (range: {} - {})",
                     project,
-                    start.map(|s| s.to_string()).unwrap_or_else(|| "start".into()),
+                    start
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "start".into()),
                     end.map(|e| e.to_string()).unwrap_or_else(|| "end".into()),
                 ));
             } else {

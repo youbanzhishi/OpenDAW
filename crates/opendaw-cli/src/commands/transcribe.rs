@@ -26,9 +26,16 @@ struct TranscribeResult {
     status: String,
 }
 
-pub fn run(action: TranscribeAction, format: &OutputFormat) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    action: TranscribeAction,
+    format: &OutputFormat,
+) -> Result<(), Box<dyn std::error::Error>> {
     match action {
-        TranscribeAction::Transcribe { input, output, sensitivity } => {
+        TranscribeAction::Transcribe {
+            input,
+            output,
+            sensitivity,
+        } => {
             let result = TranscribeResult {
                 action: "transcribe".into(),
                 input: input.clone(),

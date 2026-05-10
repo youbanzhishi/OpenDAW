@@ -73,11 +73,7 @@ impl MidiEvent {
     pub fn note_on(channel: u8, note: u8, velocity: u8, tick: u32) -> Self {
         Self {
             tick,
-            data: vec![
-                0x90 | (channel & 0x0F),
-                note & 0x7F,
-                velocity & 0x7F,
-            ],
+            data: vec![0x90 | (channel & 0x0F), note & 0x7F, velocity & 0x7F],
         }
     }
 
@@ -85,11 +81,7 @@ impl MidiEvent {
     pub fn note_off(channel: u8, note: u8, tick: u32) -> Self {
         Self {
             tick,
-            data: vec![
-                0x80 | (channel & 0x0F),
-                note & 0x7F,
-                0x00,
-            ],
+            data: vec![0x80 | (channel & 0x0F), note & 0x7F, 0x00],
         }
     }
 
@@ -207,11 +199,8 @@ impl MidiTrack {
             note.velocity,
             start_tick,
         ));
-        self.events.push(MidiEvent::note_off(
-            self.channel,
-            note.pitch,
-            end_tick,
-        ));
+        self.events
+            .push(MidiEvent::note_off(self.channel, note.pitch, end_tick));
     }
 
     /// 排序事件
@@ -313,7 +302,9 @@ impl MidiExporter {
 
         // 添加tempo事件
         if self.config.include_tempo_map {
-            combined_track.events.push(MidiEvent::tempo(self.config.initial_bpm, 0));
+            combined_track
+                .events
+                .push(MidiEvent::tempo(self.config.initial_bpm, 0));
         }
         if self.config.include_time_signature {
             combined_track.events.push(MidiEvent::time_signature(
@@ -374,7 +365,9 @@ impl MidiExporter {
         }
 
         if self.config.include_tempo_map {
-            track.events.push(MidiEvent::tempo(self.config.initial_bpm, 0));
+            track
+                .events
+                .push(MidiEvent::tempo(self.config.initial_bpm, 0));
         }
 
         if self.config.include_track_names {

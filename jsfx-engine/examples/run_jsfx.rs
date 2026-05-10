@@ -28,10 +28,15 @@ spl1 *= gain;
             println!("解析成功: {}", program.desc);
             println!("Slider参数: {}个", program.sliders.len());
             for s in &program.sliders {
-                println!("  slider{}: {} (默认={}, 范围={}~{}, 步长={})",
+                println!(
+                    "  slider{}: {} (默认={}, 范围={}~{}, 步长={})",
                     s.index,
                     s.name.as_deref().unwrap_or("未命名"),
-                    s.default, s.min, s.max, s.step);
+                    s.default,
+                    s.min,
+                    s.max,
+                    s.step
+                );
             }
 
             let mut vm = JsfxVm::new();
@@ -92,9 +97,13 @@ spl1 *= gain;
     vm.process_buffer(&input, &mut output);
 
     println!("处理了 {} 帧", frames);
-    println!("输出前4个采样: [{:.4}, {:.4}, {:.4}, {:.4}]",
-        output.sample(0, 0), output.sample(0, 1),
-        output.sample(0, 2), output.sample(0, 3));
+    println!(
+        "输出前4个采样: [{:.4}, {:.4}, {:.4}, {:.4}]",
+        output.sample(0, 0),
+        output.sample(0, 1),
+        output.sample(0, 2),
+        output.sample(0, 3)
+    );
 
     println!();
 
@@ -105,13 +114,20 @@ spl1 *= gain;
 
     match JsfxPlugin::from_source(gain_source, "demo_gain") {
         Ok(mut plugin) => {
-            println!("插件加载成功: {} (id={})", plugin.plugin_name(), plugin.plugin_id());
+            println!(
+                "插件加载成功: {} (id={})",
+                plugin.plugin_name(),
+                plugin.plugin_id()
+            );
             plugin.init(44100.0, 256).unwrap();
 
             let params = plugin.get_params();
             println!("参数列表:");
             for p in &params {
-                println!("  {} ({}): 范围={}~{}, 默认={}", p.id, p.name, p.min, p.max, p.default);
+                println!(
+                    "  {} ({}): 范围={}~{}, 默认={}",
+                    p.id, p.name, p.min, p.max, p.default
+                );
             }
 
             plugin.set_param("slider1", 6.0).unwrap();

@@ -3,23 +3,23 @@
 //! 四根柱子：Plugin API + Script Runtime + Model Bus + Hook System
 //! 所有扩展通过 ExtensionRegistry 统一管理
 
+pub mod config;
 pub mod error;
-pub mod types;
+pub mod hook_system;
+pub mod model_bus;
 pub mod plugin_api;
 pub mod plugin_param;
-pub mod script_runtime;
-pub mod model_bus;
-pub mod hook_system;
-pub mod config;
 pub mod registry;
+pub mod script_runtime;
+pub mod types;
 
 // 公共接口重导出
-pub use error::{ExtensionError, PluginError, ScriptError, ModelError, HookError};
-pub use types::{AudioBuffer, ParamInfo, PluginType, ModelInput, ModelOutput, ScriptValue};
-pub use plugin_api::{VcPlugin, PluginInfo, PluginEntry};
-pub use plugin_param::{PluginParameter, ParameterValue, ParameterType};
-pub use script_runtime::{ScriptEngine, SimpleScriptEngine};
-pub use model_bus::{ModelBackend, LocalBackend};
-pub use hook_system::{HookSystem, HookContext, HookInfo};
-pub use registry::ExtensionRegistry;
 pub use config::ExtensionConfig;
+pub use error::{ExtensionError, HookError, ModelError, PluginError, ScriptError};
+pub use hook_system::{HookContext, HookInfo, HookSystem};
+pub use model_bus::{LocalBackend, ModelBackend};
+pub use plugin_api::{PluginEntry, PluginInfo, VcPlugin};
+pub use plugin_param::{ParameterType, ParameterValue, PluginParameter};
+pub use registry::ExtensionRegistry;
+pub use script_runtime::{ScriptEngine, SimpleScriptEngine};
+pub use types::{AudioBuffer, ModelInput, ModelOutput, ParamInfo, PluginType, ScriptValue};

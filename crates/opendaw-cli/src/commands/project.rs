@@ -62,7 +62,11 @@ struct ProjectResult {
 
 pub fn run(action: ProjectAction, format: &OutputFormat) -> Result<(), Box<dyn std::error::Error>> {
     match action {
-        ProjectAction::New { name, bpm, sample_rate } => {
+        ProjectAction::New {
+            name,
+            bpm,
+            sample_rate,
+        } => {
             let result = ProjectResult {
                 action: "new".into(),
                 name: Some(name.clone()),
@@ -70,7 +74,10 @@ pub fn run(action: ProjectAction, format: &OutputFormat) -> Result<(), Box<dyn s
                 status: "created".into(),
             };
             format.print(&result);
-            format.print_success(&format!("Project '{}' created (BPM: {}, SR: {})", name, bpm, sample_rate));
+            format.print_success(&format!(
+                "Project '{}' created (BPM: {}, SR: {})",
+                name, bpm, sample_rate
+            ));
         }
         ProjectAction::Open { path } => {
             let result = ProjectResult {
@@ -92,7 +99,10 @@ pub fn run(action: ProjectAction, format: &OutputFormat) -> Result<(), Box<dyn s
             format.print(&result);
             format.print_success("Project saved");
         }
-        ProjectAction::Export { output, format: fmt } => {
+        ProjectAction::Export {
+            output,
+            format: fmt,
+        } => {
             let result = ProjectResult {
                 action: "export".into(),
                 name: None,

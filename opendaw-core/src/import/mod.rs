@@ -9,11 +9,11 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-pub mod reaper;
 pub mod ableton;
+pub mod reaper;
 
-use reaper::{ReaperProjectParser, ReaperProject, ReaperParseError, ReaperToProject};
-use ableton::{AbletonProjectParser, AbletonProject, AbletonParseError, AbletonToProject};
+use ableton::{AbletonParseError, AbletonProject, AbletonProjectParser, AbletonToProject};
+use reaper::{ReaperParseError, ReaperProject, ReaperProjectParser, ReaperToProject};
 
 use crate::project::ProjectConfig;
 
@@ -248,11 +248,9 @@ impl ImportRegistry {
                 };
                 Ok(ImportResult::OpenDaw(config))
             }
-            ImportFormat::MidiFile => {
-                Err(ImportError::UnsupportedFormat(
-                    "MIDI导入暂未实现，请使用MIDI导出".to_string(),
-                ))
-            }
+            ImportFormat::MidiFile => Err(ImportError::UnsupportedFormat(
+                "MIDI导入暂未实现，请使用MIDI导出".to_string(),
+            )),
             ImportFormat::Unknown => {
                 Err(ImportError::UnsupportedFormat("未知文件格式".to_string()))
             }

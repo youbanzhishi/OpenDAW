@@ -4,16 +4,15 @@
 
 use std::collections::HashMap;
 
-use opendaw_extension::{
-    AudioBuffer, VcPlugin, PluginError, PluginType,
-    PluginParameter, ParameterValue, ParameterType,
-};
-use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
 use crate::chain::PluginChain;
+use crate::loader::PluginLoader;
 use crate::param::ParamManager;
 use crate::preset::PresetManager;
-use crate::loader::PluginLoader;
 use crate::scanner::{PluginFormat, ScannedPlugin};
+use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
+use opendaw_extension::{
+    AudioBuffer, ParameterType, ParameterValue, PluginError, PluginParameter, PluginType, VcPlugin,
+};
 
 /// 插件宿主 — 管理所有插件的运行时容器
 ///
@@ -75,14 +74,22 @@ impl PluginHost {
         self.param_manager.register_plugin_params(&id, params);
 
         // 注册增强参数模型
-        let enhanced_params: Vec<PluginParameter> = plugin.get_params()
+        let enhanced_params: Vec<PluginParameter> = plugin
+            .get_params()
             .iter()
             .map(|p| {
                 // 尝试推断更精确的参数类型
                 if p.step == 1.0 && p.min == 0.0 && p.max == 1.0 {
                     PluginParameter::bool_param(&p.id, &p.name, p.value >= 0.5)
                 } else if p.step == 1.0 && p.min == p.min.floor() && p.max == p.max.floor() {
-                    PluginParameter::int(&p.id, &p.name, p.min as i64, p.max as i64, p.value as i64, &p.unit)
+                    PluginParameter::int(
+                        &p.id,
+                        &p.name,
+                        p.min as i64,
+                        p.max as i64,
+                        p.value as i64,
+                        &p.unit,
+                    )
                 } else {
                     PluginParameter::from_param_info(p)
                 }
@@ -97,10 +104,7 @@ impl PluginHost {
     }
 
     /// 通过路径加载插件（自动检测格式）
-    pub fn load_plugin_from_path(
-        &mut self,
-        path: &std::path::Path,
-    ) -> Result<String, PluginError> {
+    pub fn load_plugin_from_path(&mut self, path: &std::path::Path) -> Result<String, PluginError> {
         let plugin = self.loader.load_from_path(path)?;
         self.load_plugin(plugin)
     }
@@ -130,7 +134,9 @@ impl PluginHost {
     /// 插件会从插件池中移出并追加到信号链末尾。
     /// 添加后插件的process()将参与chain.process()的调度。
     pub fn add_to_chain(&mut self, plugin_id: &str) -> Result<(), PluginError> {
-        let plugin = self.plugins.remove(plugin_id)
+        let plugin = self
+            .plugins
+            .remove(plugin_id)
             .ok_or_else(|| PluginError::ProcessFailed(format!("插件未找到: {}", plugin_id)))?;
         self.chain.push(plugin);
         Ok(())
@@ -138,7 +144,9 @@ impl PluginHost {
 
     /// 将已加载的插件插入到信号链的指定位置
     pub fn insert_to_chain(&mut self, index: usize, plugin_id: &str) -> Result<(), PluginError> {
-        let plugin = self.plugins.remove(plugin_id)
+        let plugin = self
+            .plugins
+            .remove(plugin_id)
             .ok_or_else(|| PluginError::ProcessFailed(format!("插件未找到: {}", plugin_id)))?;
         self.chain.insert(index, plugin);
         Ok(())
@@ -146,7 +154,9 @@ impl PluginHost {
 
     /// 从信号链中移除指定位置的插件（移回插件池）
     pub fn remove_from_chain(&mut self, index: usize) -> Result<String, PluginError> {
-        let plugin = self.chain.remove(index)
+        let plugin = self
+            .chain
+            .remove(index)
             .ok_or_else(|| PluginError::ProcessFailed(format!("链索引越界: {}", index)))?;
         let id = plugin.plugin_id().to_string();
         // 插件移回插件池
@@ -185,7 +195,10 @@ impl PluginHost {
             }
             Ok(())
         } else {
-            Err(PluginError::ParamNotFound(format!("{}:{}", plugin_id, param_id)))
+            Err(PluginError::ParamNotFound(format!(
+                "{}:{}",
+                plugin_id, param_id
+            )))
         }
     }
 
@@ -214,7 +227,10 @@ impl PluginHost {
                 return self.set_plugin_param(plugin_id, param_id, f64_val);
             }
         }
-        Err(PluginError::ParamNotFound(format!("{}:{}", plugin_id, param_id)))
+        Err(PluginError::ParamNotFound(format!(
+            "{}:{}",
+            plugin_id, param_id
+        )))
     }
 
     /// 将参数设置为归一化值 [0.0, 1.0]
@@ -226,17 +242,24 @@ impl PluginHost {
     ) -> Result<(), PluginError> {
         if let Some(params) = self.plugin_params.get(plugin_id) {
             if let Some(param) = params.iter().find(|p| p.id == param_id) {
-                let value = param.min_f64 + normalized.clamp(0.0, 1.0) * (param.max_f64 - param.min_f64);
+                let value =
+                    param.min_f64 + normalized.clamp(0.0, 1.0) * (param.max_f64 - param.min_f64);
                 return self.set_plugin_param(plugin_id, param_id, value);
             }
         }
-        Err(PluginError::ParamNotFound(format!("{}:{}", plugin_id, param_id)))
+        Err(PluginError::ParamNotFound(format!(
+            "{}:{}",
+            plugin_id, param_id
+        )))
     }
 
     /// 获取参数的归一化值 [0.0, 1.0]
     pub fn get_param_normalized(&self, plugin_id: &str, param_id: &str) -> Option<f64> {
         self.plugin_params.get(plugin_id).and_then(|params| {
-            params.iter().find(|p| p.id == param_id).map(|p| p.normalized())
+            params
+                .iter()
+                .find(|p| p.id == param_id)
+                .map(|p| p.normalized())
         })
     }
 
@@ -285,12 +308,7 @@ impl PluginHost {
         let mut result = Vec::new();
         for (plugin_id, params) in &self.plugin_params {
             for p in params {
-                result.push((
-                    plugin_id.clone(),
-                    p.id.clone(),
-                    p.param_type,
-                    p.as_f64(),
-                ));
+                result.push((plugin_id.clone(), p.id.clone(), p.param_type, p.as_f64()));
             }
         }
         result
@@ -314,17 +332,33 @@ mod tests {
     struct PassthroughPlugin;
 
     impl VcPlugin for PassthroughPlugin {
-        fn plugin_id(&self) -> &str { "passthrough" }
-        fn plugin_name(&self) -> &str { "直通" }
-        fn plugin_type(&self) -> PluginType { PluginType::Effect }
-        fn version(&self) -> &str { "0.1.0" }
-        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
+        fn plugin_id(&self) -> &str {
+            "passthrough"
+        }
+        fn plugin_name(&self) -> &str {
+            "直通"
+        }
+        fn plugin_type(&self) -> PluginType {
+            PluginType::Effect
+        }
+        fn version(&self) -> &str {
+            "0.1.0"
+        }
+        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
+            Ok(())
+        }
         fn process(&mut self, input: &AudioBuffer, output: &mut AudioBuffer) {
             output.data.copy_from_slice(&input.data);
         }
-        fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> { vec![] }
-        fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> { Ok(()) }
-        fn get_param(&self, _id: &str) -> Option<f64> { None }
+        fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> {
+            vec![]
+        }
+        fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> {
+            Ok(())
+        }
+        fn get_param(&self, _id: &str) -> Option<f64> {
+            None
+        }
         fn destroy(&mut self) {}
     }
 
@@ -334,11 +368,21 @@ mod tests {
     }
 
     impl VcPlugin for GainPlugin {
-        fn plugin_id(&self) -> &str { "test-gain" }
-        fn plugin_name(&self) -> &str { "测试增益" }
-        fn plugin_type(&self) -> PluginType { PluginType::Effect }
-        fn version(&self) -> &str { "0.1.0" }
-        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
+        fn plugin_id(&self) -> &str {
+            "test-gain"
+        }
+        fn plugin_name(&self) -> &str {
+            "测试增益"
+        }
+        fn plugin_type(&self) -> PluginType {
+            PluginType::Effect
+        }
+        fn version(&self) -> &str {
+            "0.1.0"
+        }
+        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
+            Ok(())
+        }
         fn process(&mut self, input: &AudioBuffer, output: &mut AudioBuffer) {
             for (i, &s) in input.data.iter().enumerate() {
                 if i < output.data.len() {
@@ -347,14 +391,24 @@ mod tests {
             }
         }
         fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> {
-            vec![opendaw_extension::ParamInfo::new("gain", "增益", 0.0, 2.0, 1.0, "x")]
+            vec![opendaw_extension::ParamInfo::new(
+                "gain", "增益", 0.0, 2.0, 1.0, "x",
+            )]
         }
         fn set_param(&mut self, id: &str, v: f64) -> Result<(), PluginError> {
-            if id == "gain" { self.gain = v; Ok(()) }
-            else { Err(PluginError::ParamNotFound(id.to_string())) }
+            if id == "gain" {
+                self.gain = v;
+                Ok(())
+            } else {
+                Err(PluginError::ParamNotFound(id.to_string()))
+            }
         }
         fn get_param(&self, id: &str) -> Option<f64> {
-            if id == "gain" { Some(self.gain) } else { None }
+            if id == "gain" {
+                Some(self.gain)
+            } else {
+                None
+            }
         }
         fn destroy(&mut self) {}
     }
@@ -409,7 +463,8 @@ mod tests {
     #[test]
     fn test_enhanced_params() {
         let mut host = PluginHost::new(44100.0, 256, 2);
-        host.load_plugin(Box::new(GainPlugin { gain: 1.0 })).unwrap();
+        host.load_plugin(Box::new(GainPlugin { gain: 1.0 }))
+            .unwrap();
 
         // 检查增强参数
         let params = host.get_plugin_params("test-gain").unwrap();
@@ -425,7 +480,8 @@ mod tests {
     #[test]
     fn test_normalized_param() {
         let mut host = PluginHost::new(44100.0, 256, 2);
-        host.load_plugin(Box::new(GainPlugin { gain: 1.0 })).unwrap();
+        host.load_plugin(Box::new(GainPlugin { gain: 1.0 }))
+            .unwrap();
 
         // gain range: [0.0, 2.0], default 1.0 → normalized = 0.5
         let norm = host.get_param_normalized("test-gain", "gain").unwrap();
@@ -443,7 +499,8 @@ mod tests {
     #[test]
     fn test_list_all_params() {
         let mut host = PluginHost::new(44100.0, 256, 2);
-        host.load_plugin(Box::new(GainPlugin { gain: 1.0 })).unwrap();
+        host.load_plugin(Box::new(GainPlugin { gain: 1.0 }))
+            .unwrap();
         host.load_plugin(Box::new(PassthroughPlugin)).unwrap();
 
         let all_params = host.list_all_params();

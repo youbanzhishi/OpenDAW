@@ -1,13 +1,13 @@
 //! PyO3 Python Bindings for OpenDAW Core
-//! 
+//!
 //! Exposes Rust audio engine to Python for hybrid architecture.
 //! Uses pyo3 0.22 with extension-module feature.
 
+use parking_lot::RwLock;
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use pyo3::exceptions::PyRuntimeError;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 /// Engine state enum for Python
 #[pyclass(module = "opendaw_core")]
@@ -31,7 +31,7 @@ impl From<crate::EngineState> for PyEngineState {
 }
 
 /// RustEngine - PyO3 class wrapping AudioEngine + ExtensionRegistry
-/// 
+///
 /// Provides Python-friendly interface to Rust audio engine with GIL management.
 #[pyclass(module = "opendaw_core")]
 pub struct RustEngine {
@@ -52,14 +52,14 @@ impl RustEngine {
     }
 
     /// Start audio playback
-    /// 
+    ///
     /// Args:
     ///     sample_rate: Audio sample rate (default 44100)
     ///     buffer_size: Buffer size in frames (default 512)
-    /// 
+    ///
     /// Returns:
     ///     True on success
-    /// 
+    ///
     /// Raises:
     ///     RuntimeError: If engine fails to start
     fn play(&self, sample_rate: u32, buffer_size: usize) -> PyResult<bool> {
@@ -85,10 +85,10 @@ impl RustEngine {
     }
 
     /// Stop audio playback
-    /// 
+    ///
     /// Returns:
     ///     True on success
-    /// 
+    ///
     /// Raises:
     ///     RuntimeError: If engine fails to stop
     fn stop(&self) -> PyResult<bool> {
@@ -142,7 +142,7 @@ impl RustEngine {
     }
 
     /// Get current engine state
-    /// 
+    ///
     /// Returns:
     ///     String representing engine state: "stopped", "playing", "paused", or "rendering"
     fn get_state(&self) -> String {
@@ -160,19 +160,23 @@ impl RustEngine {
     }
 
     /// Render audio offline from YAML configuration
-    /// 
+    ///
     /// Args:
     ///     yaml_path: Path to YAML configuration file
     ///     output_path: Path for output audio file
-    /// 
+    ///
     /// Returns:
     ///     Success message string
-    /// 
+    ///
     /// Raises:
     ///     RuntimeError: If rendering fails
     fn render_offline(&self, yaml_path: String, output_path: String) -> PyResult<String> {
-        log::info!("RustEngine.render_offline: {} -> {}", yaml_path, output_path);
-        
+        log::info!(
+            "RustEngine.render_offline: {} -> {}",
+            yaml_path,
+            output_path
+        );
+
         let result = pyo3::Python::with_gil(|py| {
             py.allow_threads(|| {
                 // Use the existing offline renderer
@@ -224,7 +228,7 @@ impl RustEngine {
     fn get_info(&self) -> PyResult<Py<PyDict>> {
         pyo3::Python::with_gil(|py| {
             let info = PyDict::new(py);
-            
+
             let engine = self.engine.read();
             let state = engine.get_state();
             let state_str = match state {
@@ -233,12 +237,12 @@ impl RustEngine {
                 crate::EngineState::Paused => "paused",
                 crate::EngineState::Rendering => "rendering",
             };
-            
+
             info.set_item("state", state_str)?;
             info.set_item("sample_rate", engine.sample_rate())?;
             info.set_item("buffer_size", engine.buffer_size())?;
             info.set_item("version", env!("CARGO_PKG_VERSION"))?;
-            
+
             Ok(info.into())
         })
     }
@@ -255,17 +259,20 @@ pub fn opendaw_core(m: &PyModule) -> PyResult<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format_timestamp_millis()
         .init();
-    
-    log::info!("Initializing opendaw_core Python module v{}", env!("CARGO_PKG_VERSION"));
-    
+
+    log::info!(
+        "Initializing opendaw_core Python module v{}",
+        env!("CARGO_PKG_VERSION")
+    );
+
     // Register classes
     m.add_class::<RustEngine>()?;
     m.add_class::<PyEngineState>()?;
-    
+
     // Module info
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("__author__", "OpenDAW Team")?;
-    
+
     log::info!("opendaw_core module initialized successfully");
     Ok(())
 }

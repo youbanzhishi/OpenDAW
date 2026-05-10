@@ -14,8 +14,8 @@
 //! cargo run -p plugin-host --example vc_plugin_demo
 //! ```
 
-use plugin_host::VcPluginAdapter;
 use opendaw_extension::{AudioBuffer, VcPlugin};
+use plugin_host::VcPluginAdapter;
 use std::f64::consts::PI;
 use std::path::Path;
 
@@ -46,7 +46,9 @@ fn main() {
         Ok(plugins) => {
             if plugins.is_empty() {
                 println!("   ⚠️  未发现任何VC插件");
-                println!("   提示: 设置 VC_AUDIOFX_DIR 环境变量指向包含 VC-*-CLI-Standalone 的目录");
+                println!(
+                    "   提示: 设置 VC_AUDIOFX_DIR 环境变量指向包含 VC-*-CLI-Standalone 的目录"
+                );
             } else {
                 println!("   ✅ 发现 {} 个VC插件:", plugins.len());
                 for p in &plugins {
@@ -162,10 +164,7 @@ fn demo_param_system() {
 
     println!("VC-EQ 参数列表:");
     for p in &eq_params {
-        println!(
-            "  {} [{}-{}] = {} {}",
-            p.id, p.min, p.max, p.value, p.unit
-        );
+        println!("  {} [{}-{}] = {} {}", p.id, p.min, p.max, p.value, p.unit);
     }
 
     // 展示插件类型

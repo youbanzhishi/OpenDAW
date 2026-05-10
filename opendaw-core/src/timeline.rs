@@ -21,7 +21,10 @@ pub struct TimeSignature {
 impl TimeSignature {
     /// 创建新的拍号
     pub fn new(numerator: u8, denominator: u8) -> Self {
-        Self { numerator, denominator }
+        Self {
+            numerator,
+            denominator,
+        }
     }
 
     /// 4/4拍
@@ -73,7 +76,10 @@ pub struct TimeSignatureChange {
 impl TimeSignatureChange {
     /// 创建新的拍号变化
     pub fn new(bar: u32, time_signature: TimeSignature) -> Self {
-        Self { bar, time_signature }
+        Self {
+            bar,
+            time_signature,
+        }
     }
 }
 
@@ -219,7 +225,8 @@ impl Timeline {
 
     /// 移除拍号变化
     pub fn remove_time_signature_change(&mut self, bar: u32) {
-        if bar != 1 { // 不允许移除初始拍号
+        if bar != 1 {
+            // 不允许移除初始拍号
             self.time_signature_changes.remove(&bar);
         }
     }
@@ -233,7 +240,8 @@ impl Timeline {
     /// 移除速度变化
     pub fn remove_tempo_change(&mut self, beat: f64) {
         let key = (beat * 1000.0) as u64;
-        if key != 0 { // 不允许移除初始速度
+        if key != 0 {
+            // 不允许移除初始速度
             self.tempo_changes.remove(&key);
         }
     }
@@ -577,7 +585,10 @@ mod tests {
     fn test_timeline_basic() {
         let timeline = Timeline::new(120.0, TimeSignature::four_four(), 44100.0);
         assert!((timeline.default_bpm() - 120.0).abs() < 1e-10);
-        assert_eq!(timeline.default_time_signature(), TimeSignature::four_four());
+        assert_eq!(
+            timeline.default_time_signature(),
+            TimeSignature::four_four()
+        );
     }
 
     #[test]
@@ -633,10 +644,22 @@ mod tests {
         timeline.add_time_signature_change(3, TimeSignature::three_four());
 
         // 第1-2小节是4/4，第3小节起是3/4
-        assert_eq!(timeline.time_signature_at_bar(1), TimeSignature::four_four());
-        assert_eq!(timeline.time_signature_at_bar(2), TimeSignature::four_four());
-        assert_eq!(timeline.time_signature_at_bar(3), TimeSignature::three_four());
-        assert_eq!(timeline.time_signature_at_bar(5), TimeSignature::three_four());
+        assert_eq!(
+            timeline.time_signature_at_bar(1),
+            TimeSignature::four_four()
+        );
+        assert_eq!(
+            timeline.time_signature_at_bar(2),
+            TimeSignature::four_four()
+        );
+        assert_eq!(
+            timeline.time_signature_at_bar(3),
+            TimeSignature::three_four()
+        );
+        assert_eq!(
+            timeline.time_signature_at_bar(5),
+            TimeSignature::three_four()
+        );
     }
 
     #[test]
@@ -754,7 +777,11 @@ mod tests {
         cursor.advance_beats(14.0);
         // 14 beats with loop 4-12: 14 > 12, should wrap
         let beat = cursor.beat();
-        assert!(beat >= 4.0 && beat < 12.0, "Beat should be in loop range, got {}", beat);
+        assert!(
+            beat >= 4.0 && beat < 12.0,
+            "Beat should be in loop range, got {}",
+            beat
+        );
     }
 
     #[test]
@@ -792,6 +819,9 @@ mod tests {
         let mut timeline = Timeline::new(120.0, TimeSignature::four_four(), 44100.0);
         timeline.add_time_signature_change(3, TimeSignature::three_four());
         timeline.remove_time_signature_change(3);
-        assert_eq!(timeline.time_signature_at_bar(3), TimeSignature::four_four());
+        assert_eq!(
+            timeline.time_signature_at_bar(3),
+            TimeSignature::four_four()
+        );
     }
 }

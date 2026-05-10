@@ -17,7 +17,8 @@ struct WavHeader {
 
 impl WavHeader {
     fn as_bytes(&self) -> Vec<u8> {
-        let byte_rate = self.sample_rate * self.num_channels as u32 * self.bits_per_sample as u32 / 8;
+        let byte_rate =
+            self.sample_rate * self.num_channels as u32 * self.bits_per_sample as u32 / 8;
         let block_align = self.num_channels * self.bits_per_sample / 8;
         let file_size = 36 + self.data_size;
 
@@ -70,7 +71,11 @@ impl OfflineRenderer {
     ///
     /// 这是一个基础实现，用于验证渲染管线
     /// 实际使用时会配合Project和Mixer进行完整渲染
-    pub fn render_silence(&self, duration_secs: f64, output_path: &Path) -> Result<RenderStats, RenderError> {
+    pub fn render_silence(
+        &self,
+        duration_secs: f64,
+        output_path: &Path,
+    ) -> Result<RenderStats, RenderError> {
         let total_frames = (self.sample_rate * duration_secs) as usize;
         let total_samples = total_frames * self.channels;
         let data_size = (total_samples * 2) as u32; // 16-bit
@@ -122,7 +127,8 @@ impl OfflineRenderer {
 
         // 生成正弦波数据
         for frame in 0..total_frames {
-            let sample = (2.0 * std::f64::consts::PI * freq * frame as f64 / self.sample_rate).sin()
+            let sample = (2.0 * std::f64::consts::PI * freq * frame as f64 / self.sample_rate)
+                .sin()
                 * amplitude;
             let i16_sample = (sample.clamp(-1.0, 1.0) * 32767.0) as i16;
             for _ in 0..self.channels {
@@ -257,14 +263,18 @@ mod tests {
         let renderer = OfflineRenderer::new(44100.0, 256, 2);
         let tmp = std::env::temp_dir().join("test_callback.wav");
 
-        let stats = renderer.render_with_callback(0.5, &tmp, |buf| {
-            // 生成440Hz正弦波
-            for frame in 0..buf.frames {
-                let value = ((2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() * 0.3) as f32;
-                buf.set_sample(0, frame, value);
-                buf.set_sample(1, frame, value);
-            }
-        }).unwrap();
+        let stats = renderer
+            .render_with_callback(0.5, &tmp, |buf| {
+                // 生成440Hz正弦波
+                for frame in 0..buf.frames {
+                    let value = ((2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0)
+                        .sin()
+                        * 0.3) as f32;
+                    buf.set_sample(0, frame, value);
+                    buf.set_sample(1, frame, value);
+                }
+            })
+            .unwrap();
 
         assert!(stats.total_frames > 0);
         assert!(tmp.exists());
@@ -275,7 +285,7 @@ mod tests {
     #[test]
     fn test_render_multiple_tracks_mix() {
         use std::path::Path;
-        
+
         let renderer = OfflineRenderer::new(44100.0, 256, 2);
         let tmp = std::env::temp_dir().join("test_mix.wav");
 
@@ -287,16 +297,25 @@ mod tests {
             .map(|i| (2.0 * std::f64::consts::PI * 880.0 * i as f64 / 44100.0).sin() as f32 * 0.3)
             .collect();
 
-        let stats = renderer.render_with_callback(0.1, &tmp, |buf| {
-            for frame in 0..buf.frames {
-                let t1_idx = frame;
-                let t2_idx = frame;
-                let mix = if t1_idx < track1_samples.len() { track1_samples[t1_idx] } else { 0.0 }
-                        + if t2_idx < track2_samples.len() { track2_samples[t2_idx] } else { 0.0 };
-                buf.set_sample(0, frame, mix.clamp(-1.0, 1.0));
-                buf.set_sample(1, frame, mix.clamp(-1.0, 1.0));
-            }
-        }).unwrap();
+        let stats = renderer
+            .render_with_callback(0.1, &tmp, |buf| {
+                for frame in 0..buf.frames {
+                    let t1_idx = frame;
+                    let t2_idx = frame;
+                    let mix = if t1_idx < track1_samples.len() {
+                        track1_samples[t1_idx]
+                    } else {
+                        0.0
+                    } + if t2_idx < track2_samples.len() {
+                        track2_samples[t2_idx]
+                    } else {
+                        0.0
+                    };
+                    buf.set_sample(0, frame, mix.clamp(-1.0, 1.0));
+                    buf.set_sample(1, frame, mix.clamp(-1.0, 1.0));
+                }
+            })
+            .unwrap();
 
         assert!(stats.total_frames > 0);
         assert!(tmp.exists());
@@ -314,25 +333,35 @@ mod tests {
         let tmp = std::env::temp_dir().join("test_volume.wav");
 
         let amplitude = 0.8;
-        let stats = renderer.render_with_callback(0.1, &tmp, |buf| {
-            for frame in 0..buf.frames {
-                let value = ((2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() * amplitude) as f32;
-                buf.set_sample(0, frame, value);
-                buf.set_sample(1, frame, value);
-            }
-        }).unwrap();
+        let stats = renderer
+            .render_with_callback(0.1, &tmp, |buf| {
+                for frame in 0..buf.frames {
+                    let value = ((2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0)
+                        .sin()
+                        * amplitude) as f32;
+                    buf.set_sample(0, frame, value);
+                    buf.set_sample(1, frame, value);
+                }
+            })
+            .unwrap();
 
         assert!(stats.total_frames > 0);
 
         // 加载并验证峰值
         let loaded = EngineAudioBuffer::from_wav_file(&tmp).unwrap();
-        let max_sample = loaded.as_slice().iter()
+        let max_sample = loaded
+            .as_slice()
+            .iter()
             .map(|s| s.abs())
             .fold(0.0f32, |a, b| a.max(b));
-        
+
         // 峰值应接近设定的幅度
-        assert!((max_sample - amplitude as f32).abs() < 0.1, 
-            "峰值应接近{}，实际{}", amplitude, max_sample);
+        assert!(
+            (max_sample - amplitude as f32).abs() < 0.1,
+            "峰值应接近{}，实际{}",
+            amplitude,
+            max_sample
+        );
 
         let _ = std::fs::remove_file(&tmp);
     }
@@ -343,14 +372,18 @@ mod tests {
         let tmp = std::env::temp_dir().join("test_mono_stereo.wav");
 
         // 渲染单声道信号
-        let stats = renderer.render_with_callback(0.1, &tmp, |buf| {
-            for frame in 0..buf.frames {
-                let value = (2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin() as f32 * 0.5;
-                // 只设置声道0，声道1保持0
-                buf.set_sample(0, frame, value);
-                buf.set_sample(1, frame, 0.0);
-            }
-        }).unwrap();
+        let stats = renderer
+            .render_with_callback(0.1, &tmp, |buf| {
+                for frame in 0..buf.frames {
+                    let value = (2.0 * std::f64::consts::PI * 440.0 * frame as f64 / 44100.0).sin()
+                        as f32
+                        * 0.5;
+                    // 只设置声道0，声道1保持0
+                    buf.set_sample(0, frame, value);
+                    buf.set_sample(1, frame, 0.0);
+                }
+            })
+            .unwrap();
 
         assert!(stats.total_frames > 0);
 

@@ -112,27 +112,54 @@ impl ChordType {
 /// 音名
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NoteName {
-    C, Db, D, Eb, E, F, Gb, G, Ab, A, Bb, B,
+    C,
+    Db,
+    D,
+    Eb,
+    E,
+    F,
+    Gb,
+    G,
+    Ab,
+    A,
+    Bb,
+    B,
 }
 
 impl NoteName {
     /// MIDI音高编号 (C4 = 60)
     pub fn midi_offset(&self) -> u8 {
         match self {
-            NoteName::C => 0, NoteName::Db => 1, NoteName::D => 2,
-            NoteName::Eb => 3, NoteName::E => 4, NoteName::F => 5,
-            NoteName::Gb => 6, NoteName::G => 7, NoteName::Ab => 8,
-            NoteName::A => 9, NoteName::Bb => 10, NoteName::B => 11,
+            NoteName::C => 0,
+            NoteName::Db => 1,
+            NoteName::D => 2,
+            NoteName::Eb => 3,
+            NoteName::E => 4,
+            NoteName::F => 5,
+            NoteName::Gb => 6,
+            NoteName::G => 7,
+            NoteName::Ab => 8,
+            NoteName::A => 9,
+            NoteName::Bb => 10,
+            NoteName::B => 11,
         }
     }
 
     /// 从MIDI音高获取音名
     pub fn from_midi(pitch: u8) -> Self {
         match pitch % 12 {
-            0 => NoteName::C, 1 => NoteName::Db, 2 => NoteName::D,
-            3 => NoteName::Eb, 4 => NoteName::E, 5 => NoteName::F,
-            6 => NoteName::Gb, 7 => NoteName::G, 8 => NoteName::Ab,
-            9 => NoteName::A, 10 => NoteName::Bb, 11 => NoteName::B,
+            0 => NoteName::C,
+            1 => NoteName::Db,
+            2 => NoteName::D,
+            3 => NoteName::Eb,
+            4 => NoteName::E,
+            5 => NoteName::F,
+            6 => NoteName::Gb,
+            7 => NoteName::G,
+            8 => NoteName::Ab,
+            9 => NoteName::A,
+            10 => NoteName::Bb,
+            11 => NoteName::B,
             _ => NoteName::C, // unreachable
         }
     }
@@ -140,10 +167,18 @@ impl NoteName {
     /// 音名文本
     pub fn name(&self) -> &'static str {
         match self {
-            NoteName::C => "C", NoteName::Db => "Db", NoteName::D => "D",
-            NoteName::Eb => "Eb", NoteName::E => "E", NoteName::F => "F",
-            NoteName::Gb => "Gb", NoteName::G => "G", NoteName::Ab => "Ab",
-            NoteName::A => "A", NoteName::Bb => "Bb", NoteName::B => "B",
+            NoteName::C => "C",
+            NoteName::Db => "Db",
+            NoteName::D => "D",
+            NoteName::Eb => "Eb",
+            NoteName::E => "E",
+            NoteName::F => "F",
+            NoteName::Gb => "Gb",
+            NoteName::G => "G",
+            NoteName::Ab => "Ab",
+            NoteName::A => "A",
+            NoteName::Bb => "Bb",
+            NoteName::B => "B",
         }
     }
 }
@@ -182,7 +217,8 @@ impl Chord {
     pub fn pitches(&self, octave: u8) -> Vec<u8> {
         let base = (octave as u32 + 1) * 12 + self.root.midi_offset() as u32;
         let base = base as u8;
-        self.chord_type.intervals()
+        self.chord_type
+            .intervals()
             .iter()
             .map(|&interval| base + interval as u8)
             .collect()
@@ -238,33 +274,57 @@ impl Mode {
     pub fn scale_chords(&self) -> Vec<ChordType> {
         match self {
             Mode::Major => vec![
-                ChordType::Major, ChordType::Minor, ChordType::Minor,
-                ChordType::Major, ChordType::Major, ChordType::Minor,
+                ChordType::Major,
+                ChordType::Minor,
+                ChordType::Minor,
+                ChordType::Major,
+                ChordType::Major,
+                ChordType::Minor,
                 ChordType::Diminished,
             ],
             Mode::Minor => vec![
-                ChordType::Minor, ChordType::Diminished, ChordType::Major,
-                ChordType::Minor, ChordType::Minor, ChordType::Major,
+                ChordType::Minor,
+                ChordType::Diminished,
+                ChordType::Major,
+                ChordType::Minor,
+                ChordType::Minor,
+                ChordType::Major,
                 ChordType::Major,
             ],
             Mode::Dorian => vec![
-                ChordType::Minor, ChordType::Minor, ChordType::Major,
-                ChordType::Major, ChordType::Minor, ChordType::Diminished,
+                ChordType::Minor,
+                ChordType::Minor,
+                ChordType::Major,
+                ChordType::Major,
+                ChordType::Minor,
+                ChordType::Diminished,
                 ChordType::Major,
             ],
             Mode::Phrygian => vec![
-                ChordType::Minor, ChordType::Major, ChordType::Major,
-                ChordType::Minor, ChordType::Diminished, ChordType::Major,
+                ChordType::Minor,
+                ChordType::Major,
+                ChordType::Major,
+                ChordType::Minor,
+                ChordType::Diminished,
+                ChordType::Major,
                 ChordType::Minor,
             ],
             Mode::Lydian => vec![
-                ChordType::Major, ChordType::Major, ChordType::Minor,
-                ChordType::Diminished, ChordType::Major, ChordType::Minor,
+                ChordType::Major,
+                ChordType::Major,
+                ChordType::Minor,
+                ChordType::Diminished,
+                ChordType::Major,
+                ChordType::Minor,
                 ChordType::Minor,
             ],
             Mode::Mixolydian => vec![
-                ChordType::Major, ChordType::Minor, ChordType::Diminished,
-                ChordType::Major, ChordType::Minor, ChordType::Minor,
+                ChordType::Major,
+                ChordType::Minor,
+                ChordType::Diminished,
+                ChordType::Major,
+                ChordType::Minor,
+                ChordType::Minor,
                 ChordType::Major,
             ],
         }
@@ -283,7 +343,8 @@ impl Mode {
     pub fn scale_chords_for_key(&self, root: NoteName) -> Vec<Chord> {
         let notes = self.scale_notes(root);
         let chord_types = self.scale_chords();
-        notes.into_iter()
+        notes
+            .into_iter()
             .zip(chord_types.into_iter())
             .map(|(root, ct)| Chord::new(root, ct))
             .collect()
@@ -344,25 +405,32 @@ impl ChordProgression {
     /// 获取进行符号（如 I-V-vi-IV）
     pub fn roman_numerals(&self) -> Vec<String> {
         let scale_chords = self.mode.scale_chords_for_key(self.key);
-        self.chords.iter().map(|chord| {
-            let pos = scale_chords.iter().position(|sc| {
-                sc.root == chord.root && sc.chord_type == chord.chord_type
-            });
-            match pos {
-                Some(i) => {
-                    let numerals = ["I", "II", "III", "IV", "V", "VI", "VII"];
-                    let numeral = numerals[i];
-                    match chord.chord_type {
-                        ChordType::Minor | ChordType::Minor7 | ChordType::Minor9 => numeral.to_lowercase(),
-                        ChordType::Diminished | ChordType::Diminished7 | ChordType::HalfDiminished7 => {
-                            format!("{}°", numeral.to_lowercase())
+        self.chords
+            .iter()
+            .map(|chord| {
+                let pos = scale_chords
+                    .iter()
+                    .position(|sc| sc.root == chord.root && sc.chord_type == chord.chord_type);
+                match pos {
+                    Some(i) => {
+                        let numerals = ["I", "II", "III", "IV", "V", "VI", "VII"];
+                        let numeral = numerals[i];
+                        match chord.chord_type {
+                            ChordType::Minor | ChordType::Minor7 | ChordType::Minor9 => {
+                                numeral.to_lowercase()
+                            }
+                            ChordType::Diminished
+                            | ChordType::Diminished7
+                            | ChordType::HalfDiminished7 => {
+                                format!("{}°", numeral.to_lowercase())
+                            }
+                            _ => numeral.to_string(),
                         }
-                        _ => numeral.to_string(),
                     }
+                    None => chord.symbol(),
                 }
-                None => chord.symbol(),
-            }
-        }).collect()
+            })
+            .collect()
     }
 
     // ========================================================================
@@ -553,9 +621,7 @@ impl ChordGenerator {
                 vec![0, 3, 6, 5], // i-iv-VII-VI
                 vec![0, 6, 5, 3], // i-VII-VI-iv
             ],
-            _ => &[
-                vec![0, 3, 4, 0],
-            ],
+            _ => &[vec![0, 3, 4, 0]],
         };
 
         let mut prog = ChordProgression::new("Random", key, mode);
@@ -578,9 +644,10 @@ impl ChordGenerator {
         for &pitch in melody_pitches {
             // 找到包含该音的和弦
             let pitch_class = pitch % 12;
-            let best_chord = scale_chords.iter().find(|chord| {
-                chord.pitches(4).iter().any(|&p| p % 12 == pitch_class)
-            }).cloned();
+            let best_chord = scale_chords
+                .iter()
+                .find(|chord| chord.pitches(4).iter().any(|&p| p % 12 == pitch_class))
+                .cloned();
 
             match best_chord {
                 Some(chord) => prog.add_chord(chord),
@@ -707,7 +774,10 @@ mod tests {
         let prog = ChordProgression::pop_progression(NoteName::C);
         assert_eq!(prog.chord_at_beat(0.0).unwrap().root, NoteName::C);
         assert_eq!(prog.chord_at_beat(4.0).unwrap().root, NoteName::G);
-        assert_eq!(prog.chord_at_beat(8.0).unwrap().chord_type, ChordType::Minor);
+        assert_eq!(
+            prog.chord_at_beat(8.0).unwrap().chord_type,
+            ChordType::Minor
+        );
     }
 
     #[test]
@@ -737,7 +807,10 @@ mod tests {
         let voicing = VoicingStrategy::Close.apply(&chord, 4);
         // 所有音应该在相近的范围内
         let max_diff = voicing.iter().max().unwrap() - voicing.iter().min().unwrap();
-        assert!(max_diff <= 12, "Close voicing should span at most one octave");
+        assert!(
+            max_diff <= 12,
+            "Close voicing should span at most one octave"
+        );
     }
 
     #[test]

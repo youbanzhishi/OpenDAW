@@ -26,17 +26,15 @@
 use std::path::Path;
 
 #[cfg(feature = "jsfx")]
-use opendaw_extension::{
-    AudioBuffer, ParamInfo, PluginError, PluginInfo, PluginType, VcPlugin,
-};
+use opendaw_extension::{AudioBuffer, ParamInfo, PluginError, PluginInfo, PluginType, VcPlugin};
 
 #[cfg(not(feature = "jsfx"))]
 use opendaw_extension::PluginError;
 
 #[cfg(feature = "jsfx")]
-use jsfx_engine::JsfxPlugin as InnerJsfxPlugin;
-#[cfg(feature = "jsfx")]
 use jsfx_engine::JsfxParser;
+#[cfg(feature = "jsfx")]
+use jsfx_engine::JsfxPlugin as InnerJsfxPlugin;
 
 /// JSFX 插件适配器
 ///
@@ -51,17 +49,15 @@ pub struct JsfxAdapter {
 impl JsfxAdapter {
     /// 从 JSFX 文件加载插件
     pub fn from_file(path: &Path) -> Result<Self, PluginError> {
-        let inner = InnerJsfxPlugin::from_file(path).map_err(|e| {
-            PluginError::InitFailed(format!("JSFX 加载失败 {:?}: {}", path, e))
-        })?;
+        let inner = InnerJsfxPlugin::from_file(path)
+            .map_err(|e| PluginError::InitFailed(format!("JSFX 加载失败 {:?}: {}", path, e)))?;
         Ok(Self { inner })
     }
 
     /// 从 JSFX 源码加载插件
     pub fn from_source(source: &str, name: &str) -> Result<Self, PluginError> {
-        let inner = InnerJsfxPlugin::from_source(source, name).map_err(|e| {
-            PluginError::InitFailed(format!("JSFX 源码加载失败: {}", e))
-        })?;
+        let inner = InnerJsfxPlugin::from_source(source, name)
+            .map_err(|e| PluginError::InitFailed(format!("JSFX 源码加载失败: {}", e)))?;
         Ok(Self { inner })
     }
 
@@ -89,11 +85,7 @@ impl JsfxAdapter {
                         adapters.push(adapter);
                     }
                     Err(e) => {
-                        log::warn!(
-                            "[JsfxAdapter] 跳过无效 JSFX {}: {}",
-                            path.display(),
-                            e
-                        );
+                        log::warn!("[JsfxAdapter] 跳过无效 JSFX {}: {}", path.display(), e);
                     }
                 }
             }

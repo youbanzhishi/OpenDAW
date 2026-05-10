@@ -136,22 +136,38 @@ impl BuiltinFn {
     pub fn arg_count(&self) -> (usize, usize) {
         match self {
             // 单参数数学函数
-            BuiltinFn::Sin | BuiltinFn::Cos | BuiltinFn::Tan
-            | BuiltinFn::Asin | BuiltinFn::Acos | BuiltinFn::Atan
-            | BuiltinFn::Sinh | BuiltinFn::Cosh | BuiltinFn::Tanh
-            | BuiltinFn::Sqrt | BuiltinFn::Abs | BuiltinFn::Exp
-            | BuiltinFn::Log | BuiltinFn::Log10
-            | BuiltinFn::Floor | BuiltinFn::Ceil | BuiltinFn::Round
-            | BuiltinFn::Sign | BuiltinFn::InvSqrt
-            | BuiltinFn::Srand | BuiltinFn::Rand
-            | BuiltinFn::Near | BuiltinFn::Strlen
-            | BuiltinFn::Time | BuiltinFn::TimePrecise
-            => (1, 1),
+            BuiltinFn::Sin
+            | BuiltinFn::Cos
+            | BuiltinFn::Tan
+            | BuiltinFn::Asin
+            | BuiltinFn::Acos
+            | BuiltinFn::Atan
+            | BuiltinFn::Sinh
+            | BuiltinFn::Cosh
+            | BuiltinFn::Tanh
+            | BuiltinFn::Sqrt
+            | BuiltinFn::Abs
+            | BuiltinFn::Exp
+            | BuiltinFn::Log
+            | BuiltinFn::Log10
+            | BuiltinFn::Floor
+            | BuiltinFn::Ceil
+            | BuiltinFn::Round
+            | BuiltinFn::Sign
+            | BuiltinFn::InvSqrt
+            | BuiltinFn::Srand
+            | BuiltinFn::Rand
+            | BuiltinFn::Near
+            | BuiltinFn::Strlen
+            | BuiltinFn::Time
+            | BuiltinFn::TimePrecise => (1, 1),
 
             // 双参数
-            BuiltinFn::Atan2 | BuiltinFn::Min | BuiltinFn::Max
-            | BuiltinFn::Pow | BuiltinFn::Strcmp
-            => (2, 2),
+            BuiltinFn::Atan2
+            | BuiltinFn::Min
+            | BuiltinFn::Max
+            | BuiltinFn::Pow
+            | BuiltinFn::Strcmp => (2, 2),
 
             // 三参数
             BuiltinFn::Clamp => (3, 3),
@@ -196,11 +212,26 @@ impl BuiltinFn {
             BuiltinFn::Cosh => args.first().map(|a| a.cosh()).unwrap_or(0.0),
             BuiltinFn::Tanh => args.first().map(|a| a.tanh()).unwrap_or(0.0),
             // 数学函数
-            BuiltinFn::Sqrt => args.first().map(|a| if *a >= 0.0 { a.sqrt() } else { 0.0 }).unwrap_or(0.0),
+            BuiltinFn::Sqrt => args
+                .first()
+                .map(|a| if *a >= 0.0 { a.sqrt() } else { 0.0 })
+                .unwrap_or(0.0),
             BuiltinFn::Abs => args.first().map(|a| a.abs()).unwrap_or(0.0),
             BuiltinFn::Exp => args.first().map(|a| a.exp()).unwrap_or(1.0),
-            BuiltinFn::Log => args.first().map(|a| if *a > 0.0 { a.ln() } else { f64::NEG_INFINITY }).unwrap_or(f64::NEG_INFINITY),
-            BuiltinFn::Log10 => args.first().map(|a| if *a > 0.0 { a.log10() } else { f64::NEG_INFINITY }).unwrap_or(f64::NEG_INFINITY),
+            BuiltinFn::Log => args
+                .first()
+                .map(|a| if *a > 0.0 { a.ln() } else { f64::NEG_INFINITY })
+                .unwrap_or(f64::NEG_INFINITY),
+            BuiltinFn::Log10 => args
+                .first()
+                .map(|a| {
+                    if *a > 0.0 {
+                        a.log10()
+                    } else {
+                        f64::NEG_INFINITY
+                    }
+                })
+                .unwrap_or(f64::NEG_INFINITY),
             BuiltinFn::Floor => args.first().map(|a| a.floor()).unwrap_or(0.0),
             BuiltinFn::Ceil => args.first().map(|a| a.ceil()).unwrap_or(0.0),
             BuiltinFn::Round => args.first().map(|a| a.round()).unwrap_or(0.0),
@@ -221,11 +252,10 @@ impl BuiltinFn {
                 let max = args.get(2).copied().unwrap_or(1.0);
                 val.clamp(min, max)
             }
-            BuiltinFn::InvSqrt => {
-                args.first().map(|a| {
-                    if *a > 0.0 { 1.0 / a.sqrt() } else { 0.0 }
-                }).unwrap_or(0.0)
-            }
+            BuiltinFn::InvSqrt => args
+                .first()
+                .map(|a| if *a > 0.0 { 1.0 / a.sqrt() } else { 0.0 })
+                .unwrap_or(0.0),
             BuiltinFn::Pow => {
                 let base = args.first().copied().unwrap_or(0.0);
                 let exp = args.get(1).copied().unwrap_or(0.0);
@@ -240,15 +270,22 @@ impl BuiltinFn {
             BuiltinFn::Near => {
                 let a = args.first().copied().unwrap_or(0.0);
                 let b = args.get(1).copied().unwrap_or(0.0);
-                if (a - b).abs() < 0.00001 { 1.0 } else { 0.0 }
+                if (a - b).abs() < 0.00001 {
+                    1.0
+                } else {
+                    0.0
+                }
             }
             BuiltinFn::SlToTime => {
                 let samples = args.first().copied().unwrap_or(0.0);
                 samples / 44100.0
             }
             // 字符串操作 — 简化返回0
-            BuiltinFn::Sprintf | BuiltinFn::Strlen | BuiltinFn::Strcmp
-            | BuiltinFn::Strcpy | BuiltinFn::Strcat => 0.0,
+            BuiltinFn::Sprintf
+            | BuiltinFn::Strlen
+            | BuiltinFn::Strcmp
+            | BuiltinFn::Strcpy
+            | BuiltinFn::Strcat => 0.0,
             // 时间
             BuiltinFn::Time => {
                 use std::time::SystemTime;
@@ -265,8 +302,12 @@ impl BuiltinFn {
                     .as_secs_f64()
             }
             // FFT — 简化实现，返回0（真实FFT需要专门实现）
-            BuiltinFn::Fft | BuiltinFn::Ifft | BuiltinFn::FftSwap
-            | BuiltinFn::FftPermute | BuiltinFn::Mdct | BuiltinFn::Imdct
+            BuiltinFn::Fft
+            | BuiltinFn::Ifft
+            | BuiltinFn::FftSwap
+            | BuiltinFn::FftPermute
+            | BuiltinFn::Mdct
+            | BuiltinFn::Imdct
             | BuiltinFn::ConvolveC => 0.0,
             // 其他
             BuiltinFn::Adler32 | BuiltinFn::ScanHash => 0.0,

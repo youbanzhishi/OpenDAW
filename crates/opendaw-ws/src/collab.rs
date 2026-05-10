@@ -21,20 +21,28 @@ use uuid::Uuid;
 /// 混合逻辑时钟时间戳
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HLCTimestamp {
-    pub wall_time: u64,      // 物理时钟
-    pub logical: u32,        // 逻辑计数器
-    pub node_id: String,     // 节点标识
+    pub wall_time: u64,  // 物理时钟
+    pub logical: u32,    // 逻辑计数器
+    pub node_id: String, // 节点标识
 }
 
 impl HLCTimestamp {
     pub fn new(wall_time: u64, logical: u32, node_id: String) -> Self {
-        Self { wall_time, logical, node_id }
+        Self {
+            wall_time,
+            logical,
+            node_id,
+        }
     }
 
     /// 创建本地事件的时间戳
     pub fn now(node_id: &str) -> Self {
         let wt = current_timestamp();
-        Self { wall_time: wt, logical: 0, node_id: node_id.to_string() }
+        Self {
+            wall_time: wt,
+            logical: 0,
+            node_id: node_id.to_string(),
+        }
     }
 
     /// 接收远端事件后生成新时间戳
@@ -181,12 +189,14 @@ impl ORSet {
             }
         }
         // 删除被远端墓碑标记的条目
-        self.entries.retain(|e| {
-            !other.tombstones.iter().any(|t| t.unique_id == e.unique_id)
-        });
+        self.entries
+            .retain(|e| !other.tombstones.iter().any(|t| t.unique_id == e.unique_id));
         // 添加远端条目（不在本地墓碑中的）
         for entry in &other.entries {
-            if !self.tombstones.iter().any(|t| t.unique_id == entry.unique_id)
+            if !self
+                .tombstones
+                .iter()
+                .any(|t| t.unique_id == entry.unique_id)
                 && !self.entries.iter().any(|e| e.unique_id == entry.unique_id)
             {
                 self.entries.push(entry.clone());
@@ -368,7 +378,12 @@ impl CollabRoom {
     }
 
     /// 记录操作（带CRDT冲突解决）
-    pub fn apply_operation(&mut self, user_id: String, operation: CollabOp, timestamp: u64) -> OperationLog {
+    pub fn apply_operation(
+        &mut self,
+        user_id: String,
+        operation: CollabOp,
+        timestamp: u64,
+    ) -> OperationLog {
         let op_id = match &operation {
             CollabOp::Insert { op_id, .. }
             | CollabOp::Delete { op_id, .. }
@@ -377,7 +392,13 @@ impl CollabRoom {
         };
 
         // CRDT处理: SetParam 使用 LWWRegister
-        if let CollabOp::SetParam { track_id, param, value, .. } = &operation {
+        if let CollabOp::SetParam {
+            track_id,
+            param,
+            value,
+            ..
+        } = &operation
+        {
             if param == "volume" {
                 let key = format!("{}_{}", track_id, param);
                 let hlc = HLCTimestamp::now(&user_id);
@@ -487,7 +508,10 @@ impl CollabRoom {
 
     /// 获取未解决评论
     pub fn unresolved_comments(&self) -> Vec<&CommentThread> {
-        self.comment_threads.values().filter(|t| !t.resolved).collect()
+        self.comment_threads
+            .values()
+            .filter(|t| !t.resolved)
+            .collect()
     }
 
     /// 获取所有评论线程
@@ -697,12 +721,24 @@ mod tests {
     #[test]
     fn test_get_operations_since() {
         let mut room = CollabRoom::new(Uuid::new_v4(), Uuid::new_v4());
-        room.apply_operation("u1".into(), CollabOp::Insert {
-            position: 0, content: "a".into(), op_id: Uuid::new_v4(),
-        }, 1000);
-        room.apply_operation("u1".into(), CollabOp::Insert {
-            position: 1, content: "b".into(), op_id: Uuid::new_v4(),
-        }, 1001);
+        room.apply_operation(
+            "u1".into(),
+            CollabOp::Insert {
+                position: 0,
+                content: "a".into(),
+                op_id: Uuid::new_v4(),
+            },
+            1000,
+        );
+        room.apply_operation(
+            "u1".into(),
+            CollabOp::Insert {
+                position: 1,
+                content: "b".into(),
+                op_id: Uuid::new_v4(),
+            },
+            1001,
+        );
         let ops = room.get_operations_since(1);
         assert_eq!(ops.len(), 1);
     }
@@ -840,9 +876,19 @@ mod tests {
     fn test_room_set_edit_state() {
         let mut room = CollabRoom::new(Uuid::new_v4(), Uuid::new_v4());
         room.join("user1".into(), 1000);
-        room.set_edit_state("user1", EditState::Editing { target: "track1".into() });
+        room.set_edit_state(
+            "user1",
+            EditState::Editing {
+                target: "track1".into(),
+            },
+        );
         let presence = room.users.get("user1").unwrap();
-        assert_eq!(presence.edit_state, EditState::Editing { target: "track1".into() });
+        assert_eq!(
+            presence.edit_state,
+            EditState::Editing {
+                target: "track1".into()
+            }
+        );
     }
 
     #[test]
@@ -860,7 +906,9 @@ mod tests {
             comment_id: Uuid::new_v4(),
             thread_id: None,
             user_id: "user1".into(),
-            target: CommentTarget::Track { track_id: Uuid::new_v4() },
+            target: CommentTarget::Track {
+                track_id: Uuid::new_v4(),
+            },
             content: "Needs reverb".into(),
             resolved: false,
             created_at: 1000,
@@ -878,7 +926,9 @@ mod tests {
             comment_id: cid,
             thread_id: None,
             user_id: "user1".into(),
-            target: CommentTarget::Track { track_id: Uuid::new_v4() },
+            target: CommentTarget::Track {
+                track_id: Uuid::new_v4(),
+            },
             content: "Needs reverb".into(),
             resolved: false,
             created_at: 1000,
@@ -889,7 +939,9 @@ mod tests {
             comment_id: Uuid::new_v4(),
             thread_id: Some(cid),
             user_id: "user2".into(),
-            target: CommentTarget::Track { track_id: Uuid::new_v4() },
+            target: CommentTarget::Track {
+                track_id: Uuid::new_v4(),
+            },
             content: "I'll add it".into(),
             resolved: false,
             created_at: 1001,
@@ -906,9 +958,16 @@ mod tests {
     fn test_room_crdt_set_param() {
         let mut room = CollabRoom::new(Uuid::new_v4(), Uuid::new_v4());
         let track_id = Uuid::new_v4();
-        room.apply_operation("user1".into(), CollabOp::SetParam {
-            track_id, param: "volume".into(), value: 0.7, op_id: Uuid::new_v4(),
-        }, 1000);
+        room.apply_operation(
+            "user1".into(),
+            CollabOp::SetParam {
+                track_id,
+                param: "volume".into(),
+                value: 0.7,
+                op_id: Uuid::new_v4(),
+            },
+            1000,
+        );
         let key = format!("{}_volume", track_id);
         assert_eq!(room.track_volumes.get(&key).unwrap().value, 0.7);
     }
@@ -916,17 +975,35 @@ mod tests {
     #[test]
     fn test_room_crdt_insert_delete_track() {
         let mut room = CollabRoom::new(Uuid::new_v4(), Uuid::new_v4());
-        room.apply_operation("u1".into(), CollabOp::Insert {
-            position: 0, content: "track1".into(), op_id: Uuid::new_v4(),
-        }, 1000);
-        room.apply_operation("u1".into(), CollabOp::Insert {
-            position: 1, content: "track2".into(), op_id: Uuid::new_v4(),
-        }, 1001);
+        room.apply_operation(
+            "u1".into(),
+            CollabOp::Insert {
+                position: 0,
+                content: "track1".into(),
+                op_id: Uuid::new_v4(),
+            },
+            1000,
+        );
+        room.apply_operation(
+            "u1".into(),
+            CollabOp::Insert {
+                position: 1,
+                content: "track2".into(),
+                op_id: Uuid::new_v4(),
+            },
+            1001,
+        );
         assert_eq!(room.track_set.elements().len(), 2);
 
-        room.apply_operation("u1".into(), CollabOp::Delete {
-            position: 0, length: 1, op_id: Uuid::new_v4(),
-        }, 1002);
+        room.apply_operation(
+            "u1".into(),
+            CollabOp::Delete {
+                position: 0,
+                length: 1,
+                op_id: Uuid::new_v4(),
+            },
+            1002,
+        );
         assert_eq!(room.track_set.elements().len(), 1);
     }
 
@@ -935,9 +1012,15 @@ mod tests {
         let mut room = CollabRoom::new(Uuid::new_v4(), Uuid::new_v4());
         // Generate enough operations to trigger snapshot (every 10)
         for i in 0..12 {
-            room.apply_operation("u1".into(), CollabOp::Insert {
-                position: i, content: format!("track{}", i), op_id: Uuid::new_v4(),
-            }, 1000 + i as u64);
+            room.apply_operation(
+                "u1".into(),
+                CollabOp::Insert {
+                    position: i,
+                    content: format!("track{}", i),
+                    op_id: Uuid::new_v4(),
+                },
+                1000 + i as u64,
+            );
         }
         assert!(!room.snapshots.is_empty());
         let snap = room.replay_to(10);
@@ -947,9 +1030,15 @@ mod tests {
     #[test]
     fn test_room_merge_track_set() {
         let mut room = CollabRoom::new(Uuid::new_v4(), Uuid::new_v4());
-        room.apply_operation("u1".into(), CollabOp::Insert {
-            position: 0, content: "track1".into(), op_id: Uuid::new_v4(),
-        }, 1000);
+        room.apply_operation(
+            "u1".into(),
+            CollabOp::Insert {
+                position: 0,
+                content: "track1".into(),
+                op_id: Uuid::new_v4(),
+            },
+            1000,
+        );
 
         let mut remote = ORSet::new();
         remote.add("track2".into());
@@ -973,12 +1062,16 @@ mod tests {
             comment_id: Uuid::new_v4(),
             thread_id: None,
             user_id: "user1".into(),
-            target: CommentTarget::Track { track_id: Uuid::new_v4() },
+            target: CommentTarget::Track {
+                track_id: Uuid::new_v4(),
+            },
             content: "Great track".into(),
             resolved: false,
             created_at: 1000,
         };
-        let result = manager.add_comment(room_id, CommentAction::Add, comment).await;
+        let result = manager
+            .add_comment(room_id, CommentAction::Add, comment)
+            .await;
         assert!(result.is_some());
     }
 

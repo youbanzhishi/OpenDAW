@@ -31,7 +31,6 @@ pub trait Command: fmt::Debug {
     fn merge_with(&mut self, other: Box<dyn Command>) {
         let _ = other;
     }
-
 }
 
 /// 命令执行上下文 — 提供对项目状态的访问
@@ -190,7 +189,9 @@ impl CommandHistory {
             MergeStrategy::MergeSimilar => {
                 if branch.position > 0 {
                     let last_idx = branch.position - 1;
-                    branch.commands[last_idx].as_ref().can_merge_with(command.as_ref())
+                    branch.commands[last_idx]
+                        .as_ref()
+                        .can_merge_with(command.as_ref())
                 } else {
                     false
                 }
@@ -198,7 +199,9 @@ impl CommandHistory {
             MergeStrategy::TimeWindow(_) => {
                 if branch.position > 0 {
                     let last_idx = branch.position - 1;
-                    branch.commands[last_idx].as_ref().can_merge_with(command.as_ref())
+                    branch.commands[last_idx]
+                        .as_ref()
+                        .can_merge_with(command.as_ref())
                 } else {
                     false
                 }
@@ -433,7 +436,7 @@ impl RemoveTrackCommand {
             executed: false,
         }
     }
-    }
+}
 
 impl Command for RemoveTrackCommand {
     fn execute(&mut self, context: &mut CommandContext) {
@@ -453,10 +456,14 @@ impl Command for RemoveTrackCommand {
 
     fn undo(&mut self, context: &mut CommandContext) {
         if self.executed {
-            context.track_names.insert(self.index, self.track_name.clone());
+            context
+                .track_names
+                .insert(self.index, self.track_name.clone());
             context.track_volumes.insert(self.index, self.volume);
             context.track_pans.insert(self.index, self.pan);
-            context.track_plugins.insert(self.index, self.plugins.clone());
+            context
+                .track_plugins
+                .insert(self.index, self.plugins.clone());
             self.executed = false;
         }
     }
@@ -488,7 +495,7 @@ impl MoveClipCommand {
             executed: false,
         }
     }
-    }
+}
 
 impl Command for MoveClipCommand {
     fn execute(&mut self, context: &mut CommandContext) {
@@ -502,7 +509,13 @@ impl Command for MoveClipCommand {
             // 记录新clip移动
             self.old_start = 0.0;
             self.old_end = 0.0;
-            context.clip_moves.push((self.clip_index, self.old_start, self.old_end, self.new_start, self.new_end));
+            context.clip_moves.push((
+                self.clip_index,
+                self.old_start,
+                self.old_end,
+                self.new_start,
+                self.new_end,
+            ));
         }
         self.executed = true;
     }
@@ -538,7 +551,7 @@ impl SetVolumeCommand {
             executed: false,
         }
     }
-    }
+}
 
 impl Command for SetVolumeCommand {
     fn execute(&mut self, context: &mut CommandContext) {
@@ -570,7 +583,7 @@ impl Command for SetVolumeCommand {
         // Since we can't downcast, just keep the new command's values
         // The caller should replace the old command instead
     }
-    }
+}
 
 /// 设置声像命令
 #[derive(Debug)]
@@ -619,7 +632,7 @@ impl Command for SetPanCommand {
     fn merge_with(&mut self, _other: Box<dyn Command>) {
         // Merge: keep the latest pan value
     }
-    }
+}
 
 /// 添加插件命令
 #[derive(Debug)]
@@ -680,13 +693,16 @@ impl RemovePluginCommand {
             executed: false,
         }
     }
-    }
+}
 
 impl Command for RemovePluginCommand {
     fn execute(&mut self, context: &mut CommandContext) {
         if self.track_index < context.track_plugins.len() {
             let plugins = &context.track_plugins[self.track_index];
-            self.plugin_position = plugins.iter().position(|p| p == &self.plugin_name).unwrap_or(0);
+            self.plugin_position = plugins
+                .iter()
+                .position(|p| p == &self.plugin_name)
+                .unwrap_or(0);
             context.track_plugins[self.track_index].remove(self.plugin_position);
         }
         self.executed = true;
@@ -694,7 +710,9 @@ impl Command for RemovePluginCommand {
 
     fn undo(&mut self, context: &mut CommandContext) {
         if self.executed && self.track_index < context.track_plugins.len() {
-            let pos = self.plugin_position.min(context.track_plugins[self.track_index].len());
+            let pos = self
+                .plugin_position
+                .min(context.track_plugins[self.track_index].len());
             context.track_plugins[self.track_index].insert(pos, self.plugin_name.clone());
         }
         self.executed = false;
@@ -833,8 +851,11 @@ mod tests {
 
         // 撤销一次应回到初始音量
         history.undo(&mut ctx);
-        assert!((ctx.track_volumes[0] - 1.0).abs() < 1e-10,
-            "Merged undo should restore initial value, got {}", ctx.track_volumes[0]);
+        assert!(
+            (ctx.track_volumes[0] - 1.0).abs() < 1e-10,
+            "Merged undo should restore initial value, got {}",
+            ctx.track_volumes[0]
+        );
     }
 
     #[test]
@@ -900,4 +921,4 @@ mod tests {
         let undo_descs = history.undo_stack_descriptions();
         assert!(undo_descs.len() >= 1);
     }
-    }
+}

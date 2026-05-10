@@ -44,7 +44,13 @@ impl ParameterValue {
         match self {
             ParameterValue::Float(v) => *v,
             ParameterValue::Int(v) => *v as f64,
-            ParameterValue::Bool(v) => if *v { 1.0 } else { 0.0 },
+            ParameterValue::Bool(v) => {
+                if *v {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
             ParameterValue::Enum(v) => *v as f64,
         }
     }
@@ -211,7 +217,11 @@ impl PluginParameter {
 
     /// 创建枚举参数
     pub fn enum_param(id: &str, name: &str, labels: &[&str], default_index: usize) -> Self {
-        let max = if labels.is_empty() { 0 } else { labels.len() - 1 };
+        let max = if labels.is_empty() {
+            0
+        } else {
+            labels.len() - 1
+        };
         let idx = default_index.min(max);
         Self {
             id: id.to_string(),
@@ -319,13 +329,17 @@ impl PluginParameter {
                 }
             }
             ParameterValue::Bool(v) => {
-                if *v { "On".to_string() } else { "Off".to_string() }
+                if *v {
+                    "On".to_string()
+                } else {
+                    "Off".to_string()
+                }
             }
-            ParameterValue::Enum(idx) => {
-                self.enum_labels.get(*idx)
-                    .cloned()
-                    .unwrap_or_else(|| format!("[{}]", idx))
-            }
+            ParameterValue::Enum(idx) => self
+                .enum_labels
+                .get(*idx)
+                .cloned()
+                .unwrap_or_else(|| format!("[{}]", idx)),
         }
     }
 
@@ -407,7 +421,8 @@ mod tests {
 
     #[test]
     fn test_enum_param() {
-        let mut p = PluginParameter::enum_param("filter", "滤波器", &["LPF", "HPF", "BPF", "Notch"], 0);
+        let mut p =
+            PluginParameter::enum_param("filter", "滤波器", &["LPF", "HPF", "BPF", "Notch"], 0);
         assert_eq!(p.value.as_enum(), Some(0));
         assert_eq!(p.current_enum_label(), Some("LPF"));
 

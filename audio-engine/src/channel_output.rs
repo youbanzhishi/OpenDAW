@@ -6,7 +6,7 @@
 //! ## 架构
 //!
 //! ```text
-//! AudioEngine (render_frame) 
+//! AudioEngine (render_frame)
 //!        ↓
 //!  AudioOutput (channel sender)
 //!        ↓
@@ -35,7 +35,11 @@ pub struct AudioFrame {
 impl AudioFrame {
     /// 创建新的音频帧
     pub fn new(samples: Vec<f32>, channels: usize) -> Self {
-        let frames = if channels > 0 { samples.len() / channels } else { 0 };
+        let frames = if channels > 0 {
+            samples.len() / channels
+        } else {
+            0
+        };
         Self {
             samples,
             channels,
@@ -98,7 +102,10 @@ impl AudioOutputHandle {
     /// - `buffer_size`: 每帧缓冲区的样本数
     /// - `channels`: 声道数（通常为2）
     /// 返回：(handle, receiver)
-    pub fn new(buffer_size: usize, channels: usize) -> (Self, crossbeam_channel::Receiver<AudioFrame>) {
+    pub fn new(
+        buffer_size: usize,
+        channels: usize,
+    ) -> (Self, crossbeam_channel::Receiver<AudioFrame>) {
         // 缓冲区大小设为约100ms的音频
         let capacity = (buffer_size * 10).max(1024);
         let (sender, receiver) = bounded(capacity);

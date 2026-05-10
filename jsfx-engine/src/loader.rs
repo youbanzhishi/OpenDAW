@@ -3,14 +3,14 @@
 //! 提供从文件或源码字符串加载JSFX插件的功能
 //! 支持批量扫描和元信息快速提取
 
-use std::path::Path;
 use std::fs;
 use std::io;
+use std::path::Path;
 
+use crate::adapter::JsfxPlugin;
 use crate::ast::{JsfxProgram, SliderDef};
 use crate::error::JsfxError;
 use crate::parser::JsfxParser;
-use crate::adapter::JsfxPlugin;
 use crate::VcPlugin;
 
 /// 加载JSFX文件
@@ -29,10 +29,10 @@ pub fn load_jsfx_file(path: &Path) -> Result<JsfxPlugin, JsfxError> {
         )));
     }
 
-    let source = fs::read_to_string(path)
-        .map_err(|e| JsfxError::Io(e))?;
+    let source = fs::read_to_string(path).map_err(|e| JsfxError::Io(e))?;
 
-    let name = path.file_stem()
+    let name = path
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("unknown")
         .to_string();

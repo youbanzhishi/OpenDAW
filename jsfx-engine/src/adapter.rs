@@ -5,7 +5,9 @@
 
 use std::path::Path;
 
-use opendaw_extension::{VcPlugin, PluginType, ParamInfo, PluginError, AudioBuffer as ExtAudioBuffer};
+use opendaw_extension::{
+    AudioBuffer as ExtAudioBuffer, ParamInfo, PluginError, PluginType, VcPlugin,
+};
 
 use crate::ast::*;
 use crate::error::JsfxError;
@@ -54,7 +56,8 @@ impl JsfxPlugin {
     /// 从JSFX文件加载
     pub fn from_file(path: &Path) -> Result<Self, JsfxError> {
         let source = std::fs::read_to_string(path)?;
-        let name = path.file_stem()
+        let name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
             .to_string();
@@ -132,13 +135,17 @@ impl JsfxPlugin {
 
     /// 执行@gfx块（手动触发GUI绘制脚本）
     pub fn execute_gfx(&mut self) {
-        if !self.initialized || self.destroyed { return; }
+        if !self.initialized || self.destroyed {
+            return;
+        }
         self.vm.execute_gfx();
     }
 
     /// 执行@serialize块（用于预设保存/加载）
     pub fn execute_serialize(&mut self) {
-        if !self.initialized || self.destroyed { return; }
+        if !self.initialized || self.destroyed {
+            return;
+        }
         self.vm.execute_serialize();
     }
 
@@ -162,7 +169,6 @@ impl JsfxPlugin {
         &self.vm.runtime.memory
     }
 }
-
 
 impl VcPlugin for JsfxPlugin {
     fn plugin_id(&self) -> &str {
@@ -218,17 +224,23 @@ impl VcPlugin for JsfxPlugin {
     }
 
     fn get_params(&self) -> Vec<ParamInfo> {
-        self.program.sliders.iter().map(|s| {
-            ParamInfo::with_step(
-                &format!("slider{}", s.index),
-                &s.name.clone().unwrap_or_else(|| format!("Slider {}", s.index)),
-                s.min,
-                s.max,
-                s.default,
-                s.step,
-                "",
-            )
-        }).collect()
+        self.program
+            .sliders
+            .iter()
+            .map(|s| {
+                ParamInfo::with_step(
+                    &format!("slider{}", s.index),
+                    &s.name
+                        .clone()
+                        .unwrap_or_else(|| format!("Slider {}", s.index)),
+                    s.min,
+                    s.max,
+                    s.default,
+                    s.step,
+                    "",
+                )
+            })
+            .collect()
     }
 
     fn set_param(&mut self, id: &str, value: f64) -> Result<(), PluginError> {
@@ -241,7 +253,12 @@ impl VcPlugin for JsfxPlugin {
             if let Ok(idx) = idx_str.parse::<usize>() {
                 // 验证slider存在
                 if self.program.sliders.iter().any(|s| s.index == idx) {
-                    let slider = self.program.sliders.iter().find(|s| s.index == idx).unwrap();
+                    let slider = self
+                        .program
+                        .sliders
+                        .iter()
+                        .find(|s| s.index == idx)
+                        .unwrap();
                     let clamped = value.clamp(slider.min, slider.max);
                     self.vm.update_slider(idx, clamped);
                     return Ok(());

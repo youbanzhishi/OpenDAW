@@ -103,8 +103,8 @@ impl PresetManager {
 
     /// 从JSON导入预设
     pub fn import_json(&mut self, json: &str) -> Result<(), String> {
-        let preset: Preset = serde_json::from_str(json)
-            .map_err(|e| format!("JSON解析失败: {}", e))?;
+        let preset: Preset =
+            serde_json::from_str(json).map_err(|e| format!("JSON解析失败: {}", e))?;
         self.save(preset);
         Ok(())
     }
@@ -118,10 +118,9 @@ impl PresetManager {
 
     /// 从文件加载预设
     pub fn load_from_file(&mut self, path: &Path) -> Result<(), String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("读取文件失败: {}", e))?;
-        let presets: Vec<Preset> = serde_json::from_str(&content)
-            .map_err(|e| format!("JSON解析失败: {}", e))?;
+        let content = std::fs::read_to_string(path).map_err(|e| format!("读取文件失败: {}", e))?;
+        let presets: Vec<Preset> =
+            serde_json::from_str(&content).map_err(|e| format!("JSON解析失败: {}", e))?;
         for preset in presets {
             self.save(preset);
         }

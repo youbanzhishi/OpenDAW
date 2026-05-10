@@ -61,7 +61,9 @@ impl AudioBuffer {
 
     /// 计算RMS值
     pub fn rms(&self, channel: usize) -> f64 {
-        if channel >= self.channels || self.frames == 0 { return 0.0; }
+        if channel >= self.channels || self.frames == 0 {
+            return 0.0;
+        }
         let sum: f64 = (0..self.frames)
             .map(|i| self.sample(channel, i).powi(2))
             .sum();
@@ -70,7 +72,9 @@ impl AudioBuffer {
 
     /// 计算Peak值
     pub fn peak(&self, channel: usize) -> f64 {
-        if channel >= self.channels { return 0.0; }
+        if channel >= self.channels {
+            return 0.0;
+        }
         (0..self.frames)
             .map(|i| self.sample(channel, i).abs())
             .fold(0.0f64, |a, b| a.max(b))
@@ -104,7 +108,8 @@ impl JsfxVm {
 
         // 注册用户自定义函数
         for func in &program.functions {
-            self.user_functions.insert(func.name.clone(), (func.params.clone(), func.body.clone()));
+            self.user_functions
+                .insert(func.name.clone(), (func.params.clone(), func.body.clone()));
         }
 
         Ok(())
@@ -175,13 +180,25 @@ impl JsfxVm {
 
         // 逐采样处理
         for frame in 0..frames {
-            let spl0 = if channels > 0 { input.sample(0, frame) } else { 0.0 };
-            let spl1 = if channels > 1 { input.sample(1, frame) } else { spl0 };
+            let spl0 = if channels > 0 {
+                input.sample(0, frame)
+            } else {
+                0.0
+            };
+            let spl1 = if channels > 1 {
+                input.sample(1, frame)
+            } else {
+                spl0
+            };
 
             let (out0, out1) = self.process_sample(spl0, spl1);
 
-            if channels > 0 { output.set_sample(0, frame, out0); }
-            if channels > 1 { output.set_sample(1, frame, out1); }
+            if channels > 0 {
+                output.set_sample(0, frame, out0);
+            }
+            if channels > 1 {
+                output.set_sample(1, frame, out1);
+            }
 
             self.runtime.sample_index += 1;
             self.runtime.play_position += 1.0;
@@ -243,12 +260,16 @@ impl JsfxVm {
                     AssignOp::Sub => current - rhs,
                     AssignOp::Mul => current * rhs,
                     AssignOp::Div => {
-                        if rhs == 0.0 { return Err(JsfxError::DivisionByZero); }
+                        if rhs == 0.0 {
+                            return Err(JsfxError::DivisionByZero);
+                        }
                         current / rhs
                     }
                     AssignOp::Pow => current.powf(rhs),
                     AssignOp::Mod => {
-                        if rhs == 0.0 { return Err(JsfxError::DivisionByZero); }
+                        if rhs == 0.0 {
+                            return Err(JsfxError::DivisionByZero);
+                        }
                         current % rhs
                     }
                 };
@@ -293,9 +314,10 @@ impl JsfxVm {
                     last_val = self.execute_block(body)?;
                     iterations += 1;
                     if iterations > self.max_loop_iterations {
-                        return Err(JsfxError::RuntimeError(
-                            format!("循环超过最大迭代次数 {}", self.max_loop_iterations)
-                        ));
+                        return Err(JsfxError::RuntimeError(format!(
+                            "循环超过最大迭代次数 {}",
+                            self.max_loop_iterations
+                        )));
                     }
                 }
                 Ok(last_val)
@@ -311,9 +333,7 @@ impl JsfxVm {
                 Ok(last_val)
             }
 
-            Statement::ExprStatement(expr) => {
-                self.eval_expr(expr)
-            }
+            Statement::ExprStatement(expr) => self.eval_expr(expr),
 
             Statement::LocalDecl(name, init_expr) => {
                 let val = match init_expr {
@@ -347,22 +367,74 @@ impl JsfxVm {
                     BinOp::Sub => l - r,
                     BinOp::Mul => l * r,
                     BinOp::Div => {
-                        if r == 0.0 { return Err(JsfxError::DivisionByZero); }
+                        if r == 0.0 {
+                            return Err(JsfxError::DivisionByZero);
+                        }
                         l / r
                     }
                     BinOp::Mod => {
-                        if r == 0.0 { return Err(JsfxError::DivisionByZero); }
+                        if r == 0.0 {
+                            return Err(JsfxError::DivisionByZero);
+                        }
                         l % r
                     }
                     BinOp::Pow => l.powf(r),
-                    BinOp::Lt => if l < r { 1.0 } else { 0.0 },
-                    BinOp::Gt => if l > r { 1.0 } else { 0.0 },
-                    BinOp::Le => if l <= r { 1.0 } else { 0.0 },
-                    BinOp::Ge => if l >= r { 1.0 } else { 0.0 },
-                    BinOp::Eq => if (l - r).abs() < f64::EPSILON { 1.0 } else { 0.0 },
-                    BinOp::Ne => if (l - r).abs() >= f64::EPSILON { 1.0 } else { 0.0 },
-                    BinOp::And => if l != 0.0 && r != 0.0 { 1.0 } else { 0.0 },
-                    BinOp::Or => if l != 0.0 || r != 0.0 { 1.0 } else { 0.0 },
+                    BinOp::Lt => {
+                        if l < r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Gt => {
+                        if l > r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Le => {
+                        if l <= r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Ge => {
+                        if l >= r {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Eq => {
+                        if (l - r).abs() < f64::EPSILON {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Ne => {
+                        if (l - r).abs() >= f64::EPSILON {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::And => {
+                        if l != 0.0 && r != 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
+                    BinOp::Or => {
+                        if l != 0.0 || r != 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
                     BinOp::BitAnd => ((l as i64) & (r as i64)) as f64,
                     BinOp::BitOr => ((l as i64) | (r as i64)) as f64,
                 })
@@ -372,7 +444,13 @@ impl JsfxVm {
                 let v = self.eval_expr(operand)?;
                 Ok(match op {
                     UnaryOp::Neg => -v,
-                    UnaryOp::Not => if v == 0.0 { 1.0 } else { 0.0 },
+                    UnaryOp::Not => {
+                        if v == 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
+                    }
                     UnaryOp::BitNot => (!(v as i64)) as f64,
                 })
             }
@@ -455,7 +533,8 @@ impl JsfxVm {
                 // 检查是否为用户自定义函数 — 克隆函数信息避免借用冲突
                 if let Some((params, body)) = self.user_functions.get(name).cloned() {
                     // 保存当前参数值
-                    let old_values: Vec<(String, f64)> = params.iter()
+                    let old_values: Vec<(String, f64)> = params
+                        .iter()
                         .map(|p| (p.clone(), self.runtime.get_var(p)))
                         .collect();
 
@@ -584,8 +663,16 @@ spl1 = $e;
         vm.init(44100.0);
 
         let (out0, out1) = vm.process_sample(0.0, 0.0);
-        assert!((out0 - std::f64::consts::PI).abs() < 0.001, "期望π, 得到{}", out0);
-        assert!((out1 - std::f64::consts::E).abs() < 0.001, "期望e, 得到{}", out1);
+        assert!(
+            (out0 - std::f64::consts::PI).abs() < 0.001,
+            "期望π, 得到{}",
+            out0
+        );
+        assert!(
+            (out1 - std::f64::consts::E).abs() < 0.001,
+            "期望e, 得到{}",
+            out1
+        );
     }
 
     #[test]
@@ -672,8 +759,16 @@ spl1 = rand();
         vm.init(44100.0);
 
         let (out0, out1) = vm.process_sample(0.0, 0.0);
-        assert!(out0 >= 0.0 && out0 < 1.0, "rand应在[0,1)范围内, 得到{}", out0);
-        assert!(out1 >= 0.0 && out1 < 1.0, "rand应在[0,1)范围内, 得到{}", out1);
+        assert!(
+            out0 >= 0.0 && out0 < 1.0,
+            "rand应在[0,1)范围内, 得到{}",
+            out0
+        );
+        assert!(
+            out1 >= 0.0 && out1 < 1.0,
+            "rand应在[0,1)范围内, 得到{}",
+            out1
+        );
     }
 
     #[test]
@@ -775,8 +870,11 @@ spl1 = block_counter;
 
         // @block should have incremented block_counter to 1
         // All samples should see block_counter = 1
-        assert!((output.sample(0, 0) - 1.0).abs() < 0.001,
-            "block_counter应为1, 得到{}", output.sample(0, 0));
+        assert!(
+            (output.sample(0, 0) - 1.0).abs() < 0.001,
+            "block_counter应为1, 得到{}",
+            output.sample(0, 0)
+        );
     }
 
     #[test]
@@ -801,14 +899,22 @@ spl1 = preset_val;
 
         // Before serialize, preset_val = 42
         let (out0, _) = vm.process_sample(0.0, 0.0);
-        assert!((out0 - 42.0).abs() < 0.001, "init后preset_val应为42, 得到{}", out0);
+        assert!(
+            (out0 - 42.0).abs() < 0.001,
+            "init后preset_val应为42, 得到{}",
+            out0
+        );
 
         // Execute serialize
         vm.execute_serialize();
 
         // After serialize, preset_val = 100
         let (out0, _) = vm.process_sample(0.0, 0.0);
-        assert!((out0 - 100.0).abs() < 0.001, "serialize后preset_val应为100, 得到{}", out0);
+        assert!(
+            (out0 - 100.0).abs() < 0.001,
+            "serialize后preset_val应为100, 得到{}",
+            out0
+        );
     }
 
     #[test]

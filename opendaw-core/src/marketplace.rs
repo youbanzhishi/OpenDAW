@@ -75,8 +75,8 @@ impl PluginCategory {
 /// 平台目标三元组
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlatformTarget {
-    pub os: String,       // "linux" | "macos" | "windows"
-    pub arch: String,     // "x86_64" | "aarch64"
+    pub os: String,   // "linux" | "macos" | "windows"
+    pub arch: String, // "x86_64" | "aarch64"
 }
 
 // ────────────────────────────────────────────
@@ -173,7 +173,11 @@ impl PluginCompatibility {
     }
 
     /// 检查插件与当前环境的兼容性
-    pub fn check(&self, manifest: &PluginManifest, installed: &HashMap<String, String>) -> CompatibilityReport {
+    pub fn check(
+        &self,
+        manifest: &PluginManifest,
+        installed: &HashMap<String, String>,
+    ) -> CompatibilityReport {
         let mut issues = Vec::new();
 
         // 1. DAW 版本兼容性
@@ -188,9 +192,10 @@ impl PluginCompatibility {
 
         // 2. 平台兼容性
         if !manifest.platforms.is_empty() {
-            let platform_match = manifest.platforms.iter().any(|p| {
-                p.os == self.platform.os && p.arch == self.platform.arch
-            });
+            let platform_match = manifest
+                .platforms
+                .iter()
+                .any(|p| p.os == self.platform.os && p.arch == self.platform.arch);
             if !platform_match {
                 issues.push(format!(
                     "Plugin not available for platform {}-{}",
@@ -291,12 +296,20 @@ impl PluginRepository {
     }
 
     /// 更新索引缓存（模拟从远程拉取）
-    pub fn refresh_index(&mut self, repo_id: &str, plugins: Vec<PluginManifest>) -> Result<(), String> {
+    pub fn refresh_index(
+        &mut self,
+        repo_id: &str,
+        plugins: Vec<PluginManifest>,
+    ) -> Result<(), String> {
         if !self.sources.contains_key(repo_id) {
             return Err(format!("Repository '{}' not found", repo_id));
         }
         let now = current_timestamp();
-        let ttl = self.sources.get(repo_id).map(|s| s.ttl_secs).unwrap_or(3600);
+        let ttl = self
+            .sources
+            .get(repo_id)
+            .map(|s| s.ttl_secs)
+            .unwrap_or(3600);
         self.index_cache.insert(
             repo_id.to_string(),
             CachedIndex {
@@ -312,13 +325,15 @@ impl PluginRepository {
     /// 获取缓存索引（如果过期返回 None）
     pub fn get_cached_index(&self, repo_id: &str) -> Option<&CachedIndex> {
         let now = current_timestamp();
-        self.index_cache.get(repo_id).and_then(|idx| {
-            if idx.is_expired(now) {
-                None
-            } else {
-                Some(idx)
-            }
-        })
+        self.index_cache.get(repo_id).and_then(
+            |idx| {
+                if idx.is_expired(now) {
+                    None
+                } else {
+                    Some(idx)
+                }
+            },
+        )
     }
 
     /// 获取缓存索引（忽略过期）
@@ -327,16 +342,24 @@ impl PluginRepository {
     }
 
     /// 跨仓库联合搜索
-    pub fn search_all(&self, query: &str, category: Option<&PluginCategory>) -> Vec<&PluginManifest> {
+    pub fn search_all(
+        &self,
+        query: &str,
+        category: Option<&PluginCategory>,
+    ) -> Vec<&PluginManifest> {
         let query_lower = query.to_lowercase();
         let mut results = Vec::new();
 
         for idx in self.index_cache.values() {
             for plugin in &idx.plugins {
                 let matches_query = plugin.name.to_lowercase().contains(&query_lower)
-                    || plugin.tags.iter().any(|t| t.to_lowercase().contains(&query_lower))
+                    || plugin
+                        .tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&query_lower))
                     || plugin.description.to_lowercase().contains(&query_lower);
-                let matches_cat = category.map_or(true, |cat| categories_match(&plugin.category, cat));
+                let matches_cat =
+                    category.map_or(true, |cat| categories_match(&plugin.category, cat));
                 if matches_query && matches_cat {
                     results.push(plugin);
                 }
@@ -391,7 +414,7 @@ pub struct PluginReview {
     pub review_id: String,
     pub plugin_id: String,
     pub user_id: String,
-    pub rating: u8,         // 1-5
+    pub rating: u8, // 1-5
     pub comment: String,
     pub created_at: u64,
 }
@@ -427,8 +450,8 @@ pub struct RatingSummary {
 /// 评论管理器
 #[derive(Clone, Debug, Default)]
 pub struct ReviewManager {
-    reviews: HashMap<String, Vec<PluginReview>>,   // plugin_id -> reviews
-    summaries: HashMap<String, RatingSummary>,       // plugin_id -> summary
+    reviews: HashMap<String, Vec<PluginReview>>, // plugin_id -> reviews
+    summaries: HashMap<String, RatingSummary>,   // plugin_id -> summary
 }
 
 impl ReviewManager {
@@ -446,7 +469,10 @@ impl ReviewManager {
 
     /// 获取插件评论
     pub fn get_reviews(&self, plugin_id: &str) -> Vec<&PluginReview> {
-        self.reviews.get(plugin_id).map(|v| v.iter().collect()).unwrap_or_default()
+        self.reviews
+            .get(plugin_id)
+            .map(|v| v.iter().collect())
+            .unwrap_or_default()
     }
 
     /// 获取评分汇总
@@ -456,7 +482,10 @@ impl ReviewManager {
 
     /// 获取平均评分
     pub fn average_rating(&self, plugin_id: &str) -> f32 {
-        self.summaries.get(plugin_id).map(|s| s.average_rating).unwrap_or(0.0)
+        self.summaries
+            .get(plugin_id)
+            .map(|s| s.average_rating)
+            .unwrap_or(0.0)
     }
 
     /// 重新计算汇总
@@ -545,14 +574,20 @@ impl PluginRegistry {
             .values()
             .filter(|p| {
                 p.name.to_lowercase().contains(&query_lower)
-                    || p.tags.iter().any(|t| t.to_lowercase().contains(&query_lower))
+                    || p.tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&query_lower))
                     || p.description.to_lowercase().contains(&query_lower)
             })
             .collect()
     }
 
     /// 检查依赖兼容性
-    pub fn check_compatibility(&self, manifest: &PluginManifest, daw_version: &str) -> CompatibilityReport {
+    pub fn check_compatibility(
+        &self,
+        manifest: &PluginManifest,
+        daw_version: &str,
+    ) -> CompatibilityReport {
         let mut issues = Vec::new();
 
         if let Some(ref min_ver) = manifest.min_daw_version {
@@ -575,7 +610,10 @@ impl PluginRegistry {
             } else if self.plugins.contains_key(&dep.plugin_id) {
                 issues.push(format!("Dependency '{}' not installed", dep.plugin_id));
             } else {
-                issues.push(format!("Dependency '{}' not found in registry", dep.plugin_id));
+                issues.push(format!(
+                    "Dependency '{}' not found in registry",
+                    dep.plugin_id
+                ));
             }
         }
 
@@ -588,7 +626,8 @@ impl PluginRegistry {
 
     /// 标记已安装
     pub fn mark_installed(&mut self, plugin_id: &str, version: &str) {
-        self.installed.insert(plugin_id.to_string(), version.to_string());
+        self.installed
+            .insert(plugin_id.to_string(), version.to_string());
     }
 
     /// 标记未安装
@@ -754,9 +793,15 @@ fn semver_parse(version: &str) -> Result<(u32, u32, u32), String> {
     if parts.len() != 3 {
         return Err(format!("Invalid semver format: {}", version));
     }
-    let major = parts[0].parse::<u32>().map_err(|_| format!("Invalid major: {}", parts[0]))?;
-    let minor = parts[1].parse::<u32>().map_err(|_| format!("Invalid minor: {}", parts[1]))?;
-    let patch = parts[2].parse::<u32>().map_err(|_| format!("Invalid patch: {}", parts[2]))?;
+    let major = parts[0]
+        .parse::<u32>()
+        .map_err(|_| format!("Invalid major: {}", parts[0]))?;
+    let minor = parts[1]
+        .parse::<u32>()
+        .map_err(|_| format!("Invalid minor: {}", parts[1]))?;
+    let patch = parts[2]
+        .parse::<u32>()
+        .map_err(|_| format!("Invalid patch: {}", parts[2]))?;
     Ok((major, minor, patch))
 }
 
@@ -792,20 +837,44 @@ fn semver_satisfies(version: &str, constraint: &str) -> bool {
 /// 获取所有预置分类（用于marketplace UI）
 pub fn preset_categories() -> Vec<PluginCategory> {
     vec![
-        PluginCategory::Effect { sub: Some(EffectSubcategory::Compressor) },
-        PluginCategory::Effect { sub: Some(EffectSubcategory::Equalizer) },
-        PluginCategory::Effect { sub: Some(EffectSubcategory::Reverb) },
-        PluginCategory::Effect { sub: Some(EffectSubcategory::Delay) },
-        PluginCategory::Effect { sub: Some(EffectSubcategory::Chorus) },
-        PluginCategory::Effect { sub: Some(EffectSubcategory::Distortion) },
-        PluginCategory::Effect { sub: Some(EffectSubcategory::Dynamics) },
+        PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Compressor),
+        },
+        PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Equalizer),
+        },
+        PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Reverb),
+        },
+        PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Delay),
+        },
+        PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Chorus),
+        },
+        PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Distortion),
+        },
+        PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Dynamics),
+        },
         PluginCategory::Effect { sub: None },
-        PluginCategory::Instrument { sub: Some(InstrumentSubcategory::Synthesizer) },
-        PluginCategory::Instrument { sub: Some(InstrumentSubcategory::Sampler) },
-        PluginCategory::Instrument { sub: Some(InstrumentSubcategory::DrumMachine) },
+        PluginCategory::Instrument {
+            sub: Some(InstrumentSubcategory::Synthesizer),
+        },
+        PluginCategory::Instrument {
+            sub: Some(InstrumentSubcategory::Sampler),
+        },
+        PluginCategory::Instrument {
+            sub: Some(InstrumentSubcategory::DrumMachine),
+        },
         PluginCategory::Instrument { sub: None },
-        PluginCategory::Utility { sub: Some(UtilitySubcategory::Analyzer) },
-        PluginCategory::Utility { sub: Some(UtilitySubcategory::Tool) },
+        PluginCategory::Utility {
+            sub: Some(UtilitySubcategory::Analyzer),
+        },
+        PluginCategory::Utility {
+            sub: Some(UtilitySubcategory::Tool),
+        },
         PluginCategory::Utility { sub: None },
         PluginCategory::Analyzer,
         PluginCategory::Midi,
@@ -1008,15 +1077,21 @@ mod tests {
 
     #[test]
     fn test_plugin_category_effect_subcategory() {
-        let cat = PluginCategory::Effect { sub: Some(EffectSubcategory::Equalizer) };
+        let cat = PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Equalizer),
+        };
         assert!(cat.is_effect());
-        let cat2 = PluginCategory::Effect { sub: Some(EffectSubcategory::Reverb) };
+        let cat2 = PluginCategory::Effect {
+            sub: Some(EffectSubcategory::Reverb),
+        };
         assert!(categories_match(&cat, &cat2));
     }
 
     #[test]
     fn test_plugin_category_instrument_subcategory() {
-        let cat = PluginCategory::Instrument { sub: Some(InstrumentSubcategory::Synthesizer) };
+        let cat = PluginCategory::Instrument {
+            sub: Some(InstrumentSubcategory::Synthesizer),
+        };
         assert!(cat.is_instrument());
     }
 
@@ -1024,7 +1099,10 @@ mod tests {
     fn test_plugin_compatibility_platform_check() {
         let compat = PluginCompatibility::new("0.31.0", "linux", "x86_64");
         let mut manifest = sample_manifest("eq7", "1.0.0");
-        manifest.platforms = vec![PlatformTarget { os: "linux".into(), arch: "x86_64".into() }];
+        manifest.platforms = vec![PlatformTarget {
+            os: "linux".into(),
+            arch: "x86_64".into(),
+        }];
         let report = compat.check(&manifest, &HashMap::new());
         assert!(report.compatible);
     }
@@ -1033,7 +1111,10 @@ mod tests {
     fn test_plugin_compatibility_platform_mismatch() {
         let compat = PluginCompatibility::new("0.31.0", "macos", "aarch64");
         let mut manifest = sample_manifest("eq7", "1.0.0");
-        manifest.platforms = vec![PlatformTarget { os: "linux".into(), arch: "x86_64".into() }];
+        manifest.platforms = vec![PlatformTarget {
+            os: "linux".into(),
+            arch: "x86_64".into(),
+        }];
         let report = compat.check(&manifest, &HashMap::new());
         assert!(!report.compatible);
     }
@@ -1057,13 +1138,21 @@ mod tests {
     fn test_plugin_repository_duplicate_source() {
         let mut repo = PluginRepository::new();
         let s1 = RepositorySource {
-            id: "official".into(), url: String::new(), name: "Official".into(),
-            is_official: true, enabled: true, ttl_secs: 3600,
+            id: "official".into(),
+            url: String::new(),
+            name: "Official".into(),
+            is_official: true,
+            enabled: true,
+            ttl_secs: 3600,
         };
         repo.add_source(s1).unwrap();
         let s2 = RepositorySource {
-            id: "official".into(), url: String::new(), name: "Official2".into(),
-            is_official: false, enabled: true, ttl_secs: 3600,
+            id: "official".into(),
+            url: String::new(),
+            name: "Official2".into(),
+            is_official: false,
+            enabled: true,
+            ttl_secs: 3600,
         };
         assert!(repo.add_source(s2).is_err());
     }
@@ -1072,9 +1161,14 @@ mod tests {
     fn test_plugin_repository_refresh_and_search() {
         let mut repo = PluginRepository::new();
         repo.add_source(RepositorySource {
-            id: "official".into(), url: String::new(), name: "Official".into(),
-            is_official: true, enabled: true, ttl_secs: 3600,
-        }).unwrap();
+            id: "official".into(),
+            url: String::new(),
+            name: "Official".into(),
+            is_official: true,
+            enabled: true,
+            ttl_secs: 3600,
+        })
+        .unwrap();
         let mut m = sample_manifest("eq7", "1.0.0");
         m.name = "7-Band Equalizer".into();
         m.tags = vec!["equalizer".into()];
@@ -1087,10 +1181,16 @@ mod tests {
     fn test_plugin_repository_cached_index() {
         let mut repo = PluginRepository::new();
         repo.add_source(RepositorySource {
-            id: "official".into(), url: String::new(), name: "Official".into(),
-            is_official: true, enabled: true, ttl_secs: 3600,
-        }).unwrap();
-        repo.refresh_index("official", vec![sample_manifest("eq7", "1.0.0")]).unwrap();
+            id: "official".into(),
+            url: String::new(),
+            name: "Official".into(),
+            is_official: true,
+            enabled: true,
+            ttl_secs: 3600,
+        })
+        .unwrap();
+        repo.refresh_index("official", vec![sample_manifest("eq7", "1.0.0")])
+            .unwrap();
         let idx = repo.get_cached_index("official");
         assert!(idx.is_some());
         assert_eq!(idx.unwrap().plugins.len(), 1);
@@ -1117,17 +1217,22 @@ mod tests {
     #[test]
     fn test_review_manager_average() {
         let mut mgr = ReviewManager::new();
-        mgr.add_review(PluginReview::new("eq7", "u1", 5, "Love it").unwrap()).unwrap();
-        mgr.add_review(PluginReview::new("eq7", "u2", 3, "Okay").unwrap()).unwrap();
-        mgr.add_review(PluginReview::new("eq7", "u3", 4, "Good").unwrap()).unwrap();
+        mgr.add_review(PluginReview::new("eq7", "u1", 5, "Love it").unwrap())
+            .unwrap();
+        mgr.add_review(PluginReview::new("eq7", "u2", 3, "Okay").unwrap())
+            .unwrap();
+        mgr.add_review(PluginReview::new("eq7", "u3", 4, "Good").unwrap())
+            .unwrap();
         assert!((mgr.average_rating("eq7") - 4.0).abs() < 0.01);
     }
 
     #[test]
     fn test_review_manager_summary() {
         let mut mgr = ReviewManager::new();
-        mgr.add_review(PluginReview::new("eq7", "u1", 5, "Love it").unwrap()).unwrap();
-        mgr.add_review(PluginReview::new("eq7", "u2", 1, "Terrible").unwrap()).unwrap();
+        mgr.add_review(PluginReview::new("eq7", "u1", 5, "Love it").unwrap())
+            .unwrap();
+        mgr.add_review(PluginReview::new("eq7", "u2", 1, "Terrible").unwrap())
+            .unwrap();
         let summary = mgr.get_summary("eq7").unwrap();
         assert_eq!(summary.total_reviews, 2);
         assert_eq!(summary.rating_distribution[0], 1); // 1-star
@@ -1144,9 +1249,14 @@ mod tests {
     fn test_repository_remove_source() {
         let mut repo = PluginRepository::new();
         repo.add_source(RepositorySource {
-            id: "test".into(), url: String::new(), name: "Test".into(),
-            is_official: false, enabled: true, ttl_secs: 3600,
-        }).unwrap();
+            id: "test".into(),
+            url: String::new(),
+            name: "Test".into(),
+            is_official: false,
+            enabled: true,
+            ttl_secs: 3600,
+        })
+        .unwrap();
         assert!(repo.remove_source("test").is_some());
         assert!(repo.get_source("test").is_none());
     }
@@ -1155,9 +1265,14 @@ mod tests {
     fn test_repository_search_with_category_filter() {
         let mut repo = PluginRepository::new();
         repo.add_source(RepositorySource {
-            id: "official".into(), url: String::new(), name: "Official".into(),
-            is_official: true, enabled: true, ttl_secs: 3600,
-        }).unwrap();
+            id: "official".into(),
+            url: String::new(),
+            name: "Official".into(),
+            is_official: true,
+            enabled: true,
+            ttl_secs: 3600,
+        })
+        .unwrap();
         let mut m1 = sample_manifest("eq7", "1.0.0");
         m1.name = "Equalizer".into();
         let mut m2 = sample_manifest("synth1", "1.0.0");

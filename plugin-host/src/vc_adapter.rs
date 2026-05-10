@@ -68,158 +68,650 @@ static BUILTIN_PLUGINS: &[BuiltinPluginDef] = &[
         plugin_id: "vc-eq",
         cli_relpath: "VC-EQ/VC-EQ-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "low_cut",   name: "Low Cut",       cli_flag: "--low-cut",   min: 20.0,    max: 20000.0, default: 20.0,    unit: "Hz" },
-            BuiltinParam { id: "high_cut",  name: "High Cut",      cli_flag: "--high-cut",  min: 20.0,    max: 20000.0, default: 20000.0, unit: "Hz" },
-            BuiltinParam { id: "low_shelf", name: "Low Shelf Gain",cli_flag: "--low-shelf", min: -24.0,   max: 24.0,    default: 0.0,     unit: "dB" },
-            BuiltinParam { id: "high_shelf",name: "High Shelf Gain",cli_flag:"--high-shelf", min: -24.0,   max: 24.0,    default: 0.0,     unit: "dB" },
-            BuiltinParam { id: "peak_freq", name: "Peak Frequency",cli_flag: "--peak-freq", min: 20.0,    max: 20000.0, default: 1000.0,  unit: "Hz" },
-            BuiltinParam { id: "peak_gain", name: "Peak Gain",     cli_flag: "--peak-gain", min: -24.0,   max: 24.0,    default: 0.0,     unit: "dB" },
-            BuiltinParam { id: "peak_q",    name: "Peak Q",        cli_flag: "--peak-q",    min: 0.1,     max: 30.0,    default: 1.0,     unit: "" },
+            BuiltinParam {
+                id: "low_cut",
+                name: "Low Cut",
+                cli_flag: "--low-cut",
+                min: 20.0,
+                max: 20000.0,
+                default: 20.0,
+                unit: "Hz",
+            },
+            BuiltinParam {
+                id: "high_cut",
+                name: "High Cut",
+                cli_flag: "--high-cut",
+                min: 20.0,
+                max: 20000.0,
+                default: 20000.0,
+                unit: "Hz",
+            },
+            BuiltinParam {
+                id: "low_shelf",
+                name: "Low Shelf Gain",
+                cli_flag: "--low-shelf",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "high_shelf",
+                name: "High Shelf Gain",
+                cli_flag: "--high-shelf",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "peak_freq",
+                name: "Peak Frequency",
+                cli_flag: "--peak-freq",
+                min: 20.0,
+                max: 20000.0,
+                default: 1000.0,
+                unit: "Hz",
+            },
+            BuiltinParam {
+                id: "peak_gain",
+                name: "Peak Gain",
+                cli_flag: "--peak-gain",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "peak_q",
+                name: "Peak Q",
+                cli_flag: "--peak-q",
+                min: 0.1,
+                max: 30.0,
+                default: 1.0,
+                unit: "",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-comp",
         cli_relpath: "VC-Comp/VC-Comp-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "threshold", name: "Threshold", cli_flag: "--threshold", min: -60.0, max: 0.0,    default: -20.0, unit: "dB" },
-            BuiltinParam { id: "ratio",     name: "Ratio",     cli_flag: "--ratio",     min: 1.0,   max: 20.0,   default: 4.0,   unit: ":1" },
-            BuiltinParam { id: "attack",    name: "Attack",    cli_flag: "--attack",    min: 0.1,   max: 100.0,  default: 10.0,  unit: "ms" },
-            BuiltinParam { id: "release",   name: "Release",   cli_flag: "--release",   min: 10.0,  max: 1000.0, default: 100.0, unit: "ms" },
-            BuiltinParam { id: "makeup",    name: "Makeup Gain",cli_flag: "--makeup",   min: 0.0,   max: 24.0,   default: 0.0,   unit: "dB" },
+            BuiltinParam {
+                id: "threshold",
+                name: "Threshold",
+                cli_flag: "--threshold",
+                min: -60.0,
+                max: 0.0,
+                default: -20.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "ratio",
+                name: "Ratio",
+                cli_flag: "--ratio",
+                min: 1.0,
+                max: 20.0,
+                default: 4.0,
+                unit: ":1",
+            },
+            BuiltinParam {
+                id: "attack",
+                name: "Attack",
+                cli_flag: "--attack",
+                min: 0.1,
+                max: 100.0,
+                default: 10.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "release",
+                name: "Release",
+                cli_flag: "--release",
+                min: 10.0,
+                max: 1000.0,
+                default: 100.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "makeup",
+                name: "Makeup Gain",
+                cli_flag: "--makeup",
+                min: 0.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "dB",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-gain",
         cli_relpath: "VC-Gain/VC-Gain-CLI-Standalone",
-        params: &[
-            BuiltinParam { id: "gain", name: "Gain", cli_flag: "--gain", min: -60.0, max: 60.0, default: 0.0, unit: "dB" },
-        ],
+        params: &[BuiltinParam {
+            id: "gain",
+            name: "Gain",
+            cli_flag: "--gain",
+            min: -60.0,
+            max: 60.0,
+            default: 0.0,
+            unit: "dB",
+        }],
     },
     BuiltinPluginDef {
         plugin_id: "vc-deesser",
         cli_relpath: "VC-DeEsser/VC-DeEsser-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "threshold", name: "Threshold", cli_flag: "--threshold", min: -60.0, max: 0.0,   default: -30.0, unit: "dB" },
-            BuiltinParam { id: "reduction", name: "Reduction", cli_flag: "--reduction", min: 0.0,   max: 24.0,  default: 6.0,   unit: "dB" },
-            BuiltinParam { id: "frequency", name: "Frequency", cli_flag: "--frequency", min: 2000.0,max: 12000.0,default: 6000.0,unit: "Hz" },
+            BuiltinParam {
+                id: "threshold",
+                name: "Threshold",
+                cli_flag: "--threshold",
+                min: -60.0,
+                max: 0.0,
+                default: -30.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "reduction",
+                name: "Reduction",
+                cli_flag: "--reduction",
+                min: 0.0,
+                max: 24.0,
+                default: 6.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "frequency",
+                name: "Frequency",
+                cli_flag: "--frequency",
+                min: 2000.0,
+                max: 12000.0,
+                default: 6000.0,
+                unit: "Hz",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-saturator",
         cli_relpath: "VC-Saturator/VC-Saturator-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "drive", name: "Drive", cli_flag: "--drive", min: 0.0, max: 100.0, default: 30.0, unit: "%" },
-            BuiltinParam { id: "mix",   name: "Mix",   cli_flag: "--mix",   min: 0.0, max: 100.0, default: 50.0, unit: "%" },
+            BuiltinParam {
+                id: "drive",
+                name: "Drive",
+                cli_flag: "--drive",
+                min: 0.0,
+                max: 100.0,
+                default: 30.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "mix",
+                name: "Mix",
+                cli_flag: "--mix",
+                min: 0.0,
+                max: 100.0,
+                default: 50.0,
+                unit: "%",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-limiter",
         cli_relpath: "VC-Limiter/VC-Limiter-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "ceiling", name: "Ceiling", cli_flag: "--ceiling", min: -12.0, max: 0.0,   default: -1.0,  unit: "dB" },
-            BuiltinParam { id: "release", name: "Release", cli_flag: "--release", min: 10.0,  max: 1000.0,default: 50.0,  unit: "ms" },
+            BuiltinParam {
+                id: "ceiling",
+                name: "Ceiling",
+                cli_flag: "--ceiling",
+                min: -12.0,
+                max: 0.0,
+                default: -1.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "release",
+                name: "Release",
+                cli_flag: "--release",
+                min: 10.0,
+                max: 1000.0,
+                default: 50.0,
+                unit: "ms",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-delay",
         cli_relpath: "VC-Delay/VC-Delay-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "time",     name: "Delay Time", cli_flag: "--time",     min: 1.0,  max: 2000.0, default: 250.0, unit: "ms" },
-            BuiltinParam { id: "feedback", name: "Feedback",   cli_flag: "--feedback", min: 0.0,  max: 100.0,  default: 30.0,  unit: "%" },
-            BuiltinParam { id: "mix",      name: "Mix",        cli_flag: "--mix",      min: 0.0,  max: 100.0,  default: 30.0,  unit: "%" },
+            BuiltinParam {
+                id: "time",
+                name: "Delay Time",
+                cli_flag: "--time",
+                min: 1.0,
+                max: 2000.0,
+                default: 250.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "feedback",
+                name: "Feedback",
+                cli_flag: "--feedback",
+                min: 0.0,
+                max: 100.0,
+                default: 30.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "mix",
+                name: "Mix",
+                cli_flag: "--mix",
+                min: 0.0,
+                max: 100.0,
+                default: 30.0,
+                unit: "%",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-reverb",
         cli_relpath: "VC-Reverb/VC-Reverb-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "room",     name: "Room Size",  cli_flag: "--room",     min: 0.0,  max: 100.0,   default: 30.0,  unit: "%" },
-            BuiltinParam { id: "decay",    name: "Decay",      cli_flag: "--decay",    min: 0.0,  max: 100.0,   default: 35.0,  unit: "%" },
-            BuiltinParam { id: "damping",  name: "Damping",    cli_flag: "--damping",  min: 0.0,  max: 100.0,   default: 50.0,  unit: "%" },
-            BuiltinParam { id: "mix",      name: "Mix",        cli_flag: "--mix",      min: 0.0,  max: 100.0,   default: 20.0,  unit: "%" },
-            BuiltinParam { id: "predelay", name: "Pre-delay",  cli_flag: "--predelay", min: 0.0,  max: 100.0,   default: 0.0,   unit: "ms" },
-            BuiltinParam { id: "wetlpf",   name: "Wet LPF",    cli_flag: "--wetlpf",   min: 100.0,max: 20000.0, default: 8000.0,unit: "Hz" },
+            BuiltinParam {
+                id: "room",
+                name: "Room Size",
+                cli_flag: "--room",
+                min: 0.0,
+                max: 100.0,
+                default: 30.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "decay",
+                name: "Decay",
+                cli_flag: "--decay",
+                min: 0.0,
+                max: 100.0,
+                default: 35.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "damping",
+                name: "Damping",
+                cli_flag: "--damping",
+                min: 0.0,
+                max: 100.0,
+                default: 50.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "mix",
+                name: "Mix",
+                cli_flag: "--mix",
+                min: 0.0,
+                max: 100.0,
+                default: 20.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "predelay",
+                name: "Pre-delay",
+                cli_flag: "--predelay",
+                min: 0.0,
+                max: 100.0,
+                default: 0.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "wetlpf",
+                name: "Wet LPF",
+                cli_flag: "--wetlpf",
+                min: 100.0,
+                max: 20000.0,
+                default: 8000.0,
+                unit: "Hz",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-dynamiceq",
         cli_relpath: "VC-DynamicEQ/VC-DynamicEQ-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "frequency", name: "Frequency", cli_flag: "--frequency", min: 20.0,  max: 20000.0, default: 1000.0, unit: "Hz" },
-            BuiltinParam { id: "threshold", name: "Threshold", cli_flag: "--threshold", min: -60.0, max: 0.0,    default: -20.0,  unit: "dB" },
-            BuiltinParam { id: "q",         name: "Q",         cli_flag: "--q",         min: 0.1,   max: 30.0,   default: 1.0,    unit: "" },
-            BuiltinParam { id: "attack",    name: "Attack",    cli_flag: "--attack",    min: 0.1,   max: 100.0,  default: 10.0,   unit: "ms" },
-            BuiltinParam { id: "release",   name: "Release",   cli_flag: "--release",   min: 10.0,  max: 1000.0, default: 100.0,  unit: "ms" },
+            BuiltinParam {
+                id: "frequency",
+                name: "Frequency",
+                cli_flag: "--frequency",
+                min: 20.0,
+                max: 20000.0,
+                default: 1000.0,
+                unit: "Hz",
+            },
+            BuiltinParam {
+                id: "threshold",
+                name: "Threshold",
+                cli_flag: "--threshold",
+                min: -60.0,
+                max: 0.0,
+                default: -20.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "q",
+                name: "Q",
+                cli_flag: "--q",
+                min: 0.1,
+                max: 30.0,
+                default: 1.0,
+                unit: "",
+            },
+            BuiltinParam {
+                id: "attack",
+                name: "Attack",
+                cli_flag: "--attack",
+                min: 0.1,
+                max: 100.0,
+                default: 10.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "release",
+                name: "Release",
+                cli_flag: "--release",
+                min: 10.0,
+                max: 1000.0,
+                default: 100.0,
+                unit: "ms",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-smooth",
         cli_relpath: "VC-Smooth/VC-Smooth-CLI-Standalone",
-        params: &[
-            BuiltinParam { id: "amount", name: "Amount", cli_flag: "--amount", min: 0.0, max: 100.0, default: 50.0, unit: "%" },
-        ],
+        params: &[BuiltinParam {
+            id: "amount",
+            name: "Amount",
+            cli_flag: "--amount",
+            min: 0.0,
+            max: 100.0,
+            default: 50.0,
+            unit: "%",
+        }],
     },
     BuiltinPluginDef {
         plugin_id: "vc-surgicaldeesser",
         cli_relpath: "VC-SurgicalDeEsser/VC-SurgicalDeEsser-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "threshold", name: "Threshold", cli_flag: "--threshold", min: -60.0, max: 0.0,   default: -30.0, unit: "dB" },
-            BuiltinParam { id: "reduction", name: "Reduction", cli_flag: "--reduction", min: 0.0,   max: 24.0,  default: 6.0,   unit: "dB" },
-            BuiltinParam { id: "frequency", name: "Frequency", cli_flag: "--frequency", min: 2000.0,max: 12000.0,default: 6000.0,unit: "Hz" },
+            BuiltinParam {
+                id: "threshold",
+                name: "Threshold",
+                cli_flag: "--threshold",
+                min: -60.0,
+                max: 0.0,
+                default: -30.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "reduction",
+                name: "Reduction",
+                cli_flag: "--reduction",
+                min: 0.0,
+                max: 24.0,
+                default: 6.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "frequency",
+                name: "Frequency",
+                cli_flag: "--frequency",
+                min: 2000.0,
+                max: 12000.0,
+                default: 6000.0,
+                unit: "Hz",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-distortion",
         cli_relpath: "VC-Distortion/VC-Distortion-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "mode",  name: "Mode",  cli_flag: "--mode",  min: 0.0, max: 5.0,   default: 0.0,  unit: "" },
-            BuiltinParam { id: "drive", name: "Drive", cli_flag: "--drive", min: 0.0, max: 100.0, default: 50.0, unit: "%" },
-            BuiltinParam { id: "mix",   name: "Mix",   cli_flag: "--mix",   min: 0.0, max: 100.0, default: 50.0, unit: "%" },
+            BuiltinParam {
+                id: "mode",
+                name: "Mode",
+                cli_flag: "--mode",
+                min: 0.0,
+                max: 5.0,
+                default: 0.0,
+                unit: "",
+            },
+            BuiltinParam {
+                id: "drive",
+                name: "Drive",
+                cli_flag: "--drive",
+                min: 0.0,
+                max: 100.0,
+                default: 50.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "mix",
+                name: "Mix",
+                cli_flag: "--mix",
+                min: 0.0,
+                max: 100.0,
+                default: 50.0,
+                unit: "%",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-noise",
         cli_relpath: "VC-Noise/VC-Noise-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "type",  name: "Noise Type", cli_flag: "--type",  min: 0.0,  max: 3.0,  default: 0.0,  unit: "" },
-            BuiltinParam { id: "level", name: "Level",       cli_flag: "--level", min: -60.0,max: 0.0,  default: -30.0,unit: "dB" },
+            BuiltinParam {
+                id: "type",
+                name: "Noise Type",
+                cli_flag: "--type",
+                min: 0.0,
+                max: 3.0,
+                default: 0.0,
+                unit: "",
+            },
+            BuiltinParam {
+                id: "level",
+                name: "Level",
+                cli_flag: "--level",
+                min: -60.0,
+                max: 0.0,
+                default: -30.0,
+                unit: "dB",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-tune",
         cli_relpath: "VC-Tune/VC-Tune-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "speed",     name: "Speed",     cli_flag: "--speed",     min: 0.0,   max: 100.0, default: 50.0,  unit: "%" },
-            BuiltinParam { id: "scale",     name: "Scale",     cli_flag: "--scale",     min: 0.0,   max: 24.0,  default: 0.0,   unit: "" },
-            BuiltinParam { id: "transpose", name: "Transpose", cli_flag: "--transpose", min: -24.0, max: 24.0,  default: 0.0,   unit: "st" },
-            BuiltinParam { id: "cents",     name: "Cents",     cli_flag: "--cents",     min: -100.0,max: 100.0, default: 0.0,   unit: "cents" },
-            BuiltinParam { id: "formant",   name: "Formant",   cli_flag: "--formant",   min: -12.0, max: 12.0,  default: 0.0,   unit: "st" },
-            BuiltinParam { id: "autokey",   name: "Auto Key",  cli_flag: "--autokey",   min: 0.0,   max: 1.0,   default: 1.0,   unit: "" },
+            BuiltinParam {
+                id: "speed",
+                name: "Speed",
+                cli_flag: "--speed",
+                min: 0.0,
+                max: 100.0,
+                default: 50.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "scale",
+                name: "Scale",
+                cli_flag: "--scale",
+                min: 0.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "",
+            },
+            BuiltinParam {
+                id: "transpose",
+                name: "Transpose",
+                cli_flag: "--transpose",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "st",
+            },
+            BuiltinParam {
+                id: "cents",
+                name: "Cents",
+                cli_flag: "--cents",
+                min: -100.0,
+                max: 100.0,
+                default: 0.0,
+                unit: "cents",
+            },
+            BuiltinParam {
+                id: "formant",
+                name: "Formant",
+                cli_flag: "--formant",
+                min: -12.0,
+                max: 12.0,
+                default: 0.0,
+                unit: "st",
+            },
+            BuiltinParam {
+                id: "autokey",
+                name: "Auto Key",
+                cli_flag: "--autokey",
+                min: 0.0,
+                max: 1.0,
+                default: 1.0,
+                unit: "",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-gate",
         cli_relpath: "VC-Gate/VC-Gate-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "threshold", name: "Threshold", cli_flag: "--threshold", min: -60.0, max: 0.0,   default: -40.0, unit: "dB" },
-            BuiltinParam { id: "ratio",     name: "Ratio",     cli_flag: "--ratio",     min: 1.0,   max: 20.0,  default: 10.0,  unit: ":1" },
-            BuiltinParam { id: "attack",    name: "Attack",    cli_flag: "--attack",    min: 0.1,   max: 100.0, default: 1.0,   unit: "ms" },
-            BuiltinParam { id: "hold",      name: "Hold",      cli_flag: "--hold",      min: 0.0,   max: 500.0, default: 50.0,  unit: "ms" },
-            BuiltinParam { id: "release",   name: "Release",   cli_flag: "--release",   min: 10.0,  max: 1000.0,default: 100.0, unit: "ms" },
-            BuiltinParam { id: "range",     name: "Range",     cli_flag: "--range",     min: 0.0,   max: 60.0,  default: 60.0,  unit: "dB" },
+            BuiltinParam {
+                id: "threshold",
+                name: "Threshold",
+                cli_flag: "--threshold",
+                min: -60.0,
+                max: 0.0,
+                default: -40.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "ratio",
+                name: "Ratio",
+                cli_flag: "--ratio",
+                min: 1.0,
+                max: 20.0,
+                default: 10.0,
+                unit: ":1",
+            },
+            BuiltinParam {
+                id: "attack",
+                name: "Attack",
+                cli_flag: "--attack",
+                min: 0.1,
+                max: 100.0,
+                default: 1.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "hold",
+                name: "Hold",
+                cli_flag: "--hold",
+                min: 0.0,
+                max: 500.0,
+                default: 50.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "release",
+                name: "Release",
+                cli_flag: "--release",
+                min: 10.0,
+                max: 1000.0,
+                default: 100.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "range",
+                name: "Range",
+                cli_flag: "--range",
+                min: 0.0,
+                max: 60.0,
+                default: 60.0,
+                unit: "dB",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-chorus",
         cli_relpath: "VC-Chorus/VC-Chorus-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "rate",     name: "Rate",     cli_flag: "--rate",     min: 0.1,  max: 10.0,  default: 1.0,  unit: "Hz" },
-            BuiltinParam { id: "depth",    name: "Depth",    cli_flag: "--depth",    min: 0.0,  max: 100.0, default: 30.0, unit: "%" },
-            BuiltinParam { id: "voices",   name: "Voices",   cli_flag: "--voices",   min: 2.0,  max: 8.0,   default: 3.0,  unit: "" },
-            BuiltinParam { id: "mix",      name: "Mix",      cli_flag: "--mix",      min: 0.0,  max: 100.0, default: 50.0, unit: "%" },
-            BuiltinParam { id: "delay",    name: "Delay",    cli_flag: "--delay",    min: 0.0,  max: 50.0,  default: 10.0, unit: "ms" },
-            BuiltinParam { id: "width",    name: "Width",    cli_flag: "--width",    min: 0.0,  max: 100.0, default: 80.0, unit: "%" },
-            BuiltinParam { id: "feedback", name: "Feedback", cli_flag: "--feedback", min: 0.0,  max: 100.0, default: 20.0, unit: "%" },
+            BuiltinParam {
+                id: "rate",
+                name: "Rate",
+                cli_flag: "--rate",
+                min: 0.1,
+                max: 10.0,
+                default: 1.0,
+                unit: "Hz",
+            },
+            BuiltinParam {
+                id: "depth",
+                name: "Depth",
+                cli_flag: "--depth",
+                min: 0.0,
+                max: 100.0,
+                default: 30.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "voices",
+                name: "Voices",
+                cli_flag: "--voices",
+                min: 2.0,
+                max: 8.0,
+                default: 3.0,
+                unit: "",
+            },
+            BuiltinParam {
+                id: "mix",
+                name: "Mix",
+                cli_flag: "--mix",
+                min: 0.0,
+                max: 100.0,
+                default: 50.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "delay",
+                name: "Delay",
+                cli_flag: "--delay",
+                min: 0.0,
+                max: 50.0,
+                default: 10.0,
+                unit: "ms",
+            },
+            BuiltinParam {
+                id: "width",
+                name: "Width",
+                cli_flag: "--width",
+                min: 0.0,
+                max: 100.0,
+                default: 80.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "feedback",
+                name: "Feedback",
+                cli_flag: "--feedback",
+                min: 0.0,
+                max: 100.0,
+                default: 20.0,
+                unit: "%",
+            },
         ],
     },
     // ── Gen2: 4个新/升级效果器 ───────────────────────────────────
@@ -227,40 +719,168 @@ static BUILTIN_PLUGINS: &[BuiltinPluginDef] = &[
         plugin_id: "vc-stereo",
         cli_relpath: "VC-Stereo/VC-Stereo-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "width",  name: "Width",       cli_flag: "--width",  min: 0.0,   max: 200.0, default: 100.0, unit: "%" },
-            BuiltinParam { id: "center", name: "Center Level",cli_flag: "--center", min: -60.0, max: 0.0,   default: 0.0,   unit: "dB" },
-            BuiltinParam { id: "sides",  name: "Sides Level", cli_flag: "--sides",  min: -60.0, max: 0.0,   default: 0.0,   unit: "dB" },
+            BuiltinParam {
+                id: "width",
+                name: "Width",
+                cli_flag: "--width",
+                min: 0.0,
+                max: 200.0,
+                default: 100.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "center",
+                name: "Center Level",
+                cli_flag: "--center",
+                min: -60.0,
+                max: 0.0,
+                default: 0.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "sides",
+                name: "Sides Level",
+                cli_flag: "--sides",
+                min: -60.0,
+                max: 0.0,
+                default: 0.0,
+                unit: "dB",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-pitchshift",
         cli_relpath: "VC-PitchShift/VC-PitchShift-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "semitones", name: "Semitones",    cli_flag: "--semitones", min: -24.0, max: 24.0, default: 0.0, unit: "st" },
-            BuiltinParam { id: "cents",     name: "Cents",        cli_flag: "--cents",     min: -100.0,max: 100.0,default: 0.0, unit: "cents" },
-            BuiltinParam { id: "formant",   name: "Formant Shift",cli_flag: "--formant",   min: -12.0, max: 12.0, default: 0.0, unit: "st" },
-            BuiltinParam { id: "mode",      name: "Mode",         cli_flag: "--mode",      min: 0.0,   max: 3.0,  default: 0.0, unit: "" },
+            BuiltinParam {
+                id: "semitones",
+                name: "Semitones",
+                cli_flag: "--semitones",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "st",
+            },
+            BuiltinParam {
+                id: "cents",
+                name: "Cents",
+                cli_flag: "--cents",
+                min: -100.0,
+                max: 100.0,
+                default: 0.0,
+                unit: "cents",
+            },
+            BuiltinParam {
+                id: "formant",
+                name: "Formant Shift",
+                cli_flag: "--formant",
+                min: -12.0,
+                max: 12.0,
+                default: 0.0,
+                unit: "st",
+            },
+            BuiltinParam {
+                id: "mode",
+                name: "Mode",
+                cli_flag: "--mode",
+                min: 0.0,
+                max: 3.0,
+                default: 0.0,
+                unit: "",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-multiband",
         cli_relpath: "VC-MultiBand/VC-MultiBand-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "low_freq",  name: "Low/Mid Crossover",cli_flag: "--low-freq",  min: 20.0,  max: 2000.0, default: 200.0,  unit: "Hz" },
-            BuiltinParam { id: "mid_freq",  name: "Mid/High Crossover",cli_flag:"--mid-freq",  min: 2000.0,max: 20000.0,default: 5000.0, unit: "Hz" },
-            BuiltinParam { id: "low_gain",  name: "Low Gain",   cli_flag: "--low-gain",  min: -24.0, max: 24.0,   default: 0.0,   unit: "dB" },
-            BuiltinParam { id: "mid_gain",  name: "Mid Gain",   cli_flag: "--mid-gain",  min: -24.0, max: 24.0,   default: 0.0,   unit: "dB" },
-            BuiltinParam { id: "high_gain", name: "High Gain",  cli_flag: "--high-gain", min: -24.0, max: 24.0,   default: 0.0,   unit: "dB" },
+            BuiltinParam {
+                id: "low_freq",
+                name: "Low/Mid Crossover",
+                cli_flag: "--low-freq",
+                min: 20.0,
+                max: 2000.0,
+                default: 200.0,
+                unit: "Hz",
+            },
+            BuiltinParam {
+                id: "mid_freq",
+                name: "Mid/High Crossover",
+                cli_flag: "--mid-freq",
+                min: 2000.0,
+                max: 20000.0,
+                default: 5000.0,
+                unit: "Hz",
+            },
+            BuiltinParam {
+                id: "low_gain",
+                name: "Low Gain",
+                cli_flag: "--low-gain",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "mid_gain",
+                name: "Mid Gain",
+                cli_flag: "--mid-gain",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "dB",
+            },
+            BuiltinParam {
+                id: "high_gain",
+                name: "High Gain",
+                cli_flag: "--high-gain",
+                min: -24.0,
+                max: 24.0,
+                default: 0.0,
+                unit: "dB",
+            },
         ],
     },
     BuiltinPluginDef {
         plugin_id: "vc-harmonizer",
         cli_relpath: "VC-Harmonizer/VC-Harmonizer-CLI-Standalone",
         params: &[
-            BuiltinParam { id: "shift1", name: "Voice 1 Shift", cli_flag: "--shift1", min: -24.0, max: 24.0, default: 3.0,  unit: "st" },
-            BuiltinParam { id: "shift2", name: "Voice 2 Shift", cli_flag: "--shift2", min: -24.0, max: 24.0, default: 7.0,  unit: "st" },
-            BuiltinParam { id: "mix1",   name: "Voice 1 Mix",   cli_flag: "--mix1",   min: 0.0,   max: 100.0,default: 50.0, unit: "%" },
-            BuiltinParam { id: "mix2",   name: "Voice 2 Mix",   cli_flag: "--mix2",   min: 0.0,   max: 100.0,default: 30.0, unit: "%" },
+            BuiltinParam {
+                id: "shift1",
+                name: "Voice 1 Shift",
+                cli_flag: "--shift1",
+                min: -24.0,
+                max: 24.0,
+                default: 3.0,
+                unit: "st",
+            },
+            BuiltinParam {
+                id: "shift2",
+                name: "Voice 2 Shift",
+                cli_flag: "--shift2",
+                min: -24.0,
+                max: 24.0,
+                default: 7.0,
+                unit: "st",
+            },
+            BuiltinParam {
+                id: "mix1",
+                name: "Voice 1 Mix",
+                cli_flag: "--mix1",
+                min: 0.0,
+                max: 100.0,
+                default: 50.0,
+                unit: "%",
+            },
+            BuiltinParam {
+                id: "mix2",
+                name: "Voice 2 Mix",
+                cli_flag: "--mix2",
+                min: 0.0,
+                max: 100.0,
+                default: 30.0,
+                unit: "%",
+            },
         ],
     },
 ];
@@ -406,11 +1026,7 @@ impl VcPluginAdapter {
         {
             use std::os::unix::fs::PermissionsExt;
             let metadata = fs::metadata(path).map_err(|e| {
-                PluginError::ProcessFailed(format!(
-                    "无法读取文件元数据 {}: {}",
-                    path.display(),
-                    e
-                ))
+                PluginError::ProcessFailed(format!("无法读取文件元数据 {}: {}", path.display(), e))
             })?;
             let mode = metadata.permissions().mode();
             if mode & 0o111 == 0 {
@@ -475,10 +1091,7 @@ impl VcPluginAdapter {
         if let Some(relpath) = get_default_cli_relpath(plugin_id) {
             let full_path = base_dir.join(relpath);
             if full_path.exists() {
-                log::debug!(
-                    "[VcPluginAdapter] 在默认目录找到: {}",
-                    full_path.display()
-                );
+                log::debug!("[VcPluginAdapter] 在默认目录找到: {}", full_path.display());
                 return Self::from_binary(&full_path);
             }
         }
@@ -525,10 +1138,7 @@ impl VcPluginAdapter {
             .arg("--help")
             .output()
             .map_err(|e| {
-                PluginError::InitFailed(format!(
-                    "运行 --help 失败 ({}): {}",
-                    self.id, e
-                ))
+                PluginError::InitFailed(format!("运行 --help 失败 ({}): {}", self.id, e))
             })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -577,7 +1187,7 @@ impl VcPluginAdapter {
         input: &AudioBuffer,
         output: &mut AudioBuffer,
     ) -> Result<(), PluginError> {
-        use std::io::{Write, BufRead};
+        use std::io::{BufRead, Write};
         use std::process::Stdio;
 
         let mut child = Command::new(&self.binary_path)
@@ -588,53 +1198,47 @@ impl VcPluginAdapter {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| PluginError::ProcessFailed(
-                format!("启动 streaming 模式失败: {}", e)
-            ))?;
+            .map_err(|e| PluginError::ProcessFailed(format!("启动 streaming 模式失败: {}", e)))?;
 
-        let stdin = child.stdin.as_mut()
+        let stdin = child
+            .stdin
+            .as_mut()
             .ok_or_else(|| PluginError::ProcessFailed("无法获取 stdin".to_string()))?;
 
         // 发送参数
         for (param_id, value) in &self.param_values {
             writeln!(stdin, "param {} {:.6}", param_id, value)
-                .map_err(|e| PluginError::ProcessFailed(
-                    format!("写入参数失败: {}", e)
-                ))?;
+                .map_err(|e| PluginError::ProcessFailed(format!("写入参数失败: {}", e)))?;
         }
 
         // 发送音频帧
         for frame in 0..input.frames {
-            write!(stdin, "in").map_err(|e| PluginError::ProcessFailed(
-                format!("写入帧头失败: {}", e)
-            ))?;
+            write!(stdin, "in")
+                .map_err(|e| PluginError::ProcessFailed(format!("写入帧头失败: {}", e)))?;
             for ch in 0..input.channels {
                 write!(stdin, " {:.6}", input.sample(ch, frame))
-                    .map_err(|e| PluginError::ProcessFailed(
-                        format!("写入采样失败: {}", e)
-                    ))?;
+                    .map_err(|e| PluginError::ProcessFailed(format!("写入采样失败: {}", e)))?;
             }
-            writeln!(stdin).map_err(|e| PluginError::ProcessFailed(
-                format!("写入帧尾失败: {}", e)
-            ))?;
+            writeln!(stdin)
+                .map_err(|e| PluginError::ProcessFailed(format!("写入帧尾失败: {}", e)))?;
         }
 
-        writeln!(stdin, "end").map_err(|e| PluginError::ProcessFailed(
-            format!("写入结束标记失败: {}", e)
-        ))?;
+        writeln!(stdin, "end")
+            .map_err(|e| PluginError::ProcessFailed(format!("写入结束标记失败: {}", e)))?;
         let _ = stdin; // 释放 stdin 以发送 EOF
 
         // 读取输出
-        let stdout = child.stdout.as_mut()
+        let stdout = child
+            .stdout
+            .as_mut()
             .ok_or_else(|| PluginError::ProcessFailed("无法获取 stdout".to_string()))?;
 
         let reader = std::io::BufReader::new(stdout);
         let mut frame_idx = 0;
 
         for line in reader.lines() {
-            let line = line.map_err(|e| PluginError::ProcessFailed(
-                format!("读取输出行失败: {}", e)
-            ))?;
+            let line =
+                line.map_err(|e| PluginError::ProcessFailed(format!("读取输出行失败: {}", e)))?;
             let line = line.trim();
             if line.starts_with("out ") {
                 let values: Vec<f64> = line[4..]
@@ -653,14 +1257,15 @@ impl VcPluginAdapter {
         }
 
         // 等待进程结束
-        let status = child.wait().map_err(|e| PluginError::ProcessFailed(
-            format!("等待进程结束失败: {}", e)
-        ))?;
+        let status = child
+            .wait()
+            .map_err(|e| PluginError::ProcessFailed(format!("等待进程结束失败: {}", e)))?;
 
         if !status.success() {
-            return Err(PluginError::ProcessFailed(
-                format!("streaming 进程退出码: {:?}", status.code())
-            ));
+            return Err(PluginError::ProcessFailed(format!(
+                "streaming 进程退出码: {:?}",
+                status.code()
+            )));
         }
 
         Ok(())
@@ -828,10 +1433,7 @@ impl VcPlugin for VcPluginAdapter {
     fn set_param(&mut self, id: &str, value: f64) -> Result<(), PluginError> {
         // 查找参数定义
         let param = self.params.iter().find(|p| p.id == id).ok_or_else(|| {
-            PluginError::ParamNotFound(format!(
-                "插件 {} 没有参数 '{}'",
-                self.id, id
-            ))
+            PluginError::ParamNotFound(format!("插件 {} 没有参数 '{}'", self.id, id))
         })?;
 
         let clamped = value.clamp(param.min, param.max);
@@ -901,11 +1503,7 @@ fn scan_for_cli_binaries(
                         adapters.push(adapter);
                     }
                     Err(e) => {
-                        log::warn!(
-                            "[VcPluginAdapter] 跳过无效二进制 {}: {}",
-                            path.display(),
-                            e
-                        );
+                        log::warn!("[VcPluginAdapter] 跳过无效二进制 {}: {}", path.display(), e);
                     }
                 }
             }
@@ -921,10 +1519,7 @@ fn scan_for_cli_binaries(
 /// → plugin_id = `vc-{name}` (小写)
 /// → plugin_name = `VC-{Name}`
 fn infer_plugin_info(path: &Path) -> (String, String) {
-    let file_name = path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy();
+    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
 
     // 尝试从文件名提取：VC-{Name}-CLI-Standalone
     if let Some(rest) = file_name.strip_prefix("VC-") {
@@ -1079,14 +1674,7 @@ fn parse_help_for_params(help_text: &str) -> Vec<ParamInfo> {
                 }
 
                 // 默认范围 [0, 100]
-                params.push(ParamInfo::new(
-                    &param_id,
-                    flag,
-                    0.0,
-                    100.0,
-                    50.0,
-                    "",
-                ));
+                params.push(ParamInfo::new(&param_id, flag, 0.0, 100.0, 50.0, ""));
             }
         }
     }
@@ -1127,7 +1715,11 @@ mod tests {
         assert!(BUILTIN_PLUGINS.len() >= 20, "应有至少20个插件的参数定义");
 
         for def in BUILTIN_PLUGINS {
-            assert!(!def.params.is_empty(), "插件 {} 应有参数定义", def.plugin_id);
+            assert!(
+                !def.params.is_empty(),
+                "插件 {} 应有参数定义",
+                def.plugin_id
+            );
         }
     }
 
@@ -1139,7 +1731,11 @@ mod tests {
                 assert!(
                     p.default >= p.min && p.default <= p.max,
                     "插件 {} 参数 {} default={} 不在 [{}, {}] 范围内",
-                    def.plugin_id, p.id, p.default, p.min, p.max
+                    def.plugin_id,
+                    p.id,
+                    p.default,
+                    p.min,
+                    p.max
                 );
             }
         }
@@ -1156,10 +1752,7 @@ mod tests {
             find_cli_flag_for_param("vc-reverb", "room"),
             Some("--room".to_string())
         );
-        assert_eq!(
-            find_cli_flag_for_param("vc-eq", "nonexistent"),
-            None
-        );
+        assert_eq!(find_cli_flag_for_param("vc-eq", "nonexistent"), None);
     }
 
     #[test]

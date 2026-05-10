@@ -149,7 +149,7 @@ impl AudioEngine {
                 sample_rate: 44100.0,
                 channels: 2,
                 engine_state: EngineState::Stopped,
-            master_volume: 0.0,
+                master_volume: 0.0,
             })),
             buffer_size: 256,
             scheduler: None,
@@ -325,7 +325,6 @@ impl AudioEngine {
         }
     }
 
-
     // ==================== 音轨控制 ====================
 
     /// 设置音轨音量
@@ -417,7 +416,10 @@ impl AudioEngine {
         // 读取文件
         let path = Path::new(file_path);
         if !path.exists() {
-            return Err(EngineError::BufferError(format!("文件不存在: {}", file_path)));
+            return Err(EngineError::BufferError(format!(
+                "文件不存在: {}",
+                file_path
+            )));
         }
 
         let wav_data = fs::read(path)
@@ -453,7 +455,10 @@ impl AudioEngine {
         // 加载WAV文件
         let path = Path::new(file_path);
         if !path.exists() {
-            return Err(EngineError::BufferError(format!("文件不存在: {}", file_path)));
+            return Err(EngineError::BufferError(format!(
+                "文件不存在: {}",
+                file_path
+            )));
         }
 
         let buffer = AudioBuffer::from_wav_file(path)?;
@@ -556,7 +561,8 @@ impl AudioEngine {
         super::channel_output::AudioOutputHandle,
         crossbeam_channel::Receiver<super::channel_output::AudioFrame>,
     ) {
-        let (handle, receiver) = super::channel_output::AudioOutputHandle::new(buffer_size, channels);
+        let (handle, receiver) =
+            super::channel_output::AudioOutputHandle::new(buffer_size, channels);
         self.output_handle = Some(handle.clone());
         (handle, receiver)
     }
@@ -996,10 +1002,7 @@ mod tests {
         // 再次渲染 - 应该是静音
         let mut output2 = vec![0.0f32; 256 * 2];
         engine.render_frame(&mut output2, 256);
-        assert!(
-            output2.iter().all(|&s| s == 0.0),
-            "静音后应无音频"
-        );
+        assert!(output2.iter().all(|&s| s == 0.0), "静音后应无音频");
 
         engine.stop().unwrap();
     }
@@ -1075,11 +1078,7 @@ mod tests {
 
         // 验证混合结果 ≈ 0.5 (0.3 + 0.2)
         let mixed = output[0]; // L
-        assert!(
-            (mixed - 0.3535).abs() < 0.05,
-            "混合应≈0.5，实际={}",
-            mixed
-        );
+        assert!((mixed - 0.3535).abs() < 0.05, "混合应≈0.5，实际={}", mixed);
 
         engine.stop().unwrap();
     }
@@ -1117,7 +1116,6 @@ mod tests {
 
         engine.stop().unwrap();
     }
-
 
     // ==================== v0.24.0 Engine Commands 测试 ====================
 
@@ -1349,16 +1347,19 @@ mod tests {
         engine.render_frame(&mut output_right, frames);
 
         // 验证居中时左右声道相等
-        assert!((output_center[0] - output_center[1]).abs() < 0.01,
-            "居中时左右声道应相等");
+        assert!(
+            (output_center[0] - output_center[1]).abs() < 0.01,
+            "居中时左右声道应相等"
+        );
 
         // 验证全左时左声道大于右声道
-        assert!(output_left[0] > output_left[1],
-            "全左时左声道应大于右声道");
+        assert!(output_left[0] > output_left[1], "全左时左声道应大于右声道");
 
         // 验证全右时右声道大于左声道
-        assert!(output_right[1] > output_right[0],
-            "全右时右声道应大于左声道");
+        assert!(
+            output_right[1] > output_right[0],
+            "全右时右声道应大于左声道"
+        );
 
         engine.stop().unwrap();
     }
@@ -1394,8 +1395,14 @@ mod tests {
             for ch in 0..channels {
                 let orig = original.get_sample(ch, frame);
                 let load = loaded.get_sample(ch, frame);
-                assert!((orig - load).abs() < 0.001,
-                    "帧{}/声道{}: 原始={}, 加载={}", frame, ch, orig, load);
+                assert!(
+                    (orig - load).abs() < 0.001,
+                    "帧{}/声道{}: 原始={}, 加载={}",
+                    frame,
+                    ch,
+                    orig,
+                    load
+                );
             }
         }
     }
@@ -1534,10 +1541,12 @@ mod tests {
 
         // 两个位置输出的相位应该不同
         // 检查前几个样本
-        let same_count = output1.iter().zip(output2.iter())
+        let same_count = output1
+            .iter()
+            .zip(output2.iter())
             .filter(|(a, b)| (*a - *b).abs() < 0.001f32)
             .count();
-        
+
         // 由于相位不同，相同样本数量应该很少
         assert!(same_count < 50, "不同位置应有不同输出");
 

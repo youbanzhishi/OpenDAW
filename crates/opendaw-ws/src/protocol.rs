@@ -64,7 +64,6 @@ pub enum WsMessage {
     },
 
     // ──── Phase 34 新增 ────
-
     /// 协作评论（添加/回复/解决）
     CollabComment {
         room_id: Uuid,
@@ -150,7 +149,7 @@ pub enum CommentAction {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CollabCommentData {
     pub comment_id: Uuid,
-    pub thread_id: Option<Uuid>,   // None = 顶级评论, Some = 回复
+    pub thread_id: Option<Uuid>, // None = 顶级评论, Some = 回复
     pub user_id: String,
     pub target: CommentTarget,
     pub content: String,
@@ -161,9 +160,18 @@ pub struct CollabCommentData {
 /// 评论目标（针对轨道/时间范围）
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum CommentTarget {
-    Track { track_id: Uuid },
-    TimeRange { start_beat: f64, end_beat: f64 },
-    TrackAndTime { track_id: Uuid, start_beat: f64, end_beat: f64 },
+    Track {
+        track_id: Uuid,
+    },
+    TimeRange {
+        start_beat: f64,
+        end_beat: f64,
+    },
+    TrackAndTime {
+        track_id: Uuid,
+        start_beat: f64,
+        end_beat: f64,
+    },
 }
 
 impl WsMessage {
@@ -247,8 +255,14 @@ mod tests {
             project_id: Uuid::new_v4(),
             track_id: Uuid::new_v4(),
             bands: vec![
-                SpectrumBand { frequency: 100.0, magnitude: 0.5 },
-                SpectrumBand { frequency: 1000.0, magnitude: 0.3 },
+                SpectrumBand {
+                    frequency: 100.0,
+                    magnitude: 0.5,
+                },
+                SpectrumBand {
+                    frequency: 1000.0,
+                    magnitude: 0.3,
+                },
             ],
         };
         let json = msg.to_json().unwrap();
@@ -341,7 +355,9 @@ mod tests {
                 comment_id: Uuid::new_v4(),
                 thread_id: None,
                 user_id: "user1".into(),
-                target: CommentTarget::Track { track_id: Uuid::new_v4() },
+                target: CommentTarget::Track {
+                    track_id: Uuid::new_v4(),
+                },
                 content: "This track needs reverb".into(),
                 resolved: false,
                 created_at: 1000,
@@ -362,7 +378,9 @@ mod tests {
                 comment_id: Uuid::new_v4(),
                 thread_id: Some(thread),
                 user_id: "user2".into(),
-                target: CommentTarget::Track { track_id: Uuid::new_v4() },
+                target: CommentTarget::Track {
+                    track_id: Uuid::new_v4(),
+                },
                 content: "Agreed, I'll add it".into(),
                 resolved: false,
                 created_at: 1001,
@@ -382,7 +400,10 @@ mod tests {
                 comment_id: Uuid::new_v4(),
                 thread_id: None,
                 user_id: "user1".into(),
-                target: CommentTarget::TimeRange { start_beat: 0.0, end_beat: 4.0 },
+                target: CommentTarget::TimeRange {
+                    start_beat: 0.0,
+                    end_beat: 4.0,
+                },
                 content: "Fixed reverb".into(),
                 resolved: true,
                 created_at: 1002,

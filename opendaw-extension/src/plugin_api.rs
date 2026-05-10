@@ -169,18 +169,34 @@ mod tests {
     struct NullPlugin;
 
     impl VcPlugin for NullPlugin {
-        fn plugin_id(&self) -> &str { "null-plugin" }
-        fn plugin_name(&self) -> &str { "空插件" }
-        fn plugin_type(&self) -> PluginType { PluginType::Effect }
-        fn version(&self) -> &str { "0.1.0" }
-        fn init(&mut self, _sample_rate: f64, _buffer_size: usize) -> Result<(), PluginError> { Ok(()) }
+        fn plugin_id(&self) -> &str {
+            "null-plugin"
+        }
+        fn plugin_name(&self) -> &str {
+            "空插件"
+        }
+        fn plugin_type(&self) -> PluginType {
+            PluginType::Effect
+        }
+        fn version(&self) -> &str {
+            "0.1.0"
+        }
+        fn init(&mut self, _sample_rate: f64, _buffer_size: usize) -> Result<(), PluginError> {
+            Ok(())
+        }
         fn process(&mut self, input: &AudioBuffer, output: &mut AudioBuffer) {
             // 直通：将输入复制到输出
             output.data.copy_from_slice(&input.data);
         }
-        fn get_params(&self) -> Vec<ParamInfo> { vec![] }
-        fn set_param(&mut self, _id: &str, _value: f64) -> Result<(), PluginError> { Ok(()) }
-        fn get_param(&self, _id: &str) -> Option<f64> { None }
+        fn get_params(&self) -> Vec<ParamInfo> {
+            vec![]
+        }
+        fn set_param(&mut self, _id: &str, _value: f64) -> Result<(), PluginError> {
+            Ok(())
+        }
+        fn get_param(&self, _id: &str) -> Option<f64> {
+            None
+        }
         fn destroy(&mut self) {}
     }
 

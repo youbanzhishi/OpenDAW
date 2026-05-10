@@ -1,6 +1,6 @@
 //! 混音器 — Track -> PluginChain -> Bus -> Master
 
-use audio_engine::{AudioEngine, EngineAudioBuffer, Track, EngineState};
+use audio_engine::{AudioEngine, EngineAudioBuffer, EngineState, Track};
 use opendaw_extension::{AudioBuffer, VcPlugin};
 use plugin_host::PluginChain;
 
@@ -175,10 +175,7 @@ mod tests {
 
         let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
         mixer.mix(
-            &[
-                (1.0, 0.0, false, &buf1),
-                (1.0, 0.0, false, &buf2),
-            ],
+            &[(1.0, 0.0, false, &buf1), (1.0, 0.0, false, &buf2)],
             &mut output,
         );
 
@@ -211,10 +208,7 @@ mod tests {
         buf.set(0, 1.0);
 
         let mut output = EngineAudioBuffer::new(2, 256, 44100.0);
-        mixer.mix(
-            &[(1.0, 0.0, false, &buf)],
-            &mut output,
-        );
+        mixer.mix(&[(1.0, 0.0, false, &buf)], &mut output);
 
         // master音量0.5
         assert!((output.get(0).unwrap_or(0.0) - 0.5).abs() < 0.01);

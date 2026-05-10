@@ -161,9 +161,7 @@ impl HookSystem {
                     break;
                 }
                 (entry.handler)(context).map_err(|e| {
-                    HookError::HandlerFailed(format!(
-                        "处理器 {} 执行失败: {}", entry.name, e
-                    ))
+                    HookError::HandlerFailed(format!("处理器 {} 执行失败: {}", entry.name, e))
                 })?;
             }
         }
@@ -285,11 +283,7 @@ mod tests {
     fn test_hook_unregister() {
         let mut hooks = HookSystem::new();
 
-        let id = hooks.register(
-            "test",
-            Box::new(|_ctx| Ok(())),
-            1,
-        );
+        let id = hooks.register("test", Box::new(|_ctx| Ok(())), 1);
 
         assert_eq!(hooks.list_hooks("test").len(), 1);
         hooks.unregister(&id).unwrap();

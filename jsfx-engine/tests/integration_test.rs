@@ -18,12 +18,12 @@
 //! - 用户函数
 //! - 多区段执行
 
+use jsfx_engine::loader::{load_jsfx_source, JsfxMeta};
 use jsfx_engine::parser::JsfxParser;
 use jsfx_engine::vm::JsfxVm;
 use jsfx_engine::AudioBuffer;
 use jsfx_engine::JsfxPlugin;
 use jsfx_engine::VcPlugin;
-use jsfx_engine::loader::{load_jsfx_source, JsfxMeta};
 use std::path::Path;
 
 // ==================== 文件加载测试 ====================
@@ -500,8 +500,16 @@ spl1 = $e;
     vm.init(44100.0);
 
     let (out0, out1) = vm.process_sample(0.0, 0.0);
-    assert!((out0 - std::f64::consts::PI).abs() < 0.01, "期望π, 得到{}", out0);
-    assert!((out1 - std::f64::consts::E).abs() < 0.01, "期望e, 得到{}", out1);
+    assert!(
+        (out0 - std::f64::consts::PI).abs() < 0.01,
+        "期望π, 得到{}",
+        out0
+    );
+    assert!(
+        (out1 - std::f64::consts::E).abs() < 0.01,
+        "期望e, 得到{}",
+        out1
+    );
 }
 
 // ==================== 内存操作测试 ====================
@@ -632,10 +640,16 @@ spl1 = min(max(spl1, -0.5), 0.5);
     let mut ext_output = AudioBuffer::new(2, 10);
     plugin.process(&ext_input, &mut ext_output);
 
-    assert!((ext_output.sample(0, 0) - 0.5).abs() < 0.01,
-        "clamp应限制到0.5, 得到{}", ext_output.sample(0, 0));
-    assert!((ext_output.sample(1, 0) - (-0.5)).abs() < 0.01,
-        "min(max())应限制到-0.5, 得到{}", ext_output.sample(1, 0));
+    assert!(
+        (ext_output.sample(0, 0) - 0.5).abs() < 0.01,
+        "clamp应限制到0.5, 得到{}",
+        ext_output.sample(0, 0)
+    );
+    assert!(
+        (ext_output.sample(1, 0) - (-0.5)).abs() < 0.01,
+        "min(max())应限制到-0.5, 得到{}",
+        ext_output.sample(1, 0)
+    );
 }
 
 // ==================== rand函数测试 ====================
@@ -700,21 +714,37 @@ spl1 *= gain;
     plugin.process(&ext_input, &mut ext_output);
 
     // 0dB增益，输出RMS应约等于输入RMS
-    let in_rms = (0..frames).map(|i| ext_input.sample(0, i).powi(2)).sum::<f64>() / frames as f64;
+    let in_rms = (0..frames)
+        .map(|i| ext_input.sample(0, i).powi(2))
+        .sum::<f64>()
+        / frames as f64;
     let in_rms = in_rms.sqrt();
-    let out_rms = (frames/2..frames).map(|i| ext_output.sample(0, i).powi(2)).sum::<f64>() / (frames/2) as f64;
+    let out_rms = (frames / 2..frames)
+        .map(|i| ext_output.sample(0, i).powi(2))
+        .sum::<f64>()
+        / (frames / 2) as f64;
     let out_rms = out_rms.sqrt();
-    assert!((out_rms - in_rms).abs() < 0.01,
-        "0dB增益: 输出RMS应≈输入RMS, in={:.4}, out={:.4}", in_rms, out_rms);
+    assert!(
+        (out_rms - in_rms).abs() < 0.01,
+        "0dB增益: 输出RMS应≈输入RMS, in={:.4}, out={:.4}",
+        in_rms,
+        out_rms
+    );
 
     // 6dB增益
     plugin.set_param("slider1", 6.0).unwrap();
     let mut ext_output2 = AudioBuffer::new(2, frames);
     plugin.process(&ext_input, &mut ext_output2);
-    let out_rms2 = (0..frames).map(|i| ext_output2.sample(0, i).powi(2)).sum::<f64>() / frames as f64;
+    let out_rms2 = (0..frames)
+        .map(|i| ext_output2.sample(0, i).powi(2))
+        .sum::<f64>()
+        / frames as f64;
     let out_rms2 = out_rms2.sqrt();
-    assert!((out_rms2 / out_rms - 2.0).abs() < 0.1,
-        "6dB增益: 输出应为2倍, ratio={:.2}", out_rms2 / out_rms);
+    assert!(
+        (out_rms2 / out_rms - 2.0).abs() < 0.1,
+        "6dB增益: 输出应为2倍, ratio={:.2}",
+        out_rms2 / out_rms
+    );
 }
 
 // ==================== 元信息测试 ====================
@@ -769,8 +799,11 @@ spl1 = block_count;
     plugin.process(&ext_input, &mut ext_output);
 
     // After first process_buffer, @block should have run once
-    assert!((ext_output.sample(0, 0) - 1.0).abs() < 0.01,
-        "block_count应为1, 得到{}", ext_output.sample(0, 0));
+    assert!(
+        (ext_output.sample(0, 0) - 1.0).abs() < 0.01,
+        "block_count应为1, 得到{}",
+        ext_output.sample(0, 0)
+    );
 }
 
 // ==================== @serialize 回调测试 ====================
@@ -797,14 +830,22 @@ spl0 = preset_data;
 
     // Before serialize
     let (out0, _) = vm.process_sample(0.0, 0.0);
-    assert!((out0 - 0.0).abs() < 0.01, "init后preset_data=0, 得到{}", out0);
+    assert!(
+        (out0 - 0.0).abs() < 0.01,
+        "init后preset_data=0, 得到{}",
+        out0
+    );
 
     // Execute serialize
     vm.execute_serialize();
 
     // After serialize
     let (out0, _) = vm.process_sample(0.0, 0.0);
-    assert!((out0 - 999.0).abs() < 0.01, "serialize后preset_data=999, 得到{}", out0);
+    assert!(
+        (out0 - 999.0).abs() < 0.01,
+        "serialize后preset_data=999, 得到{}",
+        out0
+    );
 }
 
 // ==================== gfx 变量测试 ====================
@@ -922,7 +963,11 @@ spl1 = 1.0;
     vm.execute_gfx();
 
     let (out0, out1) = vm.process_sample(0.0, 0.0);
-    assert!((out0 - 1.0).abs() < 0.01, "gfx函数应不影响音频, 得到{}", out0);
+    assert!(
+        (out0 - 1.0).abs() < 0.01,
+        "gfx函数应不影响音频, 得到{}",
+        out0
+    );
 }
 
 // ==================== 完整内置数学函数测试 ====================
@@ -1042,7 +1087,6 @@ spl1 = spl(3);
     assert!((out1 - 0.4).abs() < 0.01, "spl(3)→spl1 = 0.4, 得到{}", out1);
 }
 
-
 // ==================== 元信息完整测试 ====================
 
 /// 测试JsfxMeta包含所有区段信息
@@ -1071,7 +1115,9 @@ gfx_clear(0);
 @serialize
 preset_data = 100;
 "#;
-    let meta = jsfx_engine::loader::JsfxMeta::from_source(source, std::path::Path::new("test.jsfx")).unwrap();
+    let meta =
+        jsfx_engine::loader::JsfxMeta::from_source(source, std::path::Path::new("test.jsfx"))
+            .unwrap();
     assert_eq!(meta.desc, "All Sections Meta");
     assert!(meta.has_init);
     assert!(meta.has_slider);
@@ -1107,29 +1153,44 @@ spl1 = gfx_x;
     plugin.init(44100.0, 256).unwrap();
 
     // Test get_gfx_var
-    assert!((plugin.get_gfx_var("gfx_w") - 400.0).abs() < 0.01, "gfx_w默认=400");
+    assert!(
+        (plugin.get_gfx_var("gfx_w") - 400.0).abs() < 0.01,
+        "gfx_w默认=400"
+    );
 
     // Test set_gfx_var
     plugin.set_gfx_var("gfx_w", 1024.0);
-    assert!((plugin.get_gfx_var("gfx_w") - 1024.0).abs() < 0.01, "gfx_w设为1024");
+    assert!(
+        (plugin.get_gfx_var("gfx_w") - 1024.0).abs() < 0.01,
+        "gfx_w设为1024"
+    );
 
     // Test execute_gfx changes state
     let mut ext_input = AudioBuffer::new(2, 10);
     let mut ext_output = AudioBuffer::new(2, 10);
     plugin.process(&ext_input, &mut ext_output);
     // Before gfx: gfx_x = 0
-    assert!((ext_output.sample(1, 0) - 0.0).abs() < 0.01, "gfx执行前gfx_x=0");
+    assert!(
+        (ext_output.sample(1, 0) - 0.0).abs() < 0.01,
+        "gfx执行前gfx_x=0"
+    );
 
     plugin.execute_gfx();
     plugin.process(&ext_input, &mut ext_output);
     // After gfx: gfx_x = 50
-    assert!((ext_output.sample(1, 0) - 50.0).abs() < 0.01, "gfx执行后gfx_x=50");
+    assert!(
+        (ext_output.sample(1, 0) - 50.0).abs() < 0.01,
+        "gfx执行后gfx_x=50"
+    );
 
     // Test execute_serialize
     plugin.execute_serialize();
     plugin.process(&ext_input, &mut ext_output);
     // After serialize: val = 999
-    assert!((ext_output.sample(0, 0) - 999.0).abs() < 0.01, "serialize执行后val=999");
+    assert!(
+        (ext_output.sample(0, 0) - 999.0).abs() < 0.01,
+        "serialize执行后val=999"
+    );
 
     plugin.destroy();
 }

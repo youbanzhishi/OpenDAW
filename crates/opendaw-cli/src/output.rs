@@ -23,8 +23,12 @@ impl OutputFormat {
     /// 格式化输出
     pub fn format<T: Serialize + std::fmt::Debug>(&self, data: &T) -> String {
         match self {
-            OutputFormat::Json => serde_json::to_string_pretty(data).unwrap_or_else(|e| format!("JSON error: {}", e)),
-            OutputFormat::Yaml => serde_yaml::to_string(data).unwrap_or_else(|e| format!("YAML error: {}", e)),
+            OutputFormat::Json => {
+                serde_json::to_string_pretty(data).unwrap_or_else(|e| format!("JSON error: {}", e))
+            }
+            OutputFormat::Yaml => {
+                serde_yaml::to_string(data).unwrap_or_else(|e| format!("YAML error: {}", e))
+            }
             OutputFormat::Table => format!("{:#?}", data),
         }
     }

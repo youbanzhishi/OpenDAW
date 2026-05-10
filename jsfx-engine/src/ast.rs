@@ -89,41 +89,41 @@ pub type StatementBlock = Vec<Statement>;
 /// 二元运算符
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinOp {
-    Add,       // +
-    Sub,       // -
-    Mul,       // *
-    Div,       // /
-    Mod,       // %
-    Pow,       // ^
-    Lt,        // <
-    Gt,        // >
-    Le,        // <=
-    Ge,        // >=
-    Eq,        // ==
-    Ne,        // !=
-    And,       // &&
-    Or,        // ||
-    BitAnd,    // & (按位与)
-    BitOr,     // | (按位或)
+    Add,    // +
+    Sub,    // -
+    Mul,    // *
+    Div,    // /
+    Mod,    // %
+    Pow,    // ^
+    Lt,     // <
+    Gt,     // >
+    Le,     // <=
+    Ge,     // >=
+    Eq,     // ==
+    Ne,     // !=
+    And,    // &&
+    Or,     // ||
+    BitAnd, // & (按位与)
+    BitOr,  // | (按位或)
 }
 
 /// 一元运算符
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOp {
-    Neg,  // -
-    Not,  // !
+    Neg,    // -
+    Not,    // !
     BitNot, // ~ (按位取反)
 }
 
 /// 复合赋值运算符
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssignOp {
-    Add,  // +=
-    Sub,  // -=
-    Mul,  // *=
-    Div,  // /=
-    Pow,  // ^=
-    Mod,  // %=
+    Add, // +=
+    Sub, // -=
+    Mul, // *=
+    Div, // /=
+    Pow, // ^=
+    Mod, // %=
 }
 
 /// 表达式

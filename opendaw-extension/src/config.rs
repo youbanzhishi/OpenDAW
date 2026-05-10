@@ -86,37 +86,29 @@ impl ExtensionConfig {
     pub fn example() -> Self {
         Self {
             extensions: Extensions {
-                plugins: vec![
-                    PluginConfig {
-                        id: "vc-eq".into(),
-                        plugin_type: "vc-plugin".into(),
-                        path: "~/.opendaw/plugins/vc-eq/".into(),
-                    },
-                ],
-                scripts: vec![
-                    ScriptConfig {
-                        id: "auto-save".into(),
-                        lang: "python".into(),
-                        path: "~/scripts/auto_save.py".into(),
-                        hooks: vec!["render_finish".into()],
-                    },
-                ],
-                models: vec![
-                    ModelConfig {
-                        id: "smart-mixer-v2".into(),
-                        backend: "local".into(),
-                        path: Some("~/.opendaw/models/mixer_v2.onnx".into()),
-                        endpoint: None,
-                        tasks: vec!["auto_mix".into()],
-                    },
-                ],
-                hooks: vec![
-                    HookConfig {
-                        event: "render_start".into(),
-                        handler: "scripts.auto-save.on_render_start".into(),
-                        priority: 10,
-                    },
-                ],
+                plugins: vec![PluginConfig {
+                    id: "vc-eq".into(),
+                    plugin_type: "vc-plugin".into(),
+                    path: "~/.opendaw/plugins/vc-eq/".into(),
+                }],
+                scripts: vec![ScriptConfig {
+                    id: "auto-save".into(),
+                    lang: "python".into(),
+                    path: "~/scripts/auto_save.py".into(),
+                    hooks: vec!["render_finish".into()],
+                }],
+                models: vec![ModelConfig {
+                    id: "smart-mixer-v2".into(),
+                    backend: "local".into(),
+                    path: Some("~/.opendaw/models/mixer_v2.onnx".into()),
+                    endpoint: None,
+                    tasks: vec!["auto_mix".into()],
+                }],
+                hooks: vec![HookConfig {
+                    event: "render_start".into(),
+                    handler: "scripts.auto-save.on_render_start".into(),
+                    priority: 10,
+                }],
             },
         }
     }

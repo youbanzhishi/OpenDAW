@@ -49,7 +49,10 @@ impl WsServer {
     }
 
     /// 启动WebSocket服务器
-    pub async fn serve(self: Arc<Self>, addr: SocketAddr) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn serve(
+        self: Arc<Self>,
+        addr: SocketAddr,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let listener = TcpListener::bind(addr).await?;
         tracing::info!("🔌 OpenDAW WebSocket server listening on {}", addr);
 
@@ -166,12 +169,7 @@ mod tests {
     async fn test_broadcast_nonexistent_channel() {
         let server = WsServer::new();
         // Should not panic
-        server
-            .broadcast(
-                Uuid::new_v4(),
-                WsMessage::Pong,
-            )
-            .await;
+        server.broadcast(Uuid::new_v4(), WsMessage::Pong).await;
     }
 
     #[tokio::test]

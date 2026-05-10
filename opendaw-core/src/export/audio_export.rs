@@ -5,7 +5,6 @@
 //! - RenderPipeline: 轨道→混音→效果→归一化→编码
 //! - 进度回调
 
-
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -232,7 +231,11 @@ impl AudioExporter {
     }
 
     /// 导出项目到文件
-    pub fn export(&self, _project: &Project, output_path: &Path) -> Result<ExportResult, ExportError> {
+    pub fn export(
+        &self,
+        _project: &Project,
+        output_path: &Path,
+    ) -> Result<ExportResult, ExportError> {
         match self.config.format {
             AudioFormat::Wav => self.export_wav(output_path),
             AudioFormat::Flac => self.export_flac(output_path),
@@ -398,7 +401,10 @@ impl AudioExporter {
 
     /// 归一化采样数据（峰值归一化到0dB）
     fn normalize_samples(samples: &[f32]) -> Vec<f32> {
-        let peak = samples.iter().map(|s| s.abs()).fold(0.0f32, |a, b| a.max(b));
+        let peak = samples
+            .iter()
+            .map(|s| s.abs())
+            .fold(0.0f32, |a, b| a.max(b));
         if peak < 1e-6 {
             return samples.to_vec();
         }
@@ -413,7 +419,9 @@ impl AudioExporter {
         output_path: &Path,
     ) -> Result<ExportResult, ExportError> {
         if self.config.format != AudioFormat::Wav {
-            return Err(ExportError::EncodingError("export_samples_as_wav only supports WAV format".to_string()));
+            return Err(ExportError::EncodingError(
+                "export_samples_as_wav only supports WAV format".to_string(),
+            ));
         }
 
         let total_frames = if self.config.channels > 0 {
@@ -578,15 +586,25 @@ mod tests {
     fn test_normalize_samples() {
         let samples = vec![0.1f32, 0.5f32, -0.3f32, 0.8f32];
         let normalized = AudioExporter::normalize_samples(&samples);
-        let peak = normalized.iter().map(|s| s.abs()).fold(0.0f32, |a, b| a.max(b));
-        assert!((peak - 1.0).abs() < 0.01, "Peak should be ~1.0, got {}", peak);
+        let peak = normalized
+            .iter()
+            .map(|s| s.abs())
+            .fold(0.0f32, |a, b| a.max(b));
+        assert!(
+            (peak - 1.0).abs() < 0.01,
+            "Peak should be ~1.0, got {}",
+            peak
+        );
     }
 
     #[test]
     fn test_normalize_silence() {
         let samples = vec![0.0f32, 0.0f32, 0.0f32];
         let normalized = AudioExporter::normalize_samples(&samples);
-        assert!(normalized.iter().all(|&s| s == 0.0), "Silence should remain silence");
+        assert!(
+            normalized.iter().all(|&s| s == 0.0),
+            "Silence should remain silence"
+        );
     }
 
     #[test]

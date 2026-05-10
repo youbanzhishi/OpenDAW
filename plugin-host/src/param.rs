@@ -1,7 +1,7 @@
 //! 统一参数系统 — 自动化、预设
 
-use std::collections::HashMap;
 use opendaw_extension::ParamInfo;
+use std::collections::HashMap;
 
 /// 参数管理器 — 统一管理所有插件参数
 pub struct ParamManager {
@@ -95,9 +95,7 @@ impl ParamManager {
     pub fn list_params(&self) -> Vec<(String, String, f64)> {
         self.params
             .iter()
-            .map(|(_key, (plugin_id, param))| {
-                (plugin_id.clone(), param.id.clone(), param.value)
-            })
+            .map(|(_key, (plugin_id, param))| (plugin_id.clone(), param.id.clone(), param.value))
             .collect()
     }
 

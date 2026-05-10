@@ -126,7 +126,8 @@ impl JsfxRuntime {
         self.srate = sample_rate;
         self.samplesblock = buffer_size;
         self.vars.insert("srate".to_string(), sample_rate);
-        self.vars.insert("samplesblock".to_string(), buffer_size as f64);
+        self.vars
+            .insert("samplesblock".to_string(), buffer_size as f64);
         self.sample_index = 0;
         self.play_position = 0.0;
         self.initialized = true;
@@ -137,8 +138,12 @@ impl JsfxRuntime {
         let name_lower = name.to_lowercase();
 
         // 特殊变量：spl0, spl1
-        if name_lower == "spl0" { return self.spl[0]; }
-        if name_lower == "spl1" { return self.spl[1]; }
+        if name_lower == "spl0" {
+            return self.spl[0];
+        }
+        if name_lower == "spl1" {
+            return self.spl[1];
+        }
 
         // slider变量
         if name_lower.starts_with("slider") && name_lower.len() > 6 {
@@ -150,26 +155,62 @@ impl JsfxRuntime {
         }
 
         // 系统变量
-        if name_lower == "srate" { return self.srate; }
-        if name_lower == "samplesblock" { return self.samplesblock as f64; }
-        if name_lower == "tempo" { return self.tempo; }
-        if name_lower == "pdc" { return self.pdc as f64; }
+        if name_lower == "srate" {
+            return self.srate;
+        }
+        if name_lower == "samplesblock" {
+            return self.samplesblock as f64;
+        }
+        if name_lower == "tempo" {
+            return self.tempo;
+        }
+        if name_lower == "pdc" {
+            return self.pdc as f64;
+        }
 
         // gfx 变量
-        if name_lower == "gfx_w" { return self.gfx_w; }
-        if name_lower == "gfx_h" { return self.gfx_h; }
-        if name_lower == "gfx_x" { return self.gfx_x; }
-        if name_lower == "gfx_y" { return self.gfx_y; }
-        if name_lower == "gfx_r" { return self.gfx_r; }
-        if name_lower == "gfx_g" { return self.gfx_g; }
-        if name_lower == "gfx_b" { return self.gfx_b; }
-        if name_lower == "gfx_a" { return self.gfx_a; }
-        if name_lower == "gfx_mode" { return self.gfx_mode; }
-        if name_lower == "gfx_texth" { return self.gfx_texth; }
-        if name_lower == "mouse_x" { return self.mouse_x; }
-        if name_lower == "mouse_y" { return self.mouse_y; }
-        if name_lower == "mouse_cap" { return self.mouse_cap; }
-        if name_lower == "mouse_wheel" { return self.mouse_wheel; }
+        if name_lower == "gfx_w" {
+            return self.gfx_w;
+        }
+        if name_lower == "gfx_h" {
+            return self.gfx_h;
+        }
+        if name_lower == "gfx_x" {
+            return self.gfx_x;
+        }
+        if name_lower == "gfx_y" {
+            return self.gfx_y;
+        }
+        if name_lower == "gfx_r" {
+            return self.gfx_r;
+        }
+        if name_lower == "gfx_g" {
+            return self.gfx_g;
+        }
+        if name_lower == "gfx_b" {
+            return self.gfx_b;
+        }
+        if name_lower == "gfx_a" {
+            return self.gfx_a;
+        }
+        if name_lower == "gfx_mode" {
+            return self.gfx_mode;
+        }
+        if name_lower == "gfx_texth" {
+            return self.gfx_texth;
+        }
+        if name_lower == "mouse_x" {
+            return self.mouse_x;
+        }
+        if name_lower == "mouse_y" {
+            return self.mouse_y;
+        }
+        if name_lower == "mouse_cap" {
+            return self.mouse_cap;
+        }
+        if name_lower == "mouse_wheel" {
+            return self.mouse_wheel;
+        }
 
         // $常量（$pi, $e, $phi）- 变量名中包含$前缀
         if name_lower.starts_with("$") {
@@ -195,8 +236,14 @@ impl JsfxRuntime {
         let name_lower = name.to_lowercase();
 
         // 特殊变量：spl0, spl1
-        if name_lower == "spl0" { self.spl[0] = value; return; }
-        if name_lower == "spl1" { self.spl[1] = value; return; }
+        if name_lower == "spl0" {
+            self.spl[0] = value;
+            return;
+        }
+        if name_lower == "spl1" {
+            self.spl[1] = value;
+            return;
+        }
 
         // slider变量只读（不能在脚本中赋值slider）
         if name_lower.starts_with("slider") && name_lower.len() > 6 {
@@ -207,26 +254,80 @@ impl JsfxRuntime {
         }
 
         // 系统变量
-        if name_lower == "srate" { self.srate = value; return; }
-        if name_lower == "samplesblock" { self.samplesblock = value as usize; return; }
-        if name_lower == "tempo" { self.tempo = value; return; }
-        if name_lower == "pdc" { self.pdc = value as usize; return; }
+        if name_lower == "srate" {
+            self.srate = value;
+            return;
+        }
+        if name_lower == "samplesblock" {
+            self.samplesblock = value as usize;
+            return;
+        }
+        if name_lower == "tempo" {
+            self.tempo = value;
+            return;
+        }
+        if name_lower == "pdc" {
+            self.pdc = value as usize;
+            return;
+        }
 
         // gfx 变量（可写）
-        if name_lower == "gfx_w" { self.gfx_w = value; return; }
-        if name_lower == "gfx_h" { self.gfx_h = value; return; }
-        if name_lower == "gfx_x" { self.gfx_x = value; return; }
-        if name_lower == "gfx_y" { self.gfx_y = value; return; }
-        if name_lower == "gfx_r" { self.gfx_r = value; return; }
-        if name_lower == "gfx_g" { self.gfx_g = value; return; }
-        if name_lower == "gfx_b" { self.gfx_b = value; return; }
-        if name_lower == "gfx_a" { self.gfx_a = value; return; }
-        if name_lower == "gfx_mode" { self.gfx_mode = value; return; }
-        if name_lower == "gfx_texth" { self.gfx_texth = value; return; }
-        if name_lower == "mouse_x" { self.mouse_x = value; return; }
-        if name_lower == "mouse_y" { self.mouse_y = value; return; }
-        if name_lower == "mouse_cap" { self.mouse_cap = value; return; }
-        if name_lower == "mouse_wheel" { self.mouse_wheel = value; return; }
+        if name_lower == "gfx_w" {
+            self.gfx_w = value;
+            return;
+        }
+        if name_lower == "gfx_h" {
+            self.gfx_h = value;
+            return;
+        }
+        if name_lower == "gfx_x" {
+            self.gfx_x = value;
+            return;
+        }
+        if name_lower == "gfx_y" {
+            self.gfx_y = value;
+            return;
+        }
+        if name_lower == "gfx_r" {
+            self.gfx_r = value;
+            return;
+        }
+        if name_lower == "gfx_g" {
+            self.gfx_g = value;
+            return;
+        }
+        if name_lower == "gfx_b" {
+            self.gfx_b = value;
+            return;
+        }
+        if name_lower == "gfx_a" {
+            self.gfx_a = value;
+            return;
+        }
+        if name_lower == "gfx_mode" {
+            self.gfx_mode = value;
+            return;
+        }
+        if name_lower == "gfx_texth" {
+            self.gfx_texth = value;
+            return;
+        }
+        if name_lower == "mouse_x" {
+            self.mouse_x = value;
+            return;
+        }
+        if name_lower == "mouse_y" {
+            self.mouse_y = value;
+            return;
+        }
+        if name_lower == "mouse_cap" {
+            self.mouse_cap = value;
+            return;
+        }
+        if name_lower == "mouse_wheel" {
+            self.mouse_wheel = value;
+            return;
+        }
 
         // $常量不可赋值
         if name_lower.starts_with("$") {
@@ -239,12 +340,18 @@ impl JsfxRuntime {
 
     /// 获取spl通道值
     pub fn get_spl(&self, channel: usize) -> f64 {
-        if channel < MAX_CHANNELS { self.spl[channel] } else { 0.0 }
+        if channel < MAX_CHANNELS {
+            self.spl[channel]
+        } else {
+            0.0
+        }
     }
 
     /// 设置spl通道值
     pub fn set_spl(&mut self, channel: usize, value: f64) {
-        if channel < MAX_CHANNELS { self.spl[channel] = value; }
+        if channel < MAX_CHANNELS {
+            self.spl[channel] = value;
+        }
     }
 
     /// 设置slider参数值

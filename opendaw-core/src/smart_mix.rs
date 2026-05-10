@@ -6,7 +6,6 @@
 //! - AutoMixProfile: 自动混音配置（按风格）
 //! - LoudnessNormalizer: 响度标准化（LUFS目标）
 
-
 use serde::{Deserialize, Serialize};
 
 // ── 频谱分析 ──────────────────────────────────────────────
@@ -74,8 +73,10 @@ impl FrequencyAnalyzer {
             .take(self.fft_size)
             .enumerate()
             .map(|(i, &s)| {
-                let w = 0.5 * (1.0 - (2.0 * std::f64::consts::PI * i as f64
-                    / (self.fft_size - 1) as f64).cos());
+                let w = 0.5
+                    * (1.0
+                        - (2.0 * std::f64::consts::PI * i as f64 / (self.fft_size - 1) as f64)
+                            .cos());
                 s * w
             })
             .collect();
@@ -104,9 +105,20 @@ impl FrequencyAnalyzer {
 
         // 计算RMS和峰值
         let rms: f64 = (audio.iter().map(|&s| s * s).sum::<f64>() / audio.len() as f64).sqrt();
-        let total_rms_db = if rms > 1e-10 { 20.0 * rms.log10() } else { -120.0 };
-        let peak = audio.iter().cloned().fold(0.0f64, |a, b| a.abs().max(b.abs()));
-        let peak_db = if peak > 1e-10 { 20.0 * peak.log10() } else { -120.0 };
+        let total_rms_db = if rms > 1e-10 {
+            20.0 * rms.log10()
+        } else {
+            -120.0
+        };
+        let peak = audio
+            .iter()
+            .cloned()
+            .fold(0.0f64, |a, b| a.abs().max(b.abs()));
+        let peak_db = if peak > 1e-10 {
+            20.0 * peak.log10()
+        } else {
+            -120.0
+        };
         let dynamic_range_db = total_rms_db - peak_db;
 
         // 倍频程分析
@@ -152,7 +164,11 @@ impl FrequencyAnalyzer {
 
                 let mut energy_sum = 0.0;
                 let mut peak: f64 = -120.0;
-                let count = if high_bin > low_bin { high_bin - low_bin } else { 1 };
+                let count = if high_bin > low_bin {
+                    high_bin - low_bin
+                } else {
+                    1
+                };
 
                 for bin in low_bin..high_bin.min(magnitude_db.len()) {
                     energy_sum += 10.0_f64.powf(magnitude_db[bin] / 10.0);
@@ -586,7 +602,10 @@ impl LoudnessNormalizer {
         let gain_db = self.target_lufs - current_lufs;
 
         // 计算真峰值
-        let true_peak = audio.iter().cloned().fold(0.0f64, |a, b| a.abs().max(b.abs()));
+        let true_peak = audio
+            .iter()
+            .cloned()
+            .fold(0.0f64, |a, b| a.abs().max(b.abs()));
         let true_peak_db = if true_peak > 1e-10 {
             20.0 * true_peak.log10()
         } else {
@@ -620,7 +639,9 @@ impl LoudnessNormalizer {
             if result.needs_limiting {
                 let threshold = 10.0_f64.powf(self.max_true_peak / 20.0);
                 if sample.abs() > threshold {
-                    *sample = threshold * sample.signum() * (1.0 - (-(sample.abs() - threshold) * 10.0).exp());
+                    *sample = threshold
+                        * sample.signum()
+                        * (1.0 - (-(sample.abs() - threshold) * 10.0).exp());
                 }
             }
         }
@@ -673,8 +694,11 @@ impl TrackRole {
     /// 从轨道名称推断角色
     pub fn from_name(name: &str) -> Self {
         let lower = name.to_lowercase();
-        if lower.contains("kick") || lower.contains("snare") || lower.contains("hi")
-            || lower.contains("drum") || lower.contains("perc")
+        if lower.contains("kick")
+            || lower.contains("snare")
+            || lower.contains("hi")
+            || lower.contains("drum")
+            || lower.contains("perc")
         {
             Self::Drums
         } else if lower.contains("bass") || lower.contains("sub") {
@@ -683,8 +707,12 @@ impl TrackRole {
             Self::Vocal
         } else if lower.contains("lead") || lower.contains("solo") {
             Self::MelodicInstrument
-        } else if lower.contains("pad") || lower.contains("chord") || lower.contains("keys")
-            || lower.contains("guitar") || lower.contains("piano") || lower.contains("synth")
+        } else if lower.contains("pad")
+            || lower.contains("chord")
+            || lower.contains("keys")
+            || lower.contains("guitar")
+            || lower.contains("piano")
+            || lower.contains("synth")
         {
             Self::HarmonicInstrument
         } else if lower.contains("fx") || lower.contains("ambient") || lower.contains("effect") {
@@ -720,14 +748,19 @@ impl SmartMixEngine {
     /// 分析轨道
     pub fn analyze_track(&self, name: &str, audio: &[f64]) -> TrackAnalysis {
         let spectrum = self.analyzer.analyze(audio);
-        let loudness_lufs = self.normalizer.measure_lufs(audio, self.analyzer.sample_rate);
+        let loudness_lufs = self
+            .normalizer
+            .measure_lufs(audio, self.analyzer.sample_rate);
 
         TrackAnalysis {
             name: name.to_string(),
             track_role: TrackRole::from_name(name),
             spectrum,
             loudness_lufs,
-            peak_db: audio.iter().cloned().fold(0.0f64, |a, b| a.abs().max(b.abs())),
+            peak_db: audio
+                .iter()
+                .cloned()
+                .fold(0.0f64, |a, b| a.abs().max(b.abs())),
             dynamic_range_db: 0.0, // 简化
         }
     }
@@ -770,14 +803,12 @@ impl SmartMixEngine {
             suggestion.compression = self.suggest_compression(analysis);
 
             // 说明
-            suggestion.notes.push(format!(
-                "轨道角色: {:?}",
-                analysis.track_role
-            ));
-            suggestion.notes.push(format!(
-                "响度: {:.1} LUFS",
-                analysis.loudness_lufs
-            ));
+            suggestion
+                .notes
+                .push(format!("轨道角色: {:?}", analysis.track_role));
+            suggestion
+                .notes
+                .push(format!("响度: {:.1} LUFS", analysis.loudness_lufs));
             suggestion.confidence = 0.7;
 
             suggestions.push(suggestion);
@@ -794,25 +825,33 @@ impl SmartMixEngine {
         let mut suggestions = Vec::new();
 
         // 检查低频过多
-        let sub_bass_energy = analysis.spectrum.octave_bands
+        let sub_bass_energy = analysis
+            .spectrum
+            .octave_bands
             .iter()
             .find(|b| b.center_frequency < 50.0)
             .map(|b| b.energy_db)
             .unwrap_or(-60.0);
 
-        let bass_energy = analysis.spectrum.octave_bands
+        let bass_energy = analysis
+            .spectrum
+            .octave_bands
             .iter()
             .find(|b| (b.center_frequency - 63.0).abs() < 10.0)
             .map(|b| b.energy_db)
             .unwrap_or(-60.0);
 
-        let mid_energy = analysis.spectrum.octave_bands
+        let mid_energy = analysis
+            .spectrum
+            .octave_bands
             .iter()
             .find(|b| (b.center_frequency - 500.0).abs() < 50.0)
             .map(|b| b.energy_db)
             .unwrap_or(-60.0);
 
-        let high_energy = analysis.spectrum.octave_bands
+        let high_energy = analysis
+            .spectrum
+            .octave_bands
             .iter()
             .find(|b| (b.center_frequency - 8000.0).abs() < 500.0)
             .map(|b| b.energy_db)
@@ -957,7 +996,9 @@ impl SmartMixEngine {
                                 release_ms: 100.0,
                                 reason: "侧链压缩：贝斯为鼓组让出空间".to_string(),
                             });
-                            suggestion.notes.push("检测到低频冲突：建议使用侧链压缩".to_string());
+                            suggestion
+                                .notes
+                                .push("检测到低频冲突：建议使用侧链压缩".to_string());
                         }
                         _ => {}
                     }
@@ -1014,7 +1055,13 @@ mod tests {
 
     #[test]
     fn test_auto_mix_profile_for_style() {
-        for style in [MixStyle::Pop, MixStyle::Rock, MixStyle::EDM, MixStyle::Classical, MixStyle::Jazz] {
+        for style in [
+            MixStyle::Pop,
+            MixStyle::Rock,
+            MixStyle::EDM,
+            MixStyle::Classical,
+            MixStyle::Jazz,
+        ] {
             let profile = AutoMixProfile::for_style(style);
             assert_eq!(profile.style, style);
         }

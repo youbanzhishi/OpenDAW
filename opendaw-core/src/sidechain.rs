@@ -330,7 +330,8 @@ impl SidechainRouter {
 
     /// 列出所有连接的描述
     pub fn describe_links(&self) -> Vec<String> {
-        let mut descriptions: Vec<String> = self.links
+        let mut descriptions: Vec<String> = self
+            .links
             .values()
             .map(|l| {
                 format!(
@@ -393,7 +394,11 @@ mod tests {
         buf.set(2, -1.0);
         buf.set(3, 0.0);
         let rms = buf.rms();
-        assert!((rms - 0.7071).abs() < 0.01, "RMS should be ~0.707, got {}", rms);
+        assert!(
+            (rms - 0.7071).abs() < 0.01,
+            "RMS should be ~0.707, got {}",
+            rms
+        );
     }
 
     #[test]

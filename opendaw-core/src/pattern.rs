@@ -231,9 +231,9 @@ impl Pattern {
     /// 生成示例贝斯Pattern
     pub fn example_bass() -> Self {
         let mut pattern = Self::midi("bass_basic", "Bass Basic", 4.0);
-        pattern.add_note(MidiNote::new(36, 0.0, 1.0, 90));  // C1
+        pattern.add_note(MidiNote::new(36, 0.0, 1.0, 90)); // C1
         pattern.add_note(MidiNote::new(36, 1.0, 1.0, 90));
-        pattern.add_note(MidiNote::new(43, 2.0, 1.0, 85));  // G1
+        pattern.add_note(MidiNote::new(43, 2.0, 1.0, 85)); // G1
         pattern.add_note(MidiNote::new(43, 3.0, 1.0, 85));
         pattern.add_tag("bass");
         pattern.category = "贝斯".to_string();
@@ -310,7 +310,8 @@ impl PatternLibrary {
     /// 移除Pattern
     pub fn remove_pattern(&mut self, id: &str) -> Option<Pattern> {
         // 同时移除所有引用该Pattern的实例
-        let instance_ids: Vec<String> = self.instances
+        let instance_ids: Vec<String> = self
+            .instances
             .iter()
             .filter(|(_, inst)| inst.pattern_id == id)
             .map(|(inst_id, _)| inst_id.clone())
@@ -386,7 +387,9 @@ impl PatternLibrary {
             .values()
             .filter(|p| {
                 p.name.to_lowercase().contains(&query_lower)
-                    || p.tags.iter().any(|t| t.to_lowercase().contains(&query_lower))
+                    || p.tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&query_lower))
             })
             .collect()
     }

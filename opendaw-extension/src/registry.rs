@@ -69,7 +69,9 @@ impl ExtensionRegistry {
 
     /// 获取插件可变引用
     pub fn get_plugin_mut(&mut self, id: &str) -> Option<&mut dyn VcPlugin> {
-        self.plugins.get_mut(id).map(|p| p.as_mut() as &mut dyn VcPlugin)
+        self.plugins
+            .get_mut(id)
+            .map(|p| p.as_mut() as &mut dyn VcPlugin)
     }
 
     /// 列出所有已注册插件ID
@@ -95,7 +97,11 @@ impl ExtensionRegistry {
     }
 
     /// 注册脚本引擎（带指定ID）
-    pub fn register_script_with_id(&mut self, id: &str, script: Box<dyn ScriptEngine>) -> Result<(), ExtensionError> {
+    pub fn register_script_with_id(
+        &mut self,
+        id: &str,
+        script: Box<dyn ScriptEngine>,
+    ) -> Result<(), ExtensionError> {
         if self.scripts.contains_key(id) {
             return Err(ExtensionError::AlreadyExists(format!("脚本: {}", id)));
         }
@@ -105,7 +111,9 @@ impl ExtensionRegistry {
 
     /// 获取脚本引擎可变引用
     pub fn get_script_mut(&mut self, id: &str) -> Option<&mut dyn ScriptEngine> {
-        self.scripts.get_mut(id).map(|s| s.as_mut() as &mut dyn ScriptEngine)
+        self.scripts
+            .get_mut(id)
+            .map(|s| s.as_mut() as &mut dyn ScriptEngine)
     }
 
     /// 列出所有已注册脚本ID
@@ -127,7 +135,9 @@ impl ExtensionRegistry {
 
     /// 获取模型后端可变引用
     pub fn get_model_mut(&mut self, id: &str) -> Option<&mut dyn ModelBackend> {
-        self.models.get_mut(id).map(|m| m.as_mut() as &mut dyn ModelBackend)
+        self.models
+            .get_mut(id)
+            .map(|m| m.as_mut() as &mut dyn ModelBackend)
     }
 
     /// 列出所有已注册模型后端ID
@@ -146,8 +156,13 @@ impl ExtensionRegistry {
     }
 
     /// 使用指定模型后端进行推理
-    pub fn predict(&mut self, backend_id: &str, input: &ModelInput) -> Result<crate::types::ModelOutput, ExtensionError> {
-        let model = self.models
+    pub fn predict(
+        &mut self,
+        backend_id: &str,
+        input: &ModelInput,
+    ) -> Result<crate::types::ModelOutput, ExtensionError> {
+        let model = self
+            .models
             .get_mut(backend_id)
             .ok_or_else(|| ExtensionError::NotFound(format!("模型后端: {}", backend_id)))?;
         model.predict(input).map_err(ExtensionError::Model)
@@ -159,7 +174,11 @@ impl ExtensionRegistry {
     pub fn register_hook(
         &mut self,
         event: &str,
-        handler: Box<dyn Fn(&crate::hook_system::HookContext) -> Result<(), crate::error::HookError> + Send + Sync>,
+        handler: Box<
+            dyn Fn(&crate::hook_system::HookContext) -> Result<(), crate::error::HookError>
+                + Send
+                + Sync,
+        >,
         priority: i32,
     ) -> String {
         self.hooks.register(event, handler, priority)
@@ -171,7 +190,9 @@ impl ExtensionRegistry {
         event: &str,
         context: &mut crate::hook_system::HookContext,
     ) -> Result<(), ExtensionError> {
-        self.hooks.emit(event, context).map_err(ExtensionError::Hook)
+        self.hooks
+            .emit(event, context)
+            .map_err(ExtensionError::Hook)
     }
 
     /// 列出指定事件的钩子
@@ -235,35 +256,62 @@ mod tests {
 
     impl TestGainPlugin {
         fn new() -> Self {
-            Self { gain: 1.0, initialized: false }
+            Self {
+                gain: 1.0,
+                initialized: false,
+            }
         }
     }
 
     impl VcPlugin for TestGainPlugin {
-        fn plugin_id(&self) -> &str { "test-gain" }
-        fn plugin_name(&self) -> &str { "测试增益" }
-        fn plugin_type(&self) -> PluginType { PluginType::Effect }
-        fn version(&self) -> &str { "0.1.0" }
+        fn plugin_id(&self) -> &str {
+            "test-gain"
+        }
+        fn plugin_name(&self) -> &str {
+            "测试增益"
+        }
+        fn plugin_type(&self) -> PluginType {
+            PluginType::Effect
+        }
+        fn version(&self) -> &str {
+            "0.1.0"
+        }
         fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), crate::error::PluginError> {
             self.initialized = true;
             Ok(())
         }
-        fn process(&mut self, input: &crate::types::AudioBuffer, output: &mut crate::types::AudioBuffer) {
+        fn process(
+            &mut self,
+            input: &crate::types::AudioBuffer,
+            output: &mut crate::types::AudioBuffer,
+        ) {
             for (i, &s) in input.data.iter().enumerate() {
                 output.data[i] = s * self.gain;
             }
         }
         fn get_params(&self) -> Vec<crate::types::ParamInfo> {
-            vec![crate::types::ParamInfo::new("gain", "增益", 0.0, 10.0, 1.0, "")]
+            vec![crate::types::ParamInfo::new(
+                "gain", "增益", 0.0, 10.0, 1.0, "",
+            )]
         }
         fn set_param(&mut self, id: &str, value: f64) -> Result<(), crate::error::PluginError> {
-            if id == "gain" { self.gain = value; Ok(()) }
-            else { Err(crate::error::PluginError::ParamNotFound(id.to_string())) }
+            if id == "gain" {
+                self.gain = value;
+                Ok(())
+            } else {
+                Err(crate::error::PluginError::ParamNotFound(id.to_string()))
+            }
         }
         fn get_param(&self, id: &str) -> Option<f64> {
-            if id == "gain" { Some(self.gain) } else { None }
+            if id == "gain" {
+                Some(self.gain)
+            } else {
+                None
+            }
         }
-        fn destroy(&mut self) { self.initialized = false; }
+        fn destroy(&mut self) {
+            self.initialized = false;
+        }
     }
 
     #[test]
@@ -272,11 +320,15 @@ mod tests {
         assert!(registry.is_empty());
 
         // 注册插件
-        registry.register_plugin(Box::new(TestGainPlugin::new())).unwrap();
+        registry
+            .register_plugin(Box::new(TestGainPlugin::new()))
+            .unwrap();
         assert_eq!(registry.list_plugins(), vec!["test-gain"]);
 
         // 重复注册应报错
-        assert!(registry.register_plugin(Box::new(TestGainPlugin::new())).is_err());
+        assert!(registry
+            .register_plugin(Box::new(TestGainPlugin::new()))
+            .is_err());
 
         // 初始化并处理
         let plugin = registry.get_plugin_mut("test-gain").unwrap();
@@ -290,7 +342,10 @@ mod tests {
         registry.register_model(Box::new(backend)).unwrap();
 
         assert_eq!(registry.list_models(), vec!["local"]);
-        assert_eq!(registry.find_model_for_task("auto_mix"), Some("local".to_string()));
+        assert_eq!(
+            registry.find_model_for_task("auto_mix"),
+            Some("local".to_string())
+        );
         assert_eq!(registry.find_model_for_task("unknown"), None);
     }
 }

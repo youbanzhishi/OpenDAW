@@ -29,9 +29,9 @@
 
 use std::path::{Path, PathBuf};
 
-use opendaw_extension::{PluginError, VcPlugin};
 use crate::scanner::{PluginFormat, ScannedPlugin};
 use crate::vc_adapter::VcPluginAdapter;
+use opendaw_extension::{PluginError, VcPlugin};
 
 /// 插件加载器 — 工厂模式
 ///
@@ -81,9 +81,10 @@ impl PluginLoader {
                 }
                 #[cfg(not(feature = "vst3"))]
                 {
-                    Err(PluginError::InitFailed(
-                        format!("VST3 支持未启用，请启用 'vst3' feature: {}", path.display())
-                    ))
+                    Err(PluginError::InitFailed(format!(
+                        "VST3 支持未启用，请启用 'vst3' feature: {}",
+                        path.display()
+                    )))
                 }
             }
             PluginFormat::Clap => {
@@ -94,9 +95,10 @@ impl PluginLoader {
                 }
                 #[cfg(not(feature = "clap"))]
                 {
-                    Err(PluginError::InitFailed(
-                        format!("CLAP 支持未启用，请启用 'clap' feature: {}", path.display())
-                    ))
+                    Err(PluginError::InitFailed(format!(
+                        "CLAP 支持未启用，请启用 'clap' feature: {}",
+                        path.display()
+                    )))
                 }
             }
             PluginFormat::VcCli => {
@@ -113,19 +115,21 @@ impl PluginLoader {
                 }
                 #[cfg(not(feature = "jsfx"))]
                 {
-                    Err(PluginError::InitFailed(
-                        format!("JSFX 支持未启用，请启用 'jsfx' feature: {}", path.display())
-                    ))
+                    Err(PluginError::InitFailed(format!(
+                        "JSFX 支持未启用，请启用 'jsfx' feature: {}",
+                        path.display()
+                    )))
                 }
             }
-            PluginFormat::Lv2 => {
-                Err(PluginError::InitFailed("LV2 格式暂不支持".to_string()))
-            }
+            PluginFormat::Lv2 => Err(PluginError::InitFailed("LV2 格式暂不支持".to_string())),
         }
     }
 
     /// 从扫描结果加载
-    pub fn load_from_scanned(&self, info: &ScannedPlugin) -> Result<Box<dyn VcPlugin>, PluginError> {
+    pub fn load_from_scanned(
+        &self,
+        info: &ScannedPlugin,
+    ) -> Result<Box<dyn VcPlugin>, PluginError> {
         self.load_with_format(&info.path, &info.format)
     }
 
@@ -151,17 +155,19 @@ impl PluginLoader {
             }
         }
 
-        Err(PluginError::ProcessFailed(
-            format!("未找到 VC-CLI 插件: {}", plugin_id)
-        ))
+        Err(PluginError::ProcessFailed(format!(
+            "未找到 VC-CLI 插件: {}",
+            plugin_id
+        )))
     }
 
     /// 自动检测插件格式
     pub fn detect_format(path: &Path) -> Result<PluginFormat, PluginError> {
         if !path.exists() {
-            return Err(PluginError::InitFailed(
-                format!("文件不存在: {}", path.display())
-            ));
+            return Err(PluginError::InitFailed(format!(
+                "文件不存在: {}",
+                path.display()
+            )));
         }
 
         // 优先检查扩展名
@@ -176,9 +182,7 @@ impl PluginLoader {
         }
 
         // 检查文件名模式 (VC-CLI)
-        let file_name = path.file_name()
-            .unwrap_or_default()
-            .to_string_lossy();
+        let file_name = path.file_name().unwrap_or_default().to_string_lossy();
 
         if file_name.contains("CLI-Standalone") || file_name.contains("CLI") {
             return Ok(PluginFormat::VcCli);
@@ -196,9 +200,10 @@ impl PluginLoader {
             return Ok(PluginFormat::Jsfx);
         }
 
-        Err(PluginError::InitFailed(
-            format!("无法识别插件格式: {}", path.display())
-        ))
+        Err(PluginError::InitFailed(format!(
+            "无法识别插件格式: {}",
+            path.display()
+        )))
     }
 
     /// 列出所有支持的格式

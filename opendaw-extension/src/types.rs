@@ -102,7 +102,11 @@ impl AudioBuffer {
     ///
     /// interleaved: [L0, R0, L1, R1, ...] → planar [L0, L1, ..., R0, R1, ...]
     pub fn from_interleaved(interleaved: &[f64], channels: usize) -> Self {
-        let frames = if channels > 0 { interleaved.len() / channels } else { 0 };
+        let frames = if channels > 0 {
+            interleaved.len() / channels
+        } else {
+            0
+        };
         let mut buf = Self::new(channels, frames);
         for (i, &sample) in interleaved.iter().enumerate() {
             let ch = i % channels;
@@ -170,7 +174,15 @@ impl ParamInfo {
     }
 
     /// 创建带步进值的参数
-    pub fn with_step(id: &str, name: &str, min: f64, max: f64, default: f64, step: f64, unit: &str) -> Self {
+    pub fn with_step(
+        id: &str,
+        name: &str,
+        min: f64,
+        max: f64,
+        default: f64,
+        step: f64,
+        unit: &str,
+    ) -> Self {
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -303,7 +315,9 @@ impl std::fmt::Display for ScriptValue {
             ScriptValue::Array(a) => {
                 write!(f, "[")?;
                 for (i, v) in a.iter().enumerate() {
-                    if i > 0 { write!(f, ", ")?; }
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
                     write!(f, "{}", v)?;
                 }
                 write!(f, "]")
@@ -311,7 +325,9 @@ impl std::fmt::Display for ScriptValue {
             ScriptValue::Map(m) => {
                 write!(f, "{{")?;
                 for (i, (k, v)) in m.iter().enumerate() {
-                    if i > 0 { write!(f, ", ")?; }
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
                     write!(f, "{:?}: {}", k, v)?;
                 }
                 write!(f, "}}")

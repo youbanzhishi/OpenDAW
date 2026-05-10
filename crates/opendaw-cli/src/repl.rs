@@ -60,7 +60,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 println!("  Engine: idle");
             }
             ReplCommand::Unknown(cmd) => {
-                println!("Unknown command: '{}'. Type 'help' for available commands.", cmd);
+                println!(
+                    "Unknown command: '{}'. Type 'help' for available commands.",
+                    cmd
+                );
             }
         }
     }

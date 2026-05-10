@@ -36,7 +36,11 @@ impl CurveType {
                 }
             }
             CurveType::Step => {
-                if t < 1.0 { from } else { to }
+                if t < 1.0 {
+                    from
+                } else {
+                    to
+                }
             }
             CurveType::Sine => {
                 // 正弦平滑过渡
@@ -110,13 +114,20 @@ impl AutomationEnvelope {
     /// 添加控制点
     pub fn add_point(&mut self, point: AutomationPoint) {
         // 找到插入位置以保持排序
-        let pos = self.points.iter().position(|p| p.beat > point.beat).unwrap_or(self.points.len());
+        let pos = self
+            .points
+            .iter()
+            .position(|p| p.beat > point.beat)
+            .unwrap_or(self.points.len());
         self.points.insert(pos, point);
     }
 
     /// 移除指定beat位置的控制点
     pub fn remove_point_at(&mut self, beat: f64) -> Option<AutomationPoint> {
-        let pos = self.points.iter().position(|p| (p.beat - beat).abs() < 1e-10)?;
+        let pos = self
+            .points
+            .iter()
+            .position(|p| (p.beat - beat).abs() < 1e-10)?;
         Some(self.points.remove(pos))
     }
 
@@ -166,7 +177,11 @@ impl AutomationEnvelope {
         if steps == 0 {
             return Vec::new();
         }
-        let step_size = if steps > 1 { (end_beat - start_beat) / (steps - 1) as f64 } else { 0.0 };
+        let step_size = if steps > 1 {
+            (end_beat - start_beat) / (steps - 1) as f64
+        } else {
+            0.0
+        };
         (0..steps)
             .map(|i| self.value_at(start_beat + step_size * i as f64))
             .collect()
@@ -205,12 +220,18 @@ impl AutomationEnvelope {
 
     /// 最大值
     pub fn max_value(&self) -> f64 {
-        self.points.iter().map(|p| p.value).fold(self.default_value, f64::max)
+        self.points
+            .iter()
+            .map(|p| p.value)
+            .fold(self.default_value, f64::max)
     }
 
     /// 最小值
     pub fn min_value(&self) -> f64 {
-        self.points.iter().map(|p| p.value).fold(self.default_value, f64::min)
+        self.points
+            .iter()
+            .map(|p| p.value)
+            .fold(self.default_value, f64::min)
     }
 }
 
@@ -270,7 +291,8 @@ impl AutomationLane {
     /// 写入自动化数据点（写入模式下）
     pub fn write_point(&mut self, beat: f64, value: f64, curve_type: CurveType) {
         if self.write_mode {
-            self.envelope.add_point(AutomationPoint::new(beat, value, curve_type));
+            self.envelope
+                .add_point(AutomationPoint::new(beat, value, curve_type));
         }
     }
 
@@ -425,7 +447,11 @@ mod tests {
     #[test]
     fn test_curve_type_exponential() {
         let result = CurveType::Exponential.interpolate(0.5, 1.0, 100.0);
-        assert!(result > 1.0 && result < 100.0, "Midpoint of exponential should be between 1 and 100, got {}", result);
+        assert!(
+            result > 1.0 && result < 100.0,
+            "Midpoint of exponential should be between 1 and 100, got {}",
+            result
+        );
     }
 
     #[test]
@@ -441,7 +467,11 @@ mod tests {
     fn test_curve_type_sine() {
         let result = CurveType::Sine.interpolate(0.5, 0.0, 1.0);
         // sin(π/4) ≈ 0.707
-        assert!((result - 0.7071).abs() < 0.01, "Sine midpoint should be ~0.707, got {}", result);
+        assert!(
+            (result - 0.7071).abs() < 0.01,
+            "Sine midpoint should be ~0.707, got {}",
+            result
+        );
 
         let result_start = CurveType::Sine.interpolate(0.0, 0.0, 1.0);
         assert!((result_start - 0.0).abs() < 1e-10);
@@ -469,7 +499,11 @@ mod tests {
 
         // 在beat=2处应该插值为0.5
         let val = env.value_at(2.0);
-        assert!((val - 0.5).abs() < 1e-10, "Value at beat 2 should be 0.5, got {}", val);
+        assert!(
+            (val - 0.5).abs() < 1e-10,
+            "Value at beat 2 should be 0.5, got {}",
+            val
+        );
     }
 
     #[test]
@@ -484,7 +518,10 @@ mod tests {
         let mut env = AutomationEnvelope::new(0.5);
         env.add_point(AutomationPoint::linear(4.0, 0.8));
         let val = env.value_at(2.0);
-        assert!((val - 0.8).abs() < 1e-10, "Before first point should use first point value");
+        assert!(
+            (val - 0.8).abs() < 1e-10,
+            "Before first point should use first point value"
+        );
     }
 
     #[test]
@@ -492,7 +529,10 @@ mod tests {
         let mut env = AutomationEnvelope::new(0.5);
         env.add_point(AutomationPoint::linear(4.0, 0.8));
         let val = env.value_at(10.0);
-        assert!((val - 0.8).abs() < 1e-10, "After last point should use last point value");
+        assert!(
+            (val - 0.8).abs() < 1e-10,
+            "After last point should use last point value"
+        );
     }
 
     #[test]
@@ -572,7 +612,10 @@ mod tests {
         lane.enabled = false;
 
         let val = lane.value_at(2.0);
-        assert!((val - 0.5).abs() < 1e-10, "Disabled lane should return default value");
+        assert!(
+            (val - 0.5).abs() < 1e-10,
+            "Disabled lane should return default value"
+        );
     }
 
     #[test]
@@ -584,7 +627,11 @@ mod tests {
 
         lane.write_mode = false;
         lane.write_point(4.0, 1.0, CurveType::Linear);
-        assert_eq!(lane.envelope.point_count(), 1, "Should not write when write_mode is off");
+        assert_eq!(
+            lane.envelope.point_count(),
+            1,
+            "Should not write when write_mode is off"
+        );
     }
 
     #[test]

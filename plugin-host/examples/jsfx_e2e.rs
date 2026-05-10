@@ -2,9 +2,9 @@
 //!
 //! 验证完整的JSFX处理链路
 
-use plugin_host::chain::PluginChain;
 use jsfx_engine::{load_jsfx_source, JsfxPlugin, VcPlugin};
 use opendaw_extension::AudioBuffer as ExtAudioBuffer;
+use plugin_host::chain::PluginChain;
 
 fn main() {
     println!("=== JSFX端到端测试 ===\n");
@@ -43,7 +43,7 @@ spl1 *= gain;
     // 创建测试输入: 振幅0.5的正弦波
     let frames = 441; // 10ms @ 44100Hz
     let mut input = ExtAudioBuffer::new(2, frames);
-    
+
     for i in 0..frames {
         let t = i as f64 / 44100.0;
         let sample = 0.5 * (2.0 * std::f64::consts::PI * 1000.0 * t).sin();
@@ -59,11 +59,11 @@ spl1 *= gain;
     let peak_l = (0..frames)
         .map(|i| output.sample(0, i).abs())
         .fold(0.0f64, |a, b| a.max(b));
-    
+
     println!("  输入峰值: {:.4}", 0.5);
     println!("  输出峰值: {:.4}", peak_l);
     println!("  期望峰值: {:.4} (6dB增益)", 1.0);
-    
+
     assert!((peak_l - 1.0).abs() < tolerance, "增益效果不正确");
     println!("  ✅ 通过\n");
 }
@@ -99,7 +99,7 @@ spl1 = spl1 * slider1;
     // 添加两个JSFX插件到链中
     let plugin1 = load_jsfx_source(gain_source, "gain").unwrap();
     let plugin2 = load_jsfx_source(tone_source, "tone").unwrap();
-    
+
     chain.push(Box::new(plugin1));
     chain.push(Box::new(plugin2));
 
@@ -127,7 +127,7 @@ spl1 = spl1 * slider1;
     println!("  输入: {:.4}", 0.3);
     println!("  输出: {:.4}", peak);
     println!("  期望: {:.4}", 0.6);
-    
+
     assert!((peak - 0.6).abs() < 0.001);
     println!("  ✅ 通过\n");
 }
@@ -166,10 +166,10 @@ spl1 *= gain;
 
     for (db, expected, label) in test_cases {
         plugin.set_param("slider1", db).unwrap();
-        
+
         let mut output = ExtAudioBuffer::new(2, 10);
         plugin.process(&input, &mut output);
-        
+
         let actual = output.sample(0, 0);
         println!("  {}: 期望{:.4}, 实际{:.4}", label, expected, actual);
         assert!((actual - expected).abs() < 0.001);

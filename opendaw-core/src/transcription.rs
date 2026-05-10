@@ -6,11 +6,10 @@
 //! - TranscriptionResult: 扒带结果（MIDI音符 + 节拍标记 + 调式推断）
 //! - TranscriptionToProject: 扒带结果→项目转换（自动创建轨道+分配乐器）
 
-
 use serde::{Deserialize, Serialize};
 
+use crate::chord::{Mode, NoteName};
 use crate::pattern::{MidiNote, Pattern, PatternType};
-use crate::chord::{NoteName, Mode};
 
 // ── 基音检测器 ──────────────────────────────────────────────
 
@@ -393,8 +392,11 @@ impl BeatDetector {
                 .iter()
                 .enumerate()
                 .map(|(j, &s)| {
-                    let w = 0.5 * (1.0 - (2.0 * std::f64::consts::PI * j as f64
-                        / (self.frame_size - 1) as f64).cos());
+                    let w = 0.5
+                        * (1.0
+                            - (2.0 * std::f64::consts::PI * j as f64
+                                / (self.frame_size - 1) as f64)
+                                .cos());
                     s * w
                 })
                 .collect();
@@ -696,8 +698,8 @@ pub struct TranscriptionEngine {
 impl TranscriptionEngine {
     /// 创建新的扒带引擎
     pub fn new(config: TranscriptionConfig) -> Self {
-        let pitch_detector = PitchDetector::new(config.sample_rate)
-            .with_threshold(config.pitch_threshold);
+        let pitch_detector =
+            PitchDetector::new(config.sample_rate).with_threshold(config.pitch_threshold);
 
         let beat_detector = BeatDetector::new(config.sample_rate)
             .with_onset_threshold(config.onset_threshold)
@@ -854,12 +856,21 @@ impl TranscriptionEngine {
             }
         }
 
-        let major_profile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
-        let minor_profile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+        let major_profile = [
+            6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88,
+        ];
+        let minor_profile = [
+            6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17,
+        ];
 
         let note_names = [
-            NoteName::C, NoteName::D, NoteName::E, NoteName::F,
-            NoteName::G, NoteName::A, NoteName::B,
+            NoteName::C,
+            NoteName::D,
+            NoteName::E,
+            NoteName::F,
+            NoteName::G,
+            NoteName::A,
+            NoteName::B,
         ];
 
         let mut best_key = KeyEstimate {
@@ -983,12 +994,8 @@ impl TranscriptionToProject {
             TrackAllocationStrategy::SingleTrack => {
                 vec![self.to_pattern(result, name)]
             }
-            TrackAllocationStrategy::ByPitchRange => {
-                self.split_by_pitch_range(result, name)
-            }
-            TrackAllocationStrategy::ByVelocity => {
-                self.split_by_velocity(result, name)
-            }
+            TrackAllocationStrategy::ByPitchRange => self.split_by_pitch_range(result, name),
+            TrackAllocationStrategy::ByVelocity => self.split_by_velocity(result, name),
         }
     }
 
@@ -997,11 +1004,7 @@ impl TranscriptionToProject {
         let beat_duration = 60.0 / result.beat_detection.bpm;
         let length_beats = result.duration_secs / beat_duration;
 
-        let ranges: [(u8, u8, &str); 3] = [
-            (0, 47, "低音"),
-            (48, 71, "中音"),
-            (72, 127, "高音"),
-        ];
+        let ranges: [(u8, u8, &str); 3] = [(0, 47, "低音"), (48, 71, "中音"), (72, 127, "高音")];
 
         let mut patterns = Vec::new();
 
@@ -1042,11 +1045,7 @@ impl TranscriptionToProject {
         let beat_duration = 60.0 / result.beat_detection.bpm;
         let length_beats = result.duration_secs / beat_duration;
 
-        let ranges: [(u8, u8, &str); 3] = [
-            (0, 63, "弱"),
-            (64, 95, "中"),
-            (96, 127, "强"),
-        ];
+        let ranges: [(u8, u8, &str); 3] = [(0, 63, "弱"), (64, 95, "中"), (96, 127, "强")];
 
         let mut patterns = Vec::new();
 
@@ -1096,10 +1095,17 @@ impl TranscriptionToProject {
                 });
             }
             TrackAllocationStrategy::ByPitchRange => {
-                let ranges = [(0u8, 47u8, "Bass", "低音贝斯"), (48, 71, "Keys", "键盘"), (72, 127, "Lead", "主音")];
+                let ranges = [
+                    (0u8, 47u8, "Bass", "低音贝斯"),
+                    (48, 71, "Keys", "键盘"),
+                    (72, 127, "Lead", "主音"),
+                ];
                 for (lo, hi, inst, label) in ranges {
-                    let range_notes: Vec<&TranscribedNote> =
-                        result.notes.iter().filter(|n| n.pitch >= lo && n.pitch <= hi).collect();
+                    let range_notes: Vec<&TranscribedNote> = result
+                        .notes
+                        .iter()
+                        .filter(|n| n.pitch >= lo && n.pitch <= hi)
+                        .collect();
                     if !range_notes.is_empty() {
                         suggestions.push(TrackSuggestion {
                             name: format!("扒带-{}", label),

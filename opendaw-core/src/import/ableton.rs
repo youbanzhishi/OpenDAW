@@ -527,8 +527,8 @@ impl AbletonProjectParser {
             if let Some(block_end) = Self::find_closing_tag(block, block_start, clip_tag) {
                 let clip_block = &block[block_start..block_end];
 
-                let name = Self::extract_xml_attribute(clip_block, "Name", "Value")
-                    .unwrap_or_default();
+                let name =
+                    Self::extract_xml_attribute(clip_block, "Name", "Value").unwrap_or_default();
 
                 let start = Self::extract_xml_float(clip_block, "CurrentStart").unwrap_or(0.0);
                 let end = Self::extract_xml_float(clip_block, "CurrentEnd").unwrap_or(4.0);
@@ -544,10 +544,7 @@ impl AbletonProjectParser {
                         .unwrap_or(true),
                     loop_start: Self::extract_xml_float(clip_block, "LoopStart").unwrap_or(0.0),
                     loop_end: Self::extract_xml_float(clip_block, "LoopEnd").unwrap_or(4.0),
-                    content: AbletonClipContent::Midi {
-                        notes,
-                        channel: 0,
-                    },
+                    content: AbletonClipContent::Midi { notes, channel: 0 },
                     color: 0,
                 });
 
@@ -564,11 +561,11 @@ impl AbletonProjectParser {
             if let Some(block_end) = Self::find_closing_tag(block, block_start, audio_clip_tag) {
                 let clip_block = &block[block_start..block_end];
 
-                let name = Self::extract_xml_attribute(clip_block, "Name", "Value")
-                    .unwrap_or_default();
+                let name =
+                    Self::extract_xml_attribute(clip_block, "Name", "Value").unwrap_or_default();
 
-                let file_ref = Self::extract_xml_attribute(clip_block, "FileRef", "Path")
-                    .unwrap_or_default();
+                let file_ref =
+                    Self::extract_xml_attribute(clip_block, "FileRef", "Path").unwrap_or_default();
 
                 clips.push(AbletonClip {
                     name,
@@ -606,14 +603,13 @@ impl AbletonProjectParser {
             if let Some(end) = clip_block[note_start..].find("/>") {
                 let note_block = &clip_block[note_start..note_start + end + 2];
 
-                let pitch = Self::extract_xml_int_from_attr(note_block, "Note")
-                    .unwrap_or(60) as u8;
-                let start_beat = Self::extract_xml_float_from_attr(note_block, "Time")
-                    .unwrap_or(0.0);
-                let duration = Self::extract_xml_float_from_attr(note_block, "Duration")
-                    .unwrap_or(1.0);
-                let velocity = Self::extract_xml_int_from_attr(note_block, "Velocity")
-                    .unwrap_or(100) as u8;
+                let pitch = Self::extract_xml_int_from_attr(note_block, "Note").unwrap_or(60) as u8;
+                let start_beat =
+                    Self::extract_xml_float_from_attr(note_block, "Time").unwrap_or(0.0);
+                let duration =
+                    Self::extract_xml_float_from_attr(note_block, "Duration").unwrap_or(1.0);
+                let velocity =
+                    Self::extract_xml_int_from_attr(note_block, "Velocity").unwrap_or(100) as u8;
 
                 notes.push(AbletonMidiNote {
                     pitch: pitch.min(127),
@@ -675,7 +671,10 @@ impl AbletonProjectParser {
                 let open_pos = pos + next_open;
                 // 确保是完整标签开始（不是属性中包含标签名的情况）
                 let after_tag = &xml[open_pos + open_tag.len()..];
-                if after_tag.starts_with(' ') || after_tag.starts_with('>') || after_tag.starts_with('/') {
+                if after_tag.starts_with(' ')
+                    || after_tag.starts_with('>')
+                    || after_tag.starts_with('/')
+                {
                     depth += 1;
                     pos = open_pos + open_tag.len();
                     continue;
@@ -782,7 +781,9 @@ impl AbletonToProject {
                     AbletonClipContent::Midi { notes, .. } => {
                         let midi_notes: Vec<MidiNote> = notes
                             .iter()
-                            .map(|n| MidiNote::new(n.pitch, n.start_beat, n.duration_beats, n.velocity))
+                            .map(|n| {
+                                MidiNote::new(n.pitch, n.start_beat, n.duration_beats, n.velocity)
+                            })
                             .collect();
                         (midi_notes, PatternType::Midi)
                     }
@@ -822,7 +823,10 @@ impl AbletonToProject {
 
         for track in &ableton.tracks {
             report.push_str(&format!("轨道: {} ({:?})\n", track.name, track.track_type));
-            report.push_str(&format!("  音量: {:.2}, 声像: {:.2}\n", track.volume, track.pan));
+            report.push_str(&format!(
+                "  音量: {:.2}, 声像: {:.2}\n",
+                track.volume, track.pan
+            ));
             report.push_str(&format!("  设备: {}\n", track.devices.len()));
             for device in &track.devices {
                 report.push_str(&format!(

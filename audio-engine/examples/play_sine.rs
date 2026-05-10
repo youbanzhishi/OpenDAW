@@ -51,7 +51,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 生成正弦波
     let buffer = generate_sine_wave(frequency, sample_rate, 2, frames, amplitude);
-    println!("✅ 正弦波已生成: {:.0}Hz, {:.1}秒, {:.0}帧", frequency, duration, frames);
+    println!(
+        "✅ 正弦波已生成: {:.0}Hz, {:.1}秒, {:.0}帧",
+        frequency, duration, frames
+    );
 
     // 注册音轨并注入音频
     engine.register_track("sine")?;
@@ -146,8 +149,7 @@ fn run_simulation_mode(engine: &mut AudioEngine, sample_rate: f64) {
     let mut engine2 = AudioEngine::new();
     engine2.register_track("sine").unwrap();
     let short_frames = 882; // 20ms @ 44100Hz
-    let buffer =
-        generate_sine_wave(440.0, sample_rate, 1, short_frames, 1.0);
+    let buffer = generate_sine_wave(440.0, sample_rate, 1, short_frames, 1.0);
     engine2.inject_buffer("sine", buffer).unwrap();
     engine2.start(sample_rate, 256).unwrap();
 

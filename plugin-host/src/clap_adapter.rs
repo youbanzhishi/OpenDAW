@@ -103,37 +103,33 @@ impl ClapAdapter {
     /// 仅信任来自已知路径的 CLAP 插件。
     pub fn from_file(path: &Path) -> Result<Self, PluginError> {
         let entry = unsafe {
-            clack_host::prelude::PluginEntry::load(path)
-                .map_err(|e| PluginError::InitFailed(
-                    format!("加载 CLAP 插件失败 {}: {}", path.display(), e)
-                ))?
+            clack_host::prelude::PluginEntry::load(path).map_err(|e| {
+                PluginError::InitFailed(format!("加载 CLAP 插件失败 {}: {}", path.display(), e))
+            })?
         };
 
-        let plugin_factory = entry.get_plugin_factory()
-            .ok_or_else(|| PluginError::InitFailed(
-                format!("CLAP 插件无 plugin factory: {}", path.display())
-            ))?;
+        let plugin_factory = entry.get_plugin_factory().ok_or_else(|| {
+            PluginError::InitFailed(format!("CLAP 插件无 plugin factory: {}", path.display()))
+        })?;
 
         // 取第一个插件的描述符
-        let descriptor = plugin_factory.plugin_descriptors()
-            .next()
-            .ok_or_else(|| PluginError::InitFailed(
-                format!("CLAP 插件无描述符: {}", path.display())
-            ))?;
+        let descriptor = plugin_factory.plugin_descriptors().next().ok_or_else(|| {
+            PluginError::InitFailed(format!("CLAP 插件无描述符: {}", path.display()))
+        })?;
 
-        let id = descriptor.id()
-            .map(|s| s.to_string())
-            .unwrap_or_else(||
-                path.file_stem()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_default()
-            );
+        let id = descriptor.id().map(|s| s.to_string()).unwrap_or_else(|| {
+            path.file_stem()
+                .map(|s| s.to_string_lossy().to_string())
+                .unwrap_or_default()
+        });
 
-        let name = descriptor.name()
+        let name = descriptor
+            .name()
             .map(|s| s.to_string())
             .unwrap_or_else(|| id.clone());
 
-        let version = descriptor.version()
+        let version = descriptor
+            .version()
             .map(|s| s.to_string())
             .unwrap_or_else(|| "1.0.0".to_string());
 
@@ -177,10 +173,9 @@ impl ClapAdapter {
             return Ok(adapters);
         }
 
-        let entries = std::fs::read_dir(dir)
-            .map_err(|e| PluginError::InitFailed(
-                format!("读取目录失败 {}: {}", dir.display(), e)
-            ))?;
+        let entries = std::fs::read_dir(dir).map_err(|e| {
+            PluginError::InitFailed(format!("读取目录失败 {}: {}", dir.display(), e))
+        })?;
 
         for entry in entries.flatten() {
             let path = entry.path();
@@ -207,7 +202,11 @@ impl ClapAdapter {
             }
         }
 
-        log::info!("CLAP 扫描完成: {} 发现 {} 个插件", dir.display(), adapters.len());
+        log::info!(
+            "CLAP 扫描完成: {} 发现 {} 个插件",
+            dir.display(),
+            adapters.len()
+        );
         Ok(adapters)
     }
 
@@ -219,9 +218,7 @@ impl ClapAdapter {
     // ── 内部方法 ──────────────────────────────────────────────────────
 
     /// 从 CLAP descriptor 的 features 推断插件类型
-    fn infer_plugin_type(
-        descriptor: &clack_host::plugin::PluginDescriptor
-    ) -> PluginType {
+    fn infer_plugin_type(descriptor: &clack_host::plugin::PluginDescriptor) -> PluginType {
         let features = descriptor.features();
         for feature in features {
             if let Ok(f) = feature {
@@ -324,10 +321,10 @@ impl VcPlugin for ClapAdapter {
         self.sample_rate = sample_rate;
         self.buffer_size = buffer_size;
 
-        let entry = self.entry.as_ref()
-            .ok_or_else(|| PluginError::InitFailed(
-                "CLAP 插件入口未加载".to_string()
-            ))?;
+        let entry = self
+            .entry
+            .as_ref()
+            .ok_or_else(|| PluginError::InitFailed("CLAP 插件入口未加载".to_string()))?;
 
         // 创建 Host 信息
         let host_info = clack_host::prelude::HostInfo::new(
@@ -335,22 +332,25 @@ impl VcPlugin for ClapAdapter {
             "OpenDAW Project",
             "https://opendaw.org",
             "0.1.0",
-        ).map_err(|e| PluginError::InitFailed(
-            format!("创建 CLAP host info 失败: {}", e)
-        ))?;
+        )
+        .map_err(|e| PluginError::InitFailed(format!("创建 CLAP host info 失败: {}", e)))?;
 
         // 获取插件 factory
-        let plugin_factory = entry.get_plugin_factory()
-            .ok_or_else(|| PluginError::InitFailed(
-                "CLAP 插件无 plugin factory".to_string()
-            ))?;
+        let plugin_factory = entry
+            .get_plugin_factory()
+            .ok_or_else(|| PluginError::InitFailed("CLAP 插件无 plugin factory".to_string()))?;
 
         // 查找指定 ID 的插件描述符
-        let descriptor = plugin_factory.plugin_descriptors()
-            .find(|d| d.id().map(|id| id.as_bytes() == self.plugin_id.as_bytes()).unwrap_or(false))
-            .ok_or_else(|| PluginError::InitFailed(
-                format!("CLAP 插件未找到: {}", self.plugin_id)
-            ))?;
+        let descriptor = plugin_factory
+            .plugin_descriptors()
+            .find(|d| {
+                d.id()
+                    .map(|id| id.as_bytes() == self.plugin_id.as_bytes())
+                    .unwrap_or(false)
+            })
+            .ok_or_else(|| {
+                PluginError::InitFailed(format!("CLAP 插件未找到: {}", self.plugin_id))
+            })?;
 
         // 创建插件实例
         let _instance = clack_host::prelude::PluginInstance::<OpenDawClapHost>::new(
@@ -359,9 +359,8 @@ impl VcPlugin for ClapAdapter {
             entry,
             descriptor.id().unwrap(),
             &host_info,
-        ).map_err(|e| PluginError::InitFailed(
-            format!("创建 CLAP 插件实例失败: {}", e)
-        ))?;
+        )
+        .map_err(|e| PluginError::InitFailed(format!("创建 CLAP 插件实例失败: {}", e)))?;
 
         // 配置音频参数
         let _audio_config = clack_host::prelude::PluginAudioConfiguration {
@@ -373,7 +372,7 @@ impl VcPlugin for ClapAdapter {
         // TODO: 完整的激活流程
         // let audio_processor = _instance.activate(|_, _| (), _audio_config)?;
         // let mut processing = audio_processor.start_processing()?;
-        // 
+        //
         // 完整实现需要：
         // 1. 持有 ActivePluginInstance + StartedAudioProcessor
         // 2. 在 process() 中构建 AudioPorts 和 Event buffers
@@ -393,7 +392,9 @@ impl VcPlugin for ClapAdapter {
 
         log::info!(
             "CLAP 插件初始化成功: {} ({}Hz, {} frames)",
-            self.plugin_id, sample_rate, buffer_size
+            self.plugin_id,
+            sample_rate,
+            buffer_size
         );
 
         Ok(())
@@ -438,9 +439,10 @@ impl VcPlugin for ClapAdapter {
         let clamped = if let Some(param) = self.params.iter().find(|p| p.id == id) {
             param.clamp_value(value)
         } else {
-            return Err(PluginError::ParamNotFound(
-                format!("CLAP 参数未找到: {}", id)
-            ));
+            return Err(PluginError::ParamNotFound(format!(
+                "CLAP 参数未找到: {}",
+                id
+            )));
         };
 
         self.param_values.insert(id.to_string(), clamped);
@@ -485,9 +487,9 @@ mod tests {
     fn test_param_clamp_logic() {
         // 测试参数钳位逻辑
         let param = ParamInfo::new("gain", "Gain", 0.0, 1.0, 0.5, "");
-        assert_eq!(param.clamp_value(-0.5), 0.0);  // 低于最小值
-        assert_eq!(param.clamp_value(0.5), 0.5);   // 正常值
-        assert_eq!(param.clamp_value(2.0), 1.0);   // 高于最大值
+        assert_eq!(param.clamp_value(-0.5), 0.0); // 低于最小值
+        assert_eq!(param.clamp_value(0.5), 0.5); // 正常值
+        assert_eq!(param.clamp_value(2.0), 1.0); // 高于最大值
     }
 
     #[test]

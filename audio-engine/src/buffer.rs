@@ -55,7 +55,6 @@ impl AudioBuffer {
         self.data[channel * self.frames + frame] = value;
     }
 
-
     /// 按线性索引获取样本值
     ///
     /// 索引按平面格式排列：先声道0的所有帧，再声道1的所有帧...
@@ -129,7 +128,7 @@ impl AudioBuffer {
         let interleaved = self.to_interleaved();
         let num_samples = interleaved.len();
         let data_size = num_samples * 2; // 16bit = 2字节/样本
-        let file_size = 44 + data_size;  // WAV头44字节 + 数据
+        let file_size = 44 + data_size; // WAV头44字节 + 数据
 
         let mut wav = Vec::with_capacity(file_size);
 
@@ -140,15 +139,15 @@ impl AudioBuffer {
 
         // --- fmt 子块 ---
         wav.extend_from_slice(b"fmt ");
-        wav.extend_from_slice(&16u32.to_le_bytes());                        // 子块大小（PCM固定16）
-        wav.extend_from_slice(&1u16.to_le_bytes());                         // 音频格式（1=PCM）
-        wav.extend_from_slice(&(self.channels as u16).to_le_bytes());       // 声道数
-        wav.extend_from_slice(&(self.sample_rate as u32).to_le_bytes());    // 采样率
+        wav.extend_from_slice(&16u32.to_le_bytes()); // 子块大小（PCM固定16）
+        wav.extend_from_slice(&1u16.to_le_bytes()); // 音频格式（1=PCM）
+        wav.extend_from_slice(&(self.channels as u16).to_le_bytes()); // 声道数
+        wav.extend_from_slice(&(self.sample_rate as u32).to_le_bytes()); // 采样率
         let byte_rate = self.sample_rate as u32 * self.channels as u32 * 2; // 字节率
         wav.extend_from_slice(&byte_rate.to_le_bytes());
-        let block_align = self.channels as u16 * 2;                         // 块对齐
+        let block_align = self.channels as u16 * 2; // 块对齐
         wav.extend_from_slice(&block_align.to_le_bytes());
-        wav.extend_from_slice(&16u16.to_le_bytes());                        // 位深度
+        wav.extend_from_slice(&16u16.to_le_bytes()); // 位深度
 
         // --- data 子块 ---
         wav.extend_from_slice(b"data");
@@ -169,7 +168,9 @@ impl AudioBuffer {
     /// 手写简单WAV解码器，仅支持PCM 16bit格式。
     pub fn from_wav_bytes(data: &[u8]) -> Result<Self, EngineError> {
         if data.len() < 44 {
-            return Err(EngineError::WavFormatError("数据太短，不是有效WAV文件".into()));
+            return Err(EngineError::WavFormatError(
+                "数据太短，不是有效WAV文件".into(),
+            ));
         }
 
         // 验证 RIFF 头
@@ -198,9 +199,11 @@ impl AudioBuffer {
                 if offset + 24 > data.len() {
                     return Err(EngineError::WavFormatError("fmt块数据不完整".into()));
                 }
-                audio_format = u16::from_le_bytes(data[offset + 8..offset + 10].try_into().unwrap());
+                audio_format =
+                    u16::from_le_bytes(data[offset + 8..offset + 10].try_into().unwrap());
                 channels = u16::from_le_bytes(data[offset + 10..offset + 12].try_into().unwrap());
-                sample_rate = u32::from_le_bytes(data[offset + 12..offset + 16].try_into().unwrap());
+                sample_rate =
+                    u32::from_le_bytes(data[offset + 12..offset + 16].try_into().unwrap());
                 bits_per_sample =
                     u16::from_le_bytes(data[offset + 22..offset + 24].try_into().unwrap());
             } else if chunk_id == b"data" {
@@ -247,7 +250,11 @@ impl AudioBuffer {
             samples.push(int_sample as f32 / 32767.0);
         }
 
-        Ok(Self::from_interleaved(&samples, channels as usize, sample_rate as f64))
+        Ok(Self::from_interleaved(
+            &samples,
+            channels as usize,
+            sample_rate as f64,
+        ))
     }
 
     /// 从WAV文件加载（使用hound库，支持多种格式）
@@ -261,7 +268,7 @@ impl AudioBuffer {
             .map_err(|e| EngineError::WavFormatError(format!("无法打开WAV文件: {}", e)))?;
 
         let spec = reader.spec();
-        
+
         // 检查声道数
         if spec.channels == 0 || spec.channels > 2 {
             return Err(EngineError::WavFormatError(format!(
@@ -535,7 +542,7 @@ mod tests {
         let mut buf = AudioBuffer::new(2, 4, 44100.0);
         // 写入立体声数据
         for f in 0..4 {
-            buf.set_sample(0, f, f as f32 * 10.0);       // L: 0, 10, 20, 30
+            buf.set_sample(0, f, f as f32 * 10.0); // L: 0, 10, 20, 30
             buf.set_sample(1, f, f as f32 * 10.0 + 1.0); // R: 1, 11, 21, 31
         }
         assert_eq!(buf.get_sample(0, 2), 20.0);
@@ -578,7 +585,13 @@ mod tests {
         for f in 0..100 {
             let orig = buf.get_sample(0, f);
             let roundtrip = decoded.get_sample(0, f);
-            assert!((orig - roundtrip).abs() < 0.001, "帧{}: {} vs {}", f, orig, roundtrip);
+            assert!(
+                (orig - roundtrip).abs() < 0.001,
+                "帧{}: {} vs {}",
+                f,
+                orig,
+                roundtrip
+            );
         }
     }
 
@@ -598,11 +611,11 @@ mod tests {
     #[test]
     fn test_hound_wav_file_roundtrip() {
         use std::path::PathBuf;
-        
+
         let sample_rate = 44100u32;
         let frames = 100;
         let channels = 2;
-        
+
         // 创建测试音频数据
         let mut buf = AudioBuffer::new(channels, frames, sample_rate as f64);
         for frame in 0..frames {
@@ -611,7 +624,7 @@ mod tests {
                 buf.set_sample(ch, frame, value);
             }
         }
-        
+
         // 使用hound写入WAV文件
         let tmp_path = std::env::temp_dir().join("hound_test.wav");
         let spec = hound::WavSpec {
@@ -630,26 +643,32 @@ mod tests {
                 }
             }
         }
-        
+
         // 使用AudioBuffer::from_wav_file加载
         let loaded = AudioBuffer::from_wav_file(&tmp_path).unwrap();
-        
+
         // 验证
         assert_eq!(loaded.channels, channels);
         assert_eq!(loaded.frames, frames);
         assert!((loaded.sample_rate - sample_rate as f64).abs() < 1.0);
-        
+
         // 检查数据精度
         for frame in 0..frames.min(10) {
             for ch in 0..channels {
                 let orig = buf.get_sample(ch, frame);
                 let load = loaded.get_sample(ch, frame);
                 // 由于16bit量化，有一定精度损失
-                assert!((orig - load).abs() < 0.01,
-                    "帧{}/声道{}: 原始={:.4}, 加载={:.4}", frame, ch, orig, load);
+                assert!(
+                    (orig - load).abs() < 0.01,
+                    "帧{}/声道{}: 原始={:.4}, 加载={:.4}",
+                    frame,
+                    ch,
+                    orig,
+                    load
+                );
             }
         }
-        
+
         // 清理
         let _ = std::fs::remove_file(&tmp_path);
     }
@@ -658,13 +677,13 @@ mod tests {
     fn test_hound_wav_file_mono() {
         let sample_rate = 48000u32;
         let frames = 50;
-        
+
         // 创建单声道测试数据
         let mut buf = AudioBuffer::new(1, frames, sample_rate as f64);
         for frame in 0..frames {
             buf.set_sample(0, frame, (frame as f32) * 0.02);
         }
-        
+
         // 写入单声道WAV
         let tmp_path = std::env::temp_dir().join("mono_test.wav");
         let spec = hound::WavSpec {
@@ -681,12 +700,12 @@ mod tests {
                 writer.write_sample(int_sample).unwrap();
             }
         }
-        
+
         // 加载
         let loaded = AudioBuffer::from_wav_file(&tmp_path).unwrap();
         assert_eq!(loaded.channels, 1);
         assert_eq!(loaded.frames, frames);
-        
+
         // 清理
         let _ = std::fs::remove_file(&tmp_path);
     }

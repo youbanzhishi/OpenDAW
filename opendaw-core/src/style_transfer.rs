@@ -9,8 +9,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::chord::{Mode, NoteName};
 use crate::pattern::{MidiNote, Pattern, PatternType};
-use crate::chord::{NoteName, Mode};
 
 // ── 风格特征向量 ──────────────────────────────────────────
 
@@ -480,7 +480,11 @@ impl StyleProfile {
 
         // 从MIDI音符提取节奏特征
         if !pattern.midi_notes.is_empty() {
-            let avg_velocity: f64 = pattern.midi_notes.iter().map(|n| n.velocity as f64).sum::<f64>()
+            let avg_velocity: f64 = pattern
+                .midi_notes
+                .iter()
+                .map(|n| n.velocity as f64)
+                .sum::<f64>()
                 / pattern.midi_notes.len() as f64;
 
             // 计算节奏密度
@@ -505,8 +509,18 @@ impl StyleProfile {
             // 音色特征从力度推断
             features.timbre.brightness = avg_velocity / 127.0;
             features.timbre.dynamic_range = {
-                let min_v = pattern.midi_notes.iter().map(|n| n.velocity).min().unwrap_or(0);
-                let max_v = pattern.midi_notes.iter().map(|n| n.velocity).max().unwrap_or(0);
+                let min_v = pattern
+                    .midi_notes
+                    .iter()
+                    .map(|n| n.velocity)
+                    .min()
+                    .unwrap_or(0);
+                let max_v = pattern
+                    .midi_notes
+                    .iter()
+                    .map(|n| n.velocity)
+                    .max()
+                    .unwrap_or(0);
                 (max_v - min_v) as f64 / 127.0
             };
         }
@@ -583,11 +597,31 @@ impl StyleMorpher {
         let t = params.amount;
 
         let rhythm = RhythmFeatures {
-            tempo: lerp(self.source.features.rhythm.tempo, self.target.features.rhythm.tempo, t * params.rhythm_weight),
-            density: lerp(self.source.features.rhythm.density, self.target.features.rhythm.density, t * params.rhythm_weight),
-            syncopation: lerp(self.source.features.rhythm.syncopation, self.target.features.rhythm.syncopation, t * params.rhythm_weight),
-            groove_strength: lerp(self.source.features.rhythm.groove_strength, self.target.features.rhythm.groove_strength, t * params.rhythm_weight),
-            regularity: lerp(self.source.features.rhythm.regularity, self.target.features.rhythm.regularity, t * params.rhythm_weight),
+            tempo: lerp(
+                self.source.features.rhythm.tempo,
+                self.target.features.rhythm.tempo,
+                t * params.rhythm_weight,
+            ),
+            density: lerp(
+                self.source.features.rhythm.density,
+                self.target.features.rhythm.density,
+                t * params.rhythm_weight,
+            ),
+            syncopation: lerp(
+                self.source.features.rhythm.syncopation,
+                self.target.features.rhythm.syncopation,
+                t * params.rhythm_weight,
+            ),
+            groove_strength: lerp(
+                self.source.features.rhythm.groove_strength,
+                self.target.features.rhythm.groove_strength,
+                t * params.rhythm_weight,
+            ),
+            regularity: lerp(
+                self.source.features.rhythm.regularity,
+                self.target.features.rhythm.regularity,
+                t * params.rhythm_weight,
+            ),
             pattern: morph_pattern(
                 &self.source.features.rhythm.pattern,
                 &self.target.features.rhythm.pattern,
@@ -596,9 +630,21 @@ impl StyleMorpher {
         };
 
         let harmony = HarmonyFeatures {
-            chord_density: lerp(self.source.features.harmony.chord_density, self.target.features.harmony.chord_density, t * params.harmony_weight),
-            complexity: lerp(self.source.features.harmony.complexity, self.target.features.harmony.complexity, t * params.harmony_weight),
-            tonal_ambiguity: lerp(self.source.features.harmony.tonal_ambiguity, self.target.features.harmony.tonal_ambiguity, t * params.harmony_weight),
+            chord_density: lerp(
+                self.source.features.harmony.chord_density,
+                self.target.features.harmony.chord_density,
+                t * params.harmony_weight,
+            ),
+            complexity: lerp(
+                self.source.features.harmony.complexity,
+                self.target.features.harmony.complexity,
+                t * params.harmony_weight,
+            ),
+            tonal_ambiguity: lerp(
+                self.source.features.harmony.tonal_ambiguity,
+                self.target.features.harmony.tonal_ambiguity,
+                t * params.harmony_weight,
+            ),
             chord_type_distribution: morph_distribution(
                 &self.source.features.harmony.chord_type_distribution,
                 &self.target.features.harmony.chord_type_distribution,
@@ -612,11 +658,31 @@ impl StyleMorpher {
         };
 
         let timbre = TimbreFeatures {
-            brightness: lerp(self.source.features.timbre.brightness, self.target.features.timbre.brightness, t * params.timbre_weight),
-            warmth: lerp(self.source.features.timbre.warmth, self.target.features.timbre.warmth, t * params.timbre_weight),
-            harmonic_richness: lerp(self.source.features.timbre.harmonic_richness, self.target.features.timbre.harmonic_richness, t * params.timbre_weight),
-            noise_component: lerp(self.source.features.timbre.noise_component, self.target.features.timbre.noise_component, t * params.timbre_weight),
-            dynamic_range: lerp(self.source.features.timbre.dynamic_range, self.target.features.timbre.dynamic_range, t * params.timbre_weight),
+            brightness: lerp(
+                self.source.features.timbre.brightness,
+                self.target.features.timbre.brightness,
+                t * params.timbre_weight,
+            ),
+            warmth: lerp(
+                self.source.features.timbre.warmth,
+                self.target.features.timbre.warmth,
+                t * params.timbre_weight,
+            ),
+            harmonic_richness: lerp(
+                self.source.features.timbre.harmonic_richness,
+                self.target.features.timbre.harmonic_richness,
+                t * params.timbre_weight,
+            ),
+            noise_component: lerp(
+                self.source.features.timbre.noise_component,
+                self.target.features.timbre.noise_component,
+                t * params.timbre_weight,
+            ),
+            dynamic_range: lerp(
+                self.source.features.timbre.dynamic_range,
+                self.target.features.timbre.dynamic_range,
+                t * params.timbre_weight,
+            ),
             feature_vector: morph_feature_vector(
                 &self.source.features.timbre.feature_vector,
                 &self.target.features.timbre.feature_vector,
@@ -625,13 +691,33 @@ impl StyleMorpher {
         };
 
         let typical_pitch_range = (
-            lerp(self.source.typical_pitch_range.0 as f64, self.target.typical_pitch_range.0 as f64, t).round() as u8,
-            lerp(self.source.typical_pitch_range.1 as f64, self.target.typical_pitch_range.1 as f64, t).round() as u8,
+            lerp(
+                self.source.typical_pitch_range.0 as f64,
+                self.target.typical_pitch_range.0 as f64,
+                t,
+            )
+            .round() as u8,
+            lerp(
+                self.source.typical_pitch_range.1 as f64,
+                self.target.typical_pitch_range.1 as f64,
+                t,
+            )
+            .round() as u8,
         );
 
         let typical_velocity_range = (
-            lerp(self.source.typical_velocity_range.0 as f64, self.target.typical_velocity_range.0 as f64, t).round() as u8,
-            lerp(self.source.typical_velocity_range.1 as f64, self.target.typical_velocity_range.1 as f64, t).round() as u8,
+            lerp(
+                self.source.typical_velocity_range.0 as f64,
+                self.target.typical_velocity_range.0 as f64,
+                t,
+            )
+            .round() as u8,
+            lerp(
+                self.source.typical_velocity_range.1 as f64,
+                self.target.typical_velocity_range.1 as f64,
+                t,
+            )
+            .round() as u8,
         );
 
         StyleProfile {
@@ -655,7 +741,9 @@ impl StyleMorpher {
             },
             description: format!(
                 "从 {} 渐变到 {}，渐变量 {:.0}%",
-                self.source.name, self.target.name, t * 100.0
+                self.source.name,
+                self.target.name,
+                t * 100.0
             ),
         }
     }
@@ -697,9 +785,8 @@ impl StyleMorpher {
         let source_center = (self.source.typical_pitch_range.0 as f64
             + self.source.typical_pitch_range.1 as f64)
             / 2.0;
-        let target_center = (morphed.typical_pitch_range.0 as f64
-            + morphed.typical_pitch_range.1 as f64)
-            / 2.0;
+        let target_center =
+            (morphed.typical_pitch_range.0 as f64 + morphed.typical_pitch_range.1 as f64) / 2.0;
         let pitch_shift = ((target_center - source_center) * amount).round() as i8;
 
         if pitch_shift != 0 {

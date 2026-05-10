@@ -270,7 +270,12 @@ impl ReaperProjectParser {
                     index: project.tracks.len(),
                     ..ReaperTrack::default()
                 });
-            } else if trimmed == ">" && current_track.is_some() && !in_fx_chain && !in_midi_item && !in_source {
+            } else if trimmed == ">"
+                && current_track.is_some()
+                && !in_fx_chain
+                && !in_midi_item
+                && !in_source
+            {
                 if let Some(track) = current_track.take() {
                     project.tracks.push(track);
                 }
@@ -365,7 +370,12 @@ impl ReaperProjectParser {
                         if let Some(ref mut fx) = current_fx {
                             fx.preset = self.parse_string_value(trimmed);
                         }
-                    } else if !trimmed.is_empty() && !trimmed.starts_with('<') && !trimmed.starts_with("FLOATPOS") && !trimmed.starts_with("FXID") && !trimmed.starts_with("WAK") {
+                    } else if !trimmed.is_empty()
+                        && !trimmed.starts_with('<')
+                        && !trimmed.starts_with("FLOATPOS")
+                        && !trimmed.starts_with("FXID")
+                        && !trimmed.starts_with("WAK")
+                    {
                         // 尝试解析为参数
                         if let Some(ref mut fx) = current_fx {
                             for part in trimmed.split_whitespace() {
@@ -413,9 +423,11 @@ impl ReaperProjectParser {
                             // MIDI event: E pp pp vv (position, pitch, velocity simplified)
                             let parts: Vec<&str> = trimmed.split_whitespace().collect();
                             if parts.len() >= 4 {
-                                if let (Ok(start), Ok(pitch), Ok(velocity)) =
-                                    (parts[1].parse::<f64>(), parts[2].parse::<u8>(), parts[3].parse::<u8>())
-                                {
+                                if let (Ok(start), Ok(pitch), Ok(velocity)) = (
+                                    parts[1].parse::<f64>(),
+                                    parts[2].parse::<u8>(),
+                                    parts[3].parse::<u8>(),
+                                ) {
                                     let bps = project.bpm / 60.0;
                                     let start_beat = start / 960.0; // 简化：假定960ppq
                                     midi.notes.push(MidiNote::new(
@@ -678,10 +690,10 @@ impl ReaperToProject {
                 };
 
                 let pattern_name = if midi_item.name.is_empty() {
-                        format!("{} - MIDI {}", track.name, i + 1)
-                    } else {
-                        midi_item.name.clone()
-                    };
+                    format!("{} - MIDI {}", track.name, i + 1)
+                } else {
+                    midi_item.name.clone()
+                };
                 let mut pattern = Pattern::new(
                     &format!("rpp_{}_{}", track.index, i),
                     &pattern_name,
@@ -714,7 +726,10 @@ impl ReaperToProject {
 
         for track in &reaper.tracks {
             report.push_str(&format!("轨道: {} (#{})\n", track.name, track.index));
-            report.push_str(&format!("  音量: {:.2}, 声像: {:.2}\n", track.volume, track.pan));
+            report.push_str(&format!(
+                "  音量: {:.2}, 声像: {:.2}\n",
+                track.volume, track.pan
+            ));
             report.push_str(&format!("  FX: {}\n", track.fx_chain.len()));
             for fx in &track.fx_chain {
                 let mapped = self.fx_mapper.map(&fx.name);

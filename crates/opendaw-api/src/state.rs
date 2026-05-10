@@ -2,8 +2,8 @@
 
 use crate::models::{Project, ProjectInfo};
 use opendaw_core::{
-    PluginRegistry, PluginRepository, RepositorySource, ReviewManager,
-    PluginCompatibility, PlatformTarget,
+    PlatformTarget, PluginCompatibility, PluginRegistry, PluginRepository, RepositorySource,
+    ReviewManager,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -110,7 +110,12 @@ impl AppState {
     }
 
     /// 更新项目
-    pub async fn update_project(&self, id: Uuid, name: Option<String>, description: Option<String>) -> Option<Project> {
+    pub async fn update_project(
+        &self,
+        id: Uuid,
+        name: Option<String>,
+        description: Option<String>,
+    ) -> Option<Project> {
         let mut projects = self.projects.write().await;
         if let Some(project) = projects.get_mut(&id) {
             if let Some(n) = name {
@@ -168,7 +173,9 @@ mod tests {
     #[tokio::test]
     async fn test_create_project() {
         let state = AppState::new();
-        let project = state.create_project("Test Project".into(), Some("A test".into())).await;
+        let project = state
+            .create_project("Test Project".into(), Some("A test".into()))
+            .await;
         assert_eq!(project.name, "Test Project");
         assert_eq!(project.description, Some("A test".into()));
     }
@@ -195,7 +202,9 @@ mod tests {
     async fn test_update_project() {
         let state = AppState::new();
         let created = state.create_project("Old".into(), None).await;
-        let updated = state.update_project(created.id, Some("New".into()), Some("Desc".into())).await;
+        let updated = state
+            .update_project(created.id, Some("New".into()), Some("Desc".into()))
+            .await;
         assert!(updated.is_some());
         assert_eq!(updated.unwrap().name, "New");
     }
@@ -236,7 +245,9 @@ mod tests {
     #[tokio::test]
     async fn test_update_nonexistent_project() {
         let state = AppState::new();
-        let result = state.update_project(Uuid::new_v4(), Some("X".into()), None).await;
+        let result = state
+            .update_project(Uuid::new_v4(), Some("X".into()), None)
+            .await;
         assert!(result.is_none());
     }
 

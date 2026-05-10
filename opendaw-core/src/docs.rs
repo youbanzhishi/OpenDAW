@@ -94,7 +94,8 @@ impl ApiEndpoint {
             HttpMethod::DELETE => "delete",
             HttpMethod::PATCH => "patch",
         };
-        let path_part = self.path
+        let path_part = self
+            .path
             .trim_start_matches("/api/v1/")
             .replace('/', "_")
             .replace('{', "")
@@ -145,7 +146,10 @@ impl ApiDocGenerator {
 
     /// 按标签获取端点
     pub fn endpoints_by_tag(&self, tag: &str) -> Vec<&ApiEndpoint> {
-        self.endpoints.iter().filter(|e| e.tags.contains(&tag.to_string())).collect()
+        self.endpoints
+            .iter()
+            .filter(|e| e.tags.contains(&tag.to_string()))
+            .collect()
     }
 
     /// 生成OpenAPI 3.1 YAML规范
@@ -169,11 +173,19 @@ impl ApiDocGenerator {
             let method_key = endpoint.method.to_string().to_lowercase();
 
             let mut operation = serde_json::Map::new();
-            operation.insert("summary".to_string(), serde_json::Value::String(endpoint.description.clone()));
-            operation.insert("operationId".to_string(), serde_json::Value::String(endpoint.operation_id()));
+            operation.insert(
+                "summary".to_string(),
+                serde_json::Value::String(endpoint.description.clone()),
+            );
+            operation.insert(
+                "operationId".to_string(),
+                serde_json::Value::String(endpoint.operation_id()),
+            );
 
             if !endpoint.tags.is_empty() {
-                let tags: serde_json::Value = endpoint.tags.iter()
+                let tags: serde_json::Value = endpoint
+                    .tags
+                    .iter()
                     .map(|t| serde_json::Value::String(t.clone()))
                     .collect();
                 operation.insert("tags".to_string(), tags);
@@ -181,30 +193,51 @@ impl ApiDocGenerator {
 
             let mut responses = serde_json::Map::new();
             let mut ok_response = serde_json::Map::new();
-            ok_response.insert("description".to_string(), serde_json::Value::String("Success".to_string()));
+            ok_response.insert(
+                "description".to_string(),
+                serde_json::Value::String("Success".to_string()),
+            );
             if let Some(ref rt) = endpoint.response_type {
                 let mut content = serde_json::Map::new();
                 let mut json_content = serde_json::Map::new();
-                json_content.insert("schema".to_string(), serde_json::json!({
-                    "type": rt
-                }));
-                content.insert("application/json".to_string(), serde_json::Value::Object(json_content));
+                json_content.insert(
+                    "schema".to_string(),
+                    serde_json::json!({
+                        "type": rt
+                    }),
+                );
+                content.insert(
+                    "application/json".to_string(),
+                    serde_json::Value::Object(json_content),
+                );
                 ok_response.insert("content".to_string(), serde_json::Value::Object(content));
             }
             responses.insert("200".to_string(), serde_json::Value::Object(ok_response));
-            operation.insert("responses".to_string(), serde_json::Value::Object(responses));
+            operation.insert(
+                "responses".to_string(),
+                serde_json::Value::Object(responses),
+            );
 
             if let Some(ref req_t) = endpoint.request_type {
                 let mut content = serde_json::Map::new();
                 let mut json_content = serde_json::Map::new();
-                json_content.insert("schema".to_string(), serde_json::json!({
-                    "type": req_t
-                }));
-                content.insert("application/json".to_string(), serde_json::Value::Object(json_content));
-                operation.insert("requestBody".to_string(), serde_json::json!({
-                    "content": serde_json::Value::Object(content),
-                    "required": true
-                }));
+                json_content.insert(
+                    "schema".to_string(),
+                    serde_json::json!({
+                        "type": req_t
+                    }),
+                );
+                content.insert(
+                    "application/json".to_string(),
+                    serde_json::Value::Object(json_content),
+                );
+                operation.insert(
+                    "requestBody".to_string(),
+                    serde_json::json!({
+                        "content": serde_json::Value::Object(content),
+                        "required": true
+                    }),
+                );
             }
 
             if paths.contains_key(&path_key) {
@@ -240,62 +273,120 @@ impl ApiDocGenerator {
         let mut gen = Self::new("OpenDAW API", "1.0.0");
 
         // 项目CRUD
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/projects", "列出所有项目")
-            .with_response_type("array")
-            .with_tag("projects"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::POST, "/api/v1/projects", "创建项目")
-            .with_request_type("CreateProjectRequest")
-            .with_response_type("Project")
-            .with_tag("projects"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/projects/{id}", "获取项目详情")
-            .with_response_type("Project")
-            .with_tag("projects"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::PUT, "/api/v1/projects/{id}", "更新项目")
-            .with_request_type("UpdateProjectRequest")
-            .with_response_type("Project")
-            .with_tag("projects"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::DELETE, "/api/v1/projects/{id}", "删除项目")
-            .with_tag("projects"));
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::GET, "/api/v1/projects", "列出所有项目")
+                .with_response_type("array")
+                .with_tag("projects"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::POST, "/api/v1/projects", "创建项目")
+                .with_request_type("CreateProjectRequest")
+                .with_response_type("Project")
+                .with_tag("projects"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::GET, "/api/v1/projects/{id}", "获取项目详情")
+                .with_response_type("Project")
+                .with_tag("projects"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::PUT, "/api/v1/projects/{id}", "更新项目")
+                .with_request_type("UpdateProjectRequest")
+                .with_response_type("Project")
+                .with_tag("projects"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::DELETE, "/api/v1/projects/{id}", "删除项目")
+                .with_tag("projects"),
+        );
 
         // 渲染 & AI
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::POST, "/api/v1/projects/{id}/render", "触发渲染")
-            .with_request_type("RenderRequest")
-            .with_response_type("RenderResponse")
-            .with_tag("render"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::POST, "/api/v1/projects/{id}/automix", "AI自动混音")
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::POST, "/api/v1/projects/{id}/render", "触发渲染")
+                .with_request_type("RenderRequest")
+                .with_response_type("RenderResponse")
+                .with_tag("render"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(
+                HttpMethod::POST,
+                "/api/v1/projects/{id}/automix",
+                "AI自动混音",
+            )
             .with_request_type("AutoMixRequest")
             .with_response_type("AutoMixResponse")
-            .with_tag("ai"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::POST, "/api/v1/projects/{id}/transcribe", "音频扒带")
+            .with_tag("ai"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(
+                HttpMethod::POST,
+                "/api/v1/projects/{id}/transcribe",
+                "音频扒带",
+            )
             .with_request_type("TranscribeRequest")
             .with_response_type("TranscribeResponse")
-            .with_tag("ai"));
+            .with_tag("ai"),
+        );
 
         // 插件 & 混音
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/plugins", "列出可用插件")
-            .with_response_type("array")
-            .with_tag("plugins"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/mixer/{id}/suggestions", "混音建议")
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::GET, "/api/v1/plugins", "列出可用插件")
+                .with_response_type("array")
+                .with_tag("plugins"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(
+                HttpMethod::GET,
+                "/api/v1/mixer/{id}/suggestions",
+                "混音建议",
+            )
             .with_response_type("MixerSuggestionsResponse")
-            .with_tag("mixer"));
+            .with_tag("mixer"),
+        );
 
         // Marketplace
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/marketplace/search", "搜索市场插件")
+        gen.add_endpoint(
+            ApiEndpoint::new(
+                HttpMethod::GET,
+                "/api/v1/marketplace/search",
+                "搜索市场插件",
+            )
             .with_response_type("array")
-            .with_tag("marketplace"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/marketplace/categories", "获取分类列表")
+            .with_tag("marketplace"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(
+                HttpMethod::GET,
+                "/api/v1/marketplace/categories",
+                "获取分类列表",
+            )
             .with_response_type("array")
-            .with_tag("marketplace"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/marketplace/{id}", "获取插件详情")
-            .with_response_type("PluginDetailResponse")
-            .with_tag("marketplace"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::POST, "/api/v1/marketplace/{id}/install", "一键安装插件")
+            .with_tag("marketplace"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(HttpMethod::GET, "/api/v1/marketplace/{id}", "获取插件详情")
+                .with_response_type("PluginDetailResponse")
+                .with_tag("marketplace"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(
+                HttpMethod::POST,
+                "/api/v1/marketplace/{id}/install",
+                "一键安装插件",
+            )
             .with_response_type("InstallResponse")
-            .with_tag("marketplace"));
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::POST, "/api/v1/marketplace/{id}/review", "提交评价")
+            .with_tag("marketplace"),
+        );
+        gen.add_endpoint(
+            ApiEndpoint::new(
+                HttpMethod::POST,
+                "/api/v1/marketplace/{id}/review",
+                "提交评价",
+            )
             .with_request_type("SubmitReviewRequest")
             .with_response_type("ReviewResponse")
-            .with_tag("marketplace"));
+            .with_tag("marketplace"),
+        );
 
         gen
     }
@@ -342,7 +433,11 @@ mod tests {
     #[test]
     fn test_doc_generator_yaml_output() {
         let mut gen = ApiDocGenerator::new("Test API", "1.0.0");
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/test", "Test endpoint"));
+        gen.add_endpoint(ApiEndpoint::new(
+            HttpMethod::GET,
+            "/api/v1/test",
+            "Test endpoint",
+        ));
         let yaml = gen.to_openapi_yaml().unwrap();
         assert!(yaml.contains("openapi"));
         assert!(yaml.contains("3.1.0"));
@@ -352,7 +447,11 @@ mod tests {
     #[test]
     fn test_doc_generator_json_output() {
         let mut gen = ApiDocGenerator::new("Test API", "1.0.0");
-        gen.add_endpoint(ApiEndpoint::new(HttpMethod::GET, "/api/v1/test", "Test endpoint"));
+        gen.add_endpoint(ApiEndpoint::new(
+            HttpMethod::GET,
+            "/api/v1/test",
+            "Test endpoint",
+        ));
         let json = gen.to_openapi_json().unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["openapi"], "3.1.0");
@@ -372,8 +471,14 @@ mod tests {
     fn test_endpoints_by_tag() {
         let gen = ApiDocGenerator::collect_opendaw_endpoints();
         let project_eps = gen.endpoints_by_tag("projects");
-        assert!(project_eps.len() >= 4, "Should have at least 4 project endpoints");
+        assert!(
+            project_eps.len() >= 4,
+            "Should have at least 4 project endpoints"
+        );
         let marketplace_eps = gen.endpoints_by_tag("marketplace");
-        assert!(marketplace_eps.len() >= 3, "Should have at least 3 marketplace endpoints");
+        assert!(
+            marketplace_eps.len() >= 3,
+            "Should have at least 3 marketplace endpoints"
+        );
     }
 }

@@ -10,15 +10,21 @@ pub mod collab;
 pub mod protocol;
 pub mod server;
 
-pub use protocol::WsMessage;
-pub use server::WsServer;
 pub use collab::{
-    CollabRoom, CollabManager, OperationLog,
+    CollabManager,
+    CollabRoom,
+    CommentThread,
+    EditState,
     // Phase 34 CRDT
-    HLCTimestamp, LWWRegister, ORSet, ORSetTag,
+    HLCTimestamp,
+    LWWRegister,
+    ORSet,
+    ORSetTag,
+    OperationLog,
+    RoomSnapshot,
     // Phase 34 Presence & Comments
-    UserPresence, EditState, CommentThread, RoomSnapshot,
+    UserPresence,
 };
-pub use protocol::{
-    CollabCommentData, CommentAction, CommentTarget,
-};
+pub use protocol::WsMessage;
+pub use protocol::{CollabCommentData, CommentAction, CommentTarget};
+pub use server::WsServer;

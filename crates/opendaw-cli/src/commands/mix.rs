@@ -39,11 +39,19 @@ struct MixResult {
 
 pub fn run(action: MixAction, format: &OutputFormat) -> Result<(), Box<dyn std::error::Error>> {
     match action {
-        MixAction::Automix { project, style, target_loudness } => {
+        MixAction::Automix {
+            project,
+            style,
+            target_loudness,
+        } => {
             let result = MixResult {
                 action: "automix".into(),
                 project: project.clone(),
-                status: format!("applied style '{}' (target: {} LUFS)", style, target_loudness).into(),
+                status: format!(
+                    "applied style '{}' (target: {} LUFS)",
+                    style, target_loudness
+                )
+                .into(),
                 style: Some(style),
             };
             format.print(&result);

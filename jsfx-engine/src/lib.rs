@@ -81,30 +81,30 @@
 //! let (out_l, out_r) = vm.process_sample(1.0, 0.5);
 //! ```
 
-pub mod error;
+pub mod adapter;
 pub mod ast;
-pub mod parser;
 pub mod builtins;
+pub mod compiler;
+pub mod error;
+pub mod loader;
+pub mod parser;
 pub mod runtime;
 pub mod vm;
-pub mod compiler;
-pub mod adapter;
-pub mod loader;
 
 // 公共接口重导出
+pub use adapter::JsfxPlugin;
 pub use error::JsfxError;
+pub use loader::{load_jsfx_file, load_jsfx_source, scan_jsfx_directory, JsfxMeta};
 pub use parser::JsfxParser;
 pub use vm::JsfxVm;
-pub use adapter::JsfxPlugin;
-pub use loader::{load_jsfx_file, load_jsfx_source, scan_jsfx_directory, JsfxMeta};
 
 // 从opendaw-extension重导出统一类型（消除重复定义）
-pub use opendaw_extension::{VcPlugin, PluginType, ParamInfo, PluginError, AudioBuffer};
+pub use opendaw_extension::{AudioBuffer, ParamInfo, PluginError, PluginType, VcPlugin};
 
 #[cfg(test)]
 mod integration_tests {
     //! 端到端集成测试：JSFX → PluginChain → 音频输出
-    
+
     use super::*;
 
     /// 测试加载gain.jsfx并验证增益效果
@@ -129,7 +129,7 @@ spl1 *= gain;
         let channels = 2;
         let frames = 441; // 10ms @ 44100Hz
         let mut ext_input = AudioBuffer::new(channels, frames);
-        
+
         for i in 0..frames {
             let t = i as f64 / 44100.0;
             let sample = 0.5 * (2.0 * std::f64::consts::PI * 1000.0 * t).sin();
@@ -143,15 +143,16 @@ spl1 *= gain;
         // 6dB增益: gain = 2^(6/6) = 2.0
         // 检查峰值是否正确（正弦波峰值应该是 0.5 * 2.0 = 1.0）
         let tolerance = 0.01;
-        
+
         // 找到输出峰值
         let peak_l = (0..frames)
             .map(|i| ext_output.sample(0, i).abs())
             .fold(0.0f64, |a, b| a.max(b));
-        
+
         assert!(
             (peak_l - 1.0).abs() < tolerance,
-            "期望峰值≈1.0, 实际峰值={:.4}", peak_l
+            "期望峰值≈1.0, 实际峰值={:.4}",
+            peak_l
         );
     }
 
@@ -192,7 +193,10 @@ spl1 = spl1 * multiplier;
             let out_l = ext_output.sample(0, i);
             assert!(
                 (out_l - expected).abs() < 0.001,
-                "帧{} L: 期望{:.4}, 实际{:.4}", i, expected, out_l
+                "帧{} L: 期望{:.4}, 实际{:.4}",
+                i,
+                expected,
+                out_l
             );
         }
     }
@@ -226,7 +230,7 @@ spl1 *= gain;
 
         // 更新为6dB增益
         plugin.set_param("slider1", 6.0).unwrap();
-        
+
         let mut ext_output2 = AudioBuffer::new(2, 10);
         plugin.process(&ext_input, &mut ext_output2);
         // 6dB = 2x
@@ -278,12 +282,12 @@ spl1 *= 2^(slider3/6);
 
         let plugin = load_jsfx_source(source, "param-test").unwrap();
         let params = plugin.get_params();
-        
+
         assert_eq!(params.len(), 3);
         assert_eq!(params[0].id, "slider1");
         assert_eq!(params[1].id, "slider2");
         assert_eq!(params[2].id, "slider3");
-        
+
         assert_eq!(params[2].min, -150.0);
         assert_eq!(params[2].max, 150.0);
         assert_eq!(params[2].default, 0.0);
@@ -325,15 +329,24 @@ spl1 = _lp1;
         plugin.process(&ext_input, &mut ext_output);
 
         // 验证输出：低通滤波后RMS应小于输入RMS，但非零
-        let in_rms = (0..frames).map(|i| ext_input.sample(0, i).powi(2)).sum::<f64>() / frames as f64;
+        let in_rms = (0..frames)
+            .map(|i| ext_input.sample(0, i).powi(2))
+            .sum::<f64>()
+            / frames as f64;
         let in_rms = in_rms.sqrt();
-        let out_rms = (frames / 2..frames)  // 跳过前半段瞬态
+        let out_rms = (frames / 2..frames) // 跳过前半段瞬态
             .map(|i| ext_output.sample(0, i).powi(2))
-            .sum::<f64>() / (frames / 2) as f64;
+            .sum::<f64>()
+            / (frames / 2) as f64;
         let out_rms = out_rms.sqrt();
 
         assert!(out_rms > 0.01, "输出RMS应大于0: {}", out_rms);
-        assert!(out_rms < in_rms * 1.5, "输出RMS应合理: in={}, out={}", in_rms, out_rms);
+        assert!(
+            out_rms < in_rms * 1.5,
+            "输出RMS应合理: in={}, out={}",
+            in_rms,
+            out_rms
+        );
         assert!(out_rms.is_finite(), "输出应为有限值");
     }
 
@@ -522,7 +535,7 @@ slider1:1<0,10,0.1>Test
 spl0 = spl0 * slider1;
 "#;
         let program = super::parser::JsfxParser::parse(source).unwrap();
-        
+
         assert_eq!(program.desc, "Meta Test");
         assert_eq!(program.tags.len(), 3);
         assert_eq!(program.sliders.len(), 1);
@@ -573,8 +586,11 @@ spl1 = x;
         plugin.process(&ext_input, &mut ext_output);
 
         // @init: x=100, @slider: x=100+1=101
-        assert!((ext_output.sample(0, 0) - 102.0).abs() < 0.01,
-            "期望102.0, 得到{}", ext_output.sample(0, 0));
+        assert!(
+            (ext_output.sample(0, 0) - 102.0).abs() < 0.01,
+            "期望102.0, 得到{}",
+            ext_output.sample(0, 0)
+        );
     }
 
     /// 测试clamp/min/max内置函数
@@ -592,15 +608,21 @@ spl1 = min(max(spl1, -0.5), 0.5);
         plugin.init(44100.0, 256).unwrap();
 
         let mut ext_input = AudioBuffer::new(2, 10);
-        ext_input.set_sample(0, 0, 1.0);  // 超过上限
-        ext_input.set_sample(1, 0, -1.0);  // 低于下限
+        ext_input.set_sample(0, 0, 1.0); // 超过上限
+        ext_input.set_sample(1, 0, -1.0); // 低于下限
 
         let mut ext_output = AudioBuffer::new(2, 10);
         plugin.process(&ext_input, &mut ext_output);
 
-        assert!((ext_output.sample(0, 0) - 0.5).abs() < 0.01,
-            "clamp应限制到0.5, 得到{}", ext_output.sample(0, 0));
-        assert!((ext_output.sample(1, 0) - (-0.5)).abs() < 0.01,
-            "min(max())应限制到-0.5, 得到{}", ext_output.sample(1, 0));
+        assert!(
+            (ext_output.sample(0, 0) - 0.5).abs() < 0.01,
+            "clamp应限制到0.5, 得到{}",
+            ext_output.sample(0, 0)
+        );
+        assert!(
+            (ext_output.sample(1, 0) - (-0.5)).abs() < 0.01,
+            "min(max())应限制到-0.5, 得到{}",
+            ext_output.sample(1, 0)
+        );
     }
 }

@@ -21,8 +21,8 @@
 //!
 //! 禁用的插件直接将输入传递到下一个插件，不进行任何处理。
 
-use opendaw_extension::{AudioBuffer as ExtAudioBuffer, VcPlugin, PluginError, PluginInfo};
 use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
+use opendaw_extension::{AudioBuffer as ExtAudioBuffer, PluginError, PluginInfo, VcPlugin};
 
 /// 信号链节点
 struct ChainNode {
@@ -71,10 +71,13 @@ impl PluginChain {
 
     /// 在指定位置插入插件
     pub fn insert(&mut self, index: usize, plugin: Box<dyn VcPlugin>) {
-        self.nodes.insert(index, ChainNode {
-            plugin,
-            enabled: true,
-        });
+        self.nodes.insert(
+            index,
+            ChainNode {
+                plugin,
+                enabled: true,
+            },
+        );
     }
 
     /// 移除指定位置的插件
@@ -154,11 +157,7 @@ impl PluginChain {
     ///
     /// 将 engine AudioBuffer (f32 planar) 转换为 extension AudioBuffer (f64)，
     /// 通过链中所有插件处理后，再转换回 engine AudioBuffer。
-    pub fn process_engine(
-        &mut self,
-        input: &EngineAudioBuffer,
-        output: &mut EngineAudioBuffer,
-    ) {
+    pub fn process_engine(&mut self, input: &EngineAudioBuffer, output: &mut EngineAudioBuffer) {
         // 调整缓冲区大小如果需要
         if input.channels != self.channels || input.frames != self.buffer_size {
             self.resize(input.channels, input.frames);
@@ -237,10 +236,7 @@ impl PluginChain {
 
     /// 获取链中所有插件的详细 PluginInfo
     pub fn get_plugin_infos(&self) -> Vec<PluginInfo> {
-        self.nodes
-            .iter()
-            .map(|n| n.plugin.get_info())
-            .collect()
+        self.nodes.iter().map(|n| n.plugin.get_info()).collect()
     }
 
     /// 清空所有插件
@@ -287,11 +283,21 @@ mod tests {
     }
 
     impl VcPlugin for TestGain {
-        fn plugin_id(&self) -> &str { "test-gain" }
-        fn plugin_name(&self) -> &str { "测试增益" }
-        fn plugin_type(&self) -> PluginType { PluginType::Effect }
-        fn version(&self) -> &str { "0.1.0" }
-        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
+        fn plugin_id(&self) -> &str {
+            "test-gain"
+        }
+        fn plugin_name(&self) -> &str {
+            "测试增益"
+        }
+        fn plugin_type(&self) -> PluginType {
+            PluginType::Effect
+        }
+        fn version(&self) -> &str {
+            "0.1.0"
+        }
+        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
+            Ok(())
+        }
         fn process(&mut self, input: &ExtAudioBuffer, output: &mut ExtAudioBuffer) {
             for (i, &s) in input.data.iter().enumerate() {
                 if i < output.data.len() {
@@ -299,9 +305,15 @@ mod tests {
                 }
             }
         }
-        fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> { vec![] }
-        fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> { Ok(()) }
-        fn get_param(&self, _id: &str) -> Option<f64> { None }
+        fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> {
+            vec![]
+        }
+        fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> {
+            Ok(())
+        }
+        fn get_param(&self, _id: &str) -> Option<f64> {
+            None
+        }
         fn destroy(&mut self) {}
     }
 
@@ -309,17 +321,33 @@ mod tests {
     struct TestPassthrough;
 
     impl VcPlugin for TestPassthrough {
-        fn plugin_id(&self) -> &str { "test-passthrough" }
-        fn plugin_name(&self) -> &str { "直通" }
-        fn plugin_type(&self) -> PluginType { PluginType::Effect }
-        fn version(&self) -> &str { "0.1.0" }
-        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
+        fn plugin_id(&self) -> &str {
+            "test-passthrough"
+        }
+        fn plugin_name(&self) -> &str {
+            "直通"
+        }
+        fn plugin_type(&self) -> PluginType {
+            PluginType::Effect
+        }
+        fn version(&self) -> &str {
+            "0.1.0"
+        }
+        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> {
+            Ok(())
+        }
         fn process(&mut self, input: &ExtAudioBuffer, output: &mut ExtAudioBuffer) {
             output.copy_from(input);
         }
-        fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> { vec![] }
-        fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> { Ok(()) }
-        fn get_param(&self, _id: &str) -> Option<f64> { None }
+        fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> {
+            vec![]
+        }
+        fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> {
+            Ok(())
+        }
+        fn get_param(&self, _id: &str) -> Option<f64> {
+            None
+        }
         fn destroy(&mut self) {}
     }
 
@@ -371,9 +399,9 @@ mod tests {
     #[test]
     fn test_chain_mixed_bypass() {
         let mut chain = PluginChain::new(2, 64);
-        chain.push(Box::new(TestGain { gain: 2.0 }));   // 启用
-        chain.push(Box::new(TestGain { gain: 100.0 }));  // 将被旁路
-        chain.push(Box::new(TestGain { gain: 0.5 }));   // 启用
+        chain.push(Box::new(TestGain { gain: 2.0 })); // 启用
+        chain.push(Box::new(TestGain { gain: 100.0 })); // 将被旁路
+        chain.push(Box::new(TestGain { gain: 0.5 })); // 启用
 
         chain.set_enabled(1, false).unwrap(); // 旁路中间插件
 
