@@ -95,7 +95,7 @@ impl ParamManager {
     pub fn list_params(&self) -> Vec<(String, String, f64)> {
         self.params
             .iter()
-            .map(|(key, (plugin_id, param))| {
+            .map(|(_key, (plugin_id, param))| {
                 (plugin_id.clone(), param.id.clone(), param.value)
             })
             .collect()

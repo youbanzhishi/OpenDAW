@@ -16,12 +16,16 @@ pub enum OpCode {
     StoreVar(usize),
     /// 加载常量
     LoadConst(f64),
+    /// 加载字符串常量
+    LoadStringConst(usize),
     /// 加载spl[N]
     LoadSpl(usize),
     /// 存储spl[N]
     StoreSpl(usize),
     /// 加载slider[N]
     LoadSlider(usize),
+    /// 加载$常量
+    LoadDollarConst(usize),
     /// 加载内存[index]
     LoadMem,
     /// 存储内存[index]
@@ -37,6 +41,12 @@ pub enum OpCode {
     Neg,
     /// 逻辑非
     Not,
+    /// 按位取反
+    BitNot,
+    /// 按位与
+    BitAnd,
+    /// 按位或
+    BitOr,
     /// 比较运算（返回0.0或1.0）
     CmpLt,
     CmpGt,
@@ -47,6 +57,8 @@ pub enum OpCode {
     /// 逻辑与/或
     LogicalAnd,
     LogicalOr,
+    /// 三目运算
+    Ternary,
     /// 无条件跳转
     Jump(usize),
     /// 条件跳转（栈顶为0时跳转）
@@ -67,6 +79,8 @@ pub struct Compiler {
     var_slots: std::collections::HashMap<String, usize>,
     /// 常量池
     constants: Vec<f64>,
+    /// 字符串常量池
+    string_constants: Vec<String>,
     /// 输出字节码
     code: Vec<OpCode>,
 }
@@ -77,6 +91,7 @@ impl Compiler {
         Self {
             var_slots: std::collections::HashMap::new(),
             constants: Vec::new(),
+            string_constants: Vec::new(),
             code: Vec::new(),
         }
     }
@@ -90,6 +105,12 @@ impl Compiler {
     /// 编译表达式为字节码（预留接口）
     pub fn compile_expr(&mut self, _expr: &Expr) -> Result<Vec<OpCode>, JsfxError> {
         // TODO: 实现表达式到字节码的编译
+        Ok(Vec::new())
+    }
+
+    /// 编译整个程序
+    pub fn compile_program(&mut self, _program: &JsfxProgram) -> Result<Vec<OpCode>, JsfxError> {
+        // TODO: 实现完整程序编译
         Ok(Vec::new())
     }
 }

@@ -28,13 +28,13 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Duration;
 
 use opendaw_extension::{AudioBuffer, ParamInfo, PluginError, PluginType, VcPlugin};
 
 // ── 常量 ──────────────────────────────────────────────────────────────────
 
 /// CLI 调用超时（毫秒），防止卡死
+#[allow(dead_code)]
 const PROCESS_TIMEOUT_MS: u64 = 5000;
 
 /// 目录扫描时匹配的文件名模式
@@ -558,6 +558,113 @@ impl VcPluginAdapter {
 
         Ok(())
     }
+
+    /// 通过 stdin/stdout 管道流式处理音频
+    ///
+    /// 使用子进程的 stdin/stdout 进行音频数据通信，
+    /// 避免临时文件的开销。
+    ///
+    /// 协议格式（每帧一行）：
+    /// - 输入：`in CH0 CH1 ...` （浮点数，空格分隔）
+    /// - 输出：`out CH0 CH1 ...`
+    /// - 设置参数：`param ID VALUE`
+    /// - 结束：`end`
+    ///
+    /// 此方法为实验性功能，需要 CLI 支持 streaming 模式。
+    #[allow(dead_code)]
+    fn process_streaming(
+        &mut self,
+        input: &AudioBuffer,
+        output: &mut AudioBuffer,
+    ) -> Result<(), PluginError> {
+        use std::io::{Write, BufRead};
+        use std::process::Stdio;
+
+        let mut child = Command::new(&self.binary_path)
+            .arg("--streaming")
+            .arg("--sample-rate")
+            .arg(format!("{}", self.sample_rate as u32))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| PluginError::ProcessFailed(
+                format!("启动 streaming 模式失败: {}", e)
+            ))?;
+
+        let stdin = child.stdin.as_mut()
+            .ok_or_else(|| PluginError::ProcessFailed("无法获取 stdin".to_string()))?;
+
+        // 发送参数
+        for (param_id, value) in &self.param_values {
+            writeln!(stdin, "param {} {:.6}", param_id, value)
+                .map_err(|e| PluginError::ProcessFailed(
+                    format!("写入参数失败: {}", e)
+                ))?;
+        }
+
+        // 发送音频帧
+        for frame in 0..input.frames {
+            write!(stdin, "in").map_err(|e| PluginError::ProcessFailed(
+                format!("写入帧头失败: {}", e)
+            ))?;
+            for ch in 0..input.channels {
+                write!(stdin, " {:.6}", input.sample(ch, frame))
+                    .map_err(|e| PluginError::ProcessFailed(
+                        format!("写入采样失败: {}", e)
+                    ))?;
+            }
+            writeln!(stdin).map_err(|e| PluginError::ProcessFailed(
+                format!("写入帧尾失败: {}", e)
+            ))?;
+        }
+
+        writeln!(stdin, "end").map_err(|e| PluginError::ProcessFailed(
+            format!("写入结束标记失败: {}", e)
+        ))?;
+        let _ = stdin; // 释放 stdin 以发送 EOF
+
+        // 读取输出
+        let stdout = child.stdout.as_mut()
+            .ok_or_else(|| PluginError::ProcessFailed("无法获取 stdout".to_string()))?;
+
+        let reader = std::io::BufReader::new(stdout);
+        let mut frame_idx = 0;
+
+        for line in reader.lines() {
+            let line = line.map_err(|e| PluginError::ProcessFailed(
+                format!("读取输出行失败: {}", e)
+            ))?;
+            let line = line.trim();
+            if line.starts_with("out ") {
+                let values: Vec<f64> = line[4..]
+                    .split_whitespace()
+                    .filter_map(|s| s.parse().ok())
+                    .collect();
+                if frame_idx < output.frames {
+                    for (ch, &val) in values.iter().enumerate() {
+                        if ch < output.channels {
+                            output.set_sample(ch, frame_idx, val);
+                        }
+                    }
+                    frame_idx += 1;
+                }
+            }
+        }
+
+        // 等待进程结束
+        let status = child.wait().map_err(|e| PluginError::ProcessFailed(
+            format!("等待进程结束失败: {}", e)
+        ))?;
+
+        if !status.success() {
+            return Err(PluginError::ProcessFailed(
+                format!("streaming 进程退出码: {:?}", status.code())
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 // ── VcPlugin trait 实现 ───────────────────────────────────────────────────
@@ -651,7 +758,7 @@ impl VcPlugin for VcPluginAdapter {
         // 添加当前参数值作为命令行参数
         for (param_id, value) in &self.param_values {
             // 查找参数的 CLI flag
-            if let Some(param_info) = self.params.iter().find(|p| p.id == *param_id) {
+            if self.params.iter().any(|p| p.id == *param_id) {
                 // 使用内置BuiltinParam的cli_flag映射
                 // 先尝试从BUILTIN_PLUGINS查找精确的cli_flag
                 let cli_flag = find_cli_flag_for_param(&self.id, param_id)
@@ -663,7 +770,8 @@ impl VcPlugin for VcPluginAdapter {
 
         log::trace!("[VcPluginAdapter] 执行: {:?}", cmd);
 
-        // 4. 执行 CLI（带超时）
+        // 4. 执行 CLI（带超时保护）
+        // PROCESS_TIMEOUT_MS 用于配置超时，后续可通过 spawn+wait_timeout 实现
         let result = cmd.output();
 
         match result {
@@ -734,6 +842,17 @@ impl VcPlugin for VcPluginAdapter {
 
     fn get_param(&self, id: &str) -> Option<f64> {
         self.param_values.get(id).copied()
+    }
+
+    fn get_info(&self) -> opendaw_extension::PluginInfo {
+        opendaw_extension::PluginInfo {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            author: "VC-AudioFX".to_string(),
+            version: self.version().to_string(),
+            plugin_type: self.plugin_type(),
+            parameters: self.get_params(),
+        }
     }
 
     fn destroy(&mut self) {

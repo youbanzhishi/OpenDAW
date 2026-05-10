@@ -27,6 +27,7 @@ pub struct PluginHost {
     /// 预设管理器
     preset_manager: PresetManager,
     /// 声道数
+    #[allow(dead_code)]
     channels: usize,
     /// 缓冲区大小
     buffer_size: usize,

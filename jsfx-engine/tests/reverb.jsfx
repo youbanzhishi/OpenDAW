@@ -1,0 +1,21 @@
+desc:Simple Reverb (Comb Filter)
+slider1:0.5<0,1,0.01>Wet/Dry
+slider2:0.6<0,0.99,0.01>Feedback
+slider3:50<10,200,1>Delay (ms)
+
+@init
+comb_pos = 0;
+comb_len = srate;
+memory(0, comb_len);
+
+@sample
+rdpos = comb_pos - (slider3/1000 * srate);
+rdpos < 0 ? rdpos += comb_len;
+d = mem_get(rdpos);
+wet = slider1;
+dry = 1 - slider1;
+mem_set(comb_pos, spl0 + d * slider2);
+spl0 = spl0 * dry + d * wet;
+spl1 = spl1 * dry + d * wet;
+comb_pos += 1;
+comb_pos >= comb_len ? comb_pos = 0;

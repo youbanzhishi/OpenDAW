@@ -1,18 +1,19 @@
 //! 抽象语法树 — EEL2语言核心子集
 //!
 //! 支持的语法：
-//! - 数字字面量、变量引用
+//! - 数字字面量、变量引用、字符串字面量
 //! - 二元运算: +, -, *, /, ^, %, 比较运算
-//! - 复合赋值: +=, -=, *=, /=
+//! - 复合赋值: +=, -=, *=, /=, ^=
 //! - 一元运算: -, !
 //! - 三目运算: condition ? a : b
 //! - 函数调用: sin(x), max(a, b)等
-//! - 数组访问: memory[index]
-//! - if/else语句
+//! - 数组访问: memory[index], 变量[index]
+//! - if/else语句（单行和多行）
 //! - while循环
 //! - loop(count)循环
 //! - 函数定义
 //! - 变量赋值
+//! - 预处理器: #define, #ifdef, #endif, #undef
 
 /// JSFX完整程序
 #[derive(Debug, Clone)]
@@ -37,8 +38,12 @@ pub struct JsfxProgram {
     pub sample_block: Option<StatementBlock>,
     /// @gfx块（暂不实现执行）
     pub gfx_block: Option<StatementBlock>,
+    /// @serialize块（预设持久化）
+    pub serialize_block: Option<StatementBlock>,
     /// 用户自定义函数
     pub functions: Vec<FunctionDef>,
+    /// 预处理器定义
+    pub defines: std::collections::HashMap<String, String>,
 }
 
 impl Default for JsfxProgram {
@@ -54,7 +59,9 @@ impl Default for JsfxProgram {
             block_block: None,
             sample_block: None,
             gfx_block: None,
+            serialize_block: None,
             functions: Vec::new(),
+            defines: std::collections::HashMap::new(),
         }
     }
 }
@@ -96,6 +103,8 @@ pub enum BinOp {
     Ne,        // !=
     And,       // &&
     Or,        // ||
+    BitAnd,    // & (按位与)
+    BitOr,     // | (按位或)
 }
 
 /// 一元运算符
@@ -103,6 +112,7 @@ pub enum BinOp {
 pub enum UnaryOp {
     Neg,  // -
     Not,  // !
+    BitNot, // ~ (按位取反)
 }
 
 /// 复合赋值运算符
@@ -112,6 +122,8 @@ pub enum AssignOp {
     Sub,  // -=
     Mul,  // *=
     Div,  // /=
+    Pow,  // ^=
+    Mod,  // %=
 }
 
 /// 表达式
@@ -119,6 +131,8 @@ pub enum AssignOp {
 pub enum Expr {
     /// 数字字面量
     Number(f64),
+    /// 字符串字面量
+    StringLit(String),
     /// 变量引用（名称已转小写，EEL2大小写不敏感）
     Variable(String),
     /// 二元运算
@@ -133,6 +147,8 @@ pub enum Expr {
     Ternary(Box<Expr>, Box<Expr>, Box<Expr>),
     /// spl(ch) 多通道访问
     SplAccess(Box<Expr>),
+    /// $常量 ($pi, $e, $phi等)
+    DollarConst(String),
 }
 
 /// 语句
@@ -154,6 +170,8 @@ pub enum Statement {
     Loop(Expr, StatementBlock),
     /// 表达式语句（函数调用等）
     ExprStatement(Expr),
+    /// 局部变量声明（EEL2中不常见，但某些模式会用到）
+    LocalDecl(String, Option<Expr>),
 }
 
 /// 用户自定义函数
@@ -162,4 +180,25 @@ pub struct FunctionDef {
     pub name: String,
     pub params: Vec<String>,
     pub body: StatementBlock,
+    /// 是否是局部函数 (function foo._sub() 形式)
+    pub is_local: bool,
+}
+
+/// 预处理器指令
+#[derive(Debug, Clone)]
+pub enum PreprocessorDirective {
+    /// #define NAME value
+    Define { name: String, value: String },
+    /// #ifdef NAME
+    IfDef(String),
+    /// #ifndef NAME
+    IfNDef(String),
+    /// #else
+    Else,
+    /// #endif
+    EndIf,
+    /// #undef NAME
+    Undef(String),
+    /// #include "file"
+    Include(String),
 }

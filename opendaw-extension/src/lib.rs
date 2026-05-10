@@ -15,7 +15,7 @@ pub mod registry;
 // 公共接口重导出
 pub use error::{ExtensionError, PluginError, ScriptError, ModelError, HookError};
 pub use types::{AudioBuffer, ParamInfo, PluginType, ModelInput, ModelOutput, ScriptValue};
-pub use plugin_api::VcPlugin;
+pub use plugin_api::{VcPlugin, PluginInfo, PluginEntry};
 pub use script_runtime::{ScriptEngine, SimpleScriptEngine};
 pub use model_bus::{ModelBackend, LocalBackend};
 pub use hook_system::{HookSystem, HookContext, HookInfo};

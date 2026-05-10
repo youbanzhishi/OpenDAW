@@ -3,9 +3,15 @@
 use serde::{Deserialize, Serialize};
 
 /// 音频缓冲区 — 零拷贝处理的核心数据结构
+///
+/// # 存储格式
+///
+/// 非交错（planar）存储：每个声道连续存放
+/// ```text
+/// data = [L0, L1, L2, ..., R0, R1, R2, ...]
+/// ```
 /// channels: 声道数（1=单声道, 2=立体声）
 /// frames: 每声道的采样帧数
-/// data: 交错存储的浮点采样 [L0,R0,L1,R1,...]
 #[derive(Clone, Debug)]
 pub struct AudioBuffer {
     pub channels: usize,
@@ -37,7 +43,29 @@ impl AudioBuffer {
         self.data[channel * self.frames + frame] = value;
     }
 
-    /// 获取指定声道的切片（非交错视图，拷贝）
+    /// 获取指定声道的切片（零拷贝，借用视图）
+    ///
+    /// 返回该声道所有帧的连续切片，无需拷贝。
+    /// 适用于 DSP 读取操作。
+    pub fn channel_slice(&self, channel: usize) -> &[f64] {
+        debug_assert!(channel < self.channels, "声道索引越界");
+        let start = channel * self.frames;
+        let end = start + self.frames;
+        &self.data[start..end]
+    }
+
+    /// 获取指定声道的可变切片（零拷贝，可变借用视图）
+    ///
+    /// 返回该声道所有帧的连续可变切片，无需拷贝。
+    /// 适用于 DSP 写入操作。
+    pub fn channel_slice_mut(&mut self, channel: usize) -> &mut [f64] {
+        debug_assert!(channel < self.channels, "声道索引越界");
+        let start = channel * self.frames;
+        let end = start + self.frames;
+        &mut self.data[start..end]
+    }
+
+    /// 获取指定声道的拷贝数据（向后兼容）
     pub fn channel_data(&self, channel: usize) -> Vec<f64> {
         debug_assert!(channel < self.channels);
         self.data[channel * self.frames..(channel + 1) * self.frames].to_vec()
@@ -48,6 +76,19 @@ impl AudioBuffer {
         self.data.fill(0.0);
     }
 
+    /// 从另一个 AudioBuffer 复制数据（相同尺寸时零分配）
+    ///
+    /// 如果 src 和 self 尺寸一致，则纯内存拷贝无分配。
+    /// 如果尺寸不同，自动调整 self 并拷贝。
+    pub fn copy_from(&mut self, src: &AudioBuffer) {
+        self.channels = src.channels;
+        self.frames = src.frames;
+        if self.data.len() != src.data.len() {
+            self.data.resize(src.data.len(), 0.0);
+        }
+        self.data.copy_from_slice(&src.data);
+    }
+
     /// 缓冲区总采样数
     pub fn len(&self) -> usize {
         self.data.len()
@@ -55,6 +96,33 @@ impl AudioBuffer {
 
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
+    }
+
+    /// 从交错数据创建（用于 WAV 等外部数据源）
+    ///
+    /// interleaved: [L0, R0, L1, R1, ...] → planar [L0, L1, ..., R0, R1, ...]
+    pub fn from_interleaved(interleaved: &[f64], channels: usize) -> Self {
+        let frames = if channels > 0 { interleaved.len() / channels } else { 0 };
+        let mut buf = Self::new(channels, frames);
+        for (i, &sample) in interleaved.iter().enumerate() {
+            let ch = i % channels;
+            let frame = i / channels;
+            buf.data[ch * frames + frame] = sample;
+        }
+        buf
+    }
+
+    /// 转换为交错数据（用于 WAV 输出等）
+    ///
+    /// planar [L0, L1, ..., R0, R1, ...] → interleaved [L0, R0, L1, R1, ...]
+    pub fn to_interleaved(&self) -> Vec<f64> {
+        let mut result = Vec::with_capacity(self.data.len());
+        for frame in 0..self.frames {
+            for ch in 0..self.channels {
+                result.push(self.data[ch * self.frames + frame]);
+            }
+        }
+        result
     }
 }
 
@@ -249,5 +317,54 @@ impl std::fmt::Display for ScriptValue {
                 write!(f, "}}")
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_audio_buffer_channel_slice() {
+        let mut buf = AudioBuffer::new(2, 4);
+        // 填充: channel 0 = [1,2,3,4], channel 1 = [5,6,7,8]
+        buf.data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+
+        // 零拷贝读取
+        assert_eq!(buf.channel_slice(0), &[1.0, 2.0, 3.0, 4.0]);
+        assert_eq!(buf.channel_slice(1), &[5.0, 6.0, 7.0, 8.0]);
+
+        // 零拷贝写入
+        buf.channel_slice_mut(0)[0] = 99.0;
+        assert_eq!(buf.sample(0, 0), 99.0);
+    }
+
+    #[test]
+    fn test_audio_buffer_copy_from() {
+        let src = AudioBuffer::new(2, 4);
+        let mut dst = AudioBuffer::new(2, 2);
+        dst.copy_from(&src);
+        assert_eq!(dst.channels, 2);
+        assert_eq!(dst.frames, 4);
+        assert_eq!(dst.data.len(), 8);
+    }
+
+    #[test]
+    fn test_audio_buffer_interleaved() {
+        // Planar: [1,2,3,4, 5,6,7,8] (ch0=1,2,3,4 ch1=5,6,7,8)
+        let mut buf = AudioBuffer::new(2, 4);
+        buf.data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+
+        let interleaved = buf.to_interleaved();
+        assert_eq!(interleaved, vec![1.0, 5.0, 2.0, 6.0, 3.0, 7.0, 4.0, 8.0]);
+
+        let roundtrip = AudioBuffer::from_interleaved(&interleaved, 2);
+        assert_eq!(roundtrip.data, buf.data);
+    }
+
+    #[test]
+    fn test_plugin_type_variants() {
+        assert_ne!(PluginType::Effect, PluginType::Instrument);
+        assert_ne!(PluginType::Analyzer, PluginType::MidiProcessor);
     }
 }

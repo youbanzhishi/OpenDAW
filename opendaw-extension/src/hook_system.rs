@@ -15,8 +15,8 @@ pub struct HookContext {
     pub event: String,
     /// 事件数据（键值对）
     pub data: HashMap<String, String>,
-    /// 是否阻止后续处理器执行（处理器可设置）
-    pub stop_propagation: bool,
+    /// 是否阻止后续处理器执行（处理器可设置，使用 Cell 实现内部可变性）
+    stop_propagation: std::cell::Cell<bool>,
 }
 
 impl HookContext {
@@ -24,7 +24,7 @@ impl HookContext {
         Self {
             event: event.to_string(),
             data: HashMap::new(),
-            stop_propagation: false,
+            stop_propagation: std::cell::Cell::new(false),
         }
     }
 
@@ -40,8 +40,8 @@ impl HookContext {
     }
 
     /// 阻止后续处理器执行
-    pub fn stop_propagation(&mut self) {
-        self.stop_propagation = true;
+    pub fn stop_propagation(&self) {
+        self.stop_propagation.replace(true);
     }
 }
 
@@ -157,7 +157,7 @@ impl HookSystem {
     pub fn emit(&self, event: &str, context: &mut HookContext) -> Result<(), HookError> {
         if let Some(list) = self.handlers.get(event) {
             for entry in list {
-                if context.stop_propagation {
+                if context.stop_propagation.get() {
                     break;
                 }
                 (entry.handler)(context).map_err(|e| {

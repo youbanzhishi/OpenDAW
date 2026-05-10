@@ -5,6 +5,7 @@
 //! - **VC-CLI**: OpenDAW 原生 CLI 插件协议（23效果器+3乐器）
 //! - **CLAP**: CLAP 开放插件标准（需要 `clap` feature + Rust 1.85+）
 //! - **VST3**: Steinberg VST3 标准（需要 `vst3` feature）
+//! - **JSFX**: Reaper JSFX EEL2 脚本（需要 `jsfx` feature）
 //! - **LV2**: LV2 开放标准（预留）
 //!
 //! # 架构
@@ -20,8 +21,8 @@
 //! └─────────────┘  │   └──────────────┘  │
 //!                   │                     │
 //! ┌─────────────┐  │   ┌──────────────┐  │
-//! │VcPluginAdptr├──┤   │  (LV2)       ├──┤
-//! │  (VC-CLI)   │  │   │  (预留)      │  │
+//! │VcPluginAdptr├──┤   │ JsfxAdapter ├──┤
+//! │  (VC-CLI)   │  │   │  (JSFX)      │  │
 //! └─────────────┘  │   └──────────────┘  │
 //!                   ▼                     ▼
 //!              ┌────────────────────────────┐
@@ -42,6 +43,7 @@
 //!
 //! - `clap` — 启用 CLAP 插件支持（需要 Rust 1.85+，因为 clack-host 使用 edition 2024）
 //! - `vst3` — 启用 VST3 插件支持（需要 vst3 FFI 依赖）
+//! - `jsfx` — 启用 JSFX 插件支持（需要 jsfx-engine crate）
 
 pub mod host;
 pub mod chain;
@@ -49,6 +51,9 @@ pub mod param;
 pub mod vc_adapter;
 pub mod preset;
 pub mod scanner;
+
+// JSFX 适配器（总是编译，内部有 feature 门控）
+pub mod jsfx_adapter;
 
 // 条件编译的适配器模块
 #[cfg(feature = "clap")]
@@ -63,9 +68,13 @@ pub use param::ParamManager;
 pub use vc_adapter::{VcPluginAdapter, all_known_plugin_ids};
 pub use preset::PresetManager;
 pub use scanner::{PluginScanner, ScannedPlugin, PluginFormat, ScanStats};
+pub use jsfx_adapter::JsfxAdapter;
 
 // 条件导出适配器
 #[cfg(feature = "clap")]
 pub use clap_adapter::ClapAdapter;
 #[cfg(feature = "vst3")]
 pub use vst3_adapter::Vst3Adapter;
+
+// 重导出 opendaw-extension 的核心类型，方便下游使用
+pub use opendaw_extension::{VcPlugin, PluginInfo, PluginType, AudioBuffer, ParamInfo, PluginError};

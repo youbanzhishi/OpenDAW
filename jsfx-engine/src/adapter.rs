@@ -1,6 +1,7 @@
 //! JSFX插件适配器
 //!
 //! 将JSFX引擎适配为VcPlugin trait，使其可被OpenDAW扩展系统加载
+//! 支持完整的插件生命周期：创建→初始化→处理→参数更新→销毁
 
 use std::path::Path;
 
@@ -118,6 +119,16 @@ impl JsfxPlugin {
     pub fn get_slider_defs(&self) -> &[SliderDef] {
         &self.program.sliders
     }
+
+    /// 获取程序引用
+    pub fn program(&self) -> &JsfxProgram {
+        &self.program
+    }
+
+    /// 获取运行时引用
+    pub fn runtime(&self) -> &crate::runtime::JsfxRuntime {
+        &self.vm.runtime
+    }
 }
 
 impl VcPlugin for JsfxPlugin {
@@ -157,7 +168,8 @@ impl VcPlugin for JsfxPlugin {
     fn process(&mut self, input: &ExtAudioBuffer, output: &mut ExtAudioBuffer) {
         if !self.initialized || self.destroyed {
             // 未初始化或已销毁时直通
-            output.data.copy_from_slice(&input.data);
+            let min_len = input.data.len().min(output.data.len());
+            output.data[..min_len].copy_from_slice(&input.data[..min_len]);
             return;
         }
 
@@ -168,7 +180,8 @@ impl VcPlugin for JsfxPlugin {
         self.vm.process_buffer(&vm_input, &mut vm_output);
 
         // 将VM输出写回扩展层AudioBuffer
-        output.data.copy_from_slice(&vm_output.data);
+        let min_len = vm_output.data.len().min(output.data.len());
+        output.data[..min_len].copy_from_slice(&vm_output.data[..min_len]);
     }
 
     fn get_params(&self) -> Vec<ParamInfo> {

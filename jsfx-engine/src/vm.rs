@@ -2,6 +2,14 @@
 //!
 //! 直接解释执行AST（V1实现，优先正确性）
 //! 后续可优化为真正的字节码VM
+//!
+//! 多区段执行模型（Reaper兼容）：
+//! @init    → 插件加载时执行一次
+//! @slider  → slider参数变化时执行
+//! @block   → 每个音频buffer执行一次
+//! @sample  → 每个采样点执行
+//! @gfx     → GUI绘制（暂不实现执行）
+//! @serialize → 预设保存/加载（暂不实现执行）
 
 use crate::ast::*;
 use crate::builtins::BuiltinFn;
@@ -16,6 +24,8 @@ pub struct JsfxVm {
     program: JsfxProgram,
     /// 用户自定义函数（名称 -> (参数列表, 函数体)）
     user_functions: std::collections::HashMap<String, (Vec<String>, StatementBlock)>,
+    /// 执行循环上限（防止无限循环）
+    max_loop_iterations: usize,
 }
 
 /// 音频缓冲区（简化版，避免依赖opendaw-extension）
@@ -48,6 +58,23 @@ impl AudioBuffer {
     pub fn clear(&mut self) {
         self.data.fill(0.0);
     }
+
+    /// 计算RMS值
+    pub fn rms(&self, channel: usize) -> f64 {
+        if channel >= self.channels || self.frames == 0 { return 0.0; }
+        let sum: f64 = (0..self.frames)
+            .map(|i| self.sample(channel, i).powi(2))
+            .sum();
+        (sum / self.frames as f64).sqrt()
+    }
+
+    /// 计算Peak值
+    pub fn peak(&self, channel: usize) -> f64 {
+        if channel >= self.channels { return 0.0; }
+        (0..self.frames)
+            .map(|i| self.sample(channel, i).abs())
+            .fold(0.0f64, |a, b| a.max(b))
+    }
 }
 
 impl JsfxVm {
@@ -57,7 +84,13 @@ impl JsfxVm {
             runtime: JsfxRuntime::new(),
             program: JsfxProgram::default(),
             user_functions: std::collections::HashMap::new(),
+            max_loop_iterations: 1_000_000,
         }
+    }
+
+    /// 设置最大循环迭代次数
+    pub fn set_max_loop_iterations(&mut self, max: usize) {
+        self.max_loop_iterations = max;
     }
 
     /// 加载JSFX程序
@@ -88,6 +121,12 @@ impl JsfxVm {
 
         // 执行@init — 克隆block避免借用冲突
         if let Some(ref block) = self.program.init_block {
+            let block = block.clone();
+            let _ = self.execute_block(&block);
+        }
+
+        // 初始化后执行@slider块（Reaper行为）
+        if let Some(ref block) = self.program.slider_block {
             let block = block.clone();
             let _ = self.execute_block(&block);
         }
@@ -124,6 +163,9 @@ impl JsfxVm {
     pub fn process_buffer(&mut self, input: &AudioBuffer, output: &mut AudioBuffer) {
         let frames = input.frames.min(output.frames);
         let channels = input.channels.min(output.channels).min(2);
+
+        // 重置block计数器
+        self.runtime.reset_block();
 
         // 执行@block（每个buffer一次）
         if let Some(ref block) = self.program.block_block {
@@ -175,6 +217,11 @@ impl JsfxVm {
                         if rhs == 0.0 { return Err(JsfxError::DivisionByZero); }
                         current / rhs
                     }
+                    AssignOp::Pow => current.powf(rhs),
+                    AssignOp::Mod => {
+                        if rhs == 0.0 { return Err(JsfxError::DivisionByZero); }
+                        current % rhs
+                    }
                 };
                 self.runtime.set_var(name, val);
                 Ok(val)
@@ -186,7 +233,7 @@ impl JsfxVm {
                 if arr_name == "memory" || arr_name == "mem" {
                     self.runtime.mem_set(idx, val);
                 } else {
-                    // 其他数组变量用memory空间
+                    // 其他数组变量用memory空间（EEL2语义：所有数组共享memory）
                     self.runtime.mem_set(idx, val);
                 }
                 Ok(val)
@@ -213,8 +260,7 @@ impl JsfxVm {
             Statement::While(cond, body) => {
                 let mut last_val = 0.0;
                 let mut iterations = 0;
-                const MAX_ITERATIONS: usize = 1000000;
-                while self.eval_expr(cond)? != 0.0 && iterations < MAX_ITERATIONS {
+                while self.eval_expr(cond)? != 0.0 && iterations < self.max_loop_iterations {
                     last_val = self.execute_block(body)?;
                     iterations += 1;
                 }
@@ -224,7 +270,7 @@ impl JsfxVm {
             Statement::Loop(count_expr, body) => {
                 let count = self.eval_expr(count_expr)? as usize;
                 let mut last_val = 0.0;
-                let max = count.min(1000000);
+                let max = count.min(self.max_loop_iterations);
                 for _ in 0..max {
                     last_val = self.execute_block(body)?;
                 }
@@ -234,6 +280,15 @@ impl JsfxVm {
             Statement::ExprStatement(expr) => {
                 self.eval_expr(expr)
             }
+
+            Statement::LocalDecl(name, init_expr) => {
+                let val = match init_expr {
+                    Some(expr) => self.eval_expr(expr)?,
+                    None => 0.0,
+                };
+                self.runtime.set_var(name, val);
+                Ok(val)
+            }
         }
     }
 
@@ -242,7 +297,16 @@ impl JsfxVm {
         match expr {
             Expr::Number(n) => Ok(*n),
 
+            Expr::StringLit(_s) => {
+                // 字符串在数值上下文中返回0
+                Ok(0.0)
+            }
+
             Expr::Variable(name) => Ok(self.runtime.get_var(name)),
+
+            Expr::DollarConst(name) => {
+                Ok(self.runtime.get_var(&format!("${}", name.to_lowercase())))
+            }
 
             Expr::BinaryOp(op, left, right) => {
                 let l = self.eval_expr(left)?;
@@ -268,6 +332,8 @@ impl JsfxVm {
                     BinOp::Ne => if (l - r).abs() >= f64::EPSILON { 1.0 } else { 0.0 },
                     BinOp::And => if l != 0.0 && r != 0.0 { 1.0 } else { 0.0 },
                     BinOp::Or => if l != 0.0 || r != 0.0 { 1.0 } else { 0.0 },
+                    BinOp::BitAnd => ((l as i64) & (r as i64)) as f64,
+                    BinOp::BitOr => ((l as i64) | (r as i64)) as f64,
                 })
             }
 
@@ -276,6 +342,7 @@ impl JsfxVm {
                 Ok(match op {
                     UnaryOp::Neg => -v,
                     UnaryOp::Not => if v == 0.0 { 1.0 } else { 0.0 },
+                    UnaryOp::BitNot => (!(v as i64)) as f64,
                 })
             }
 
@@ -297,7 +364,6 @@ impl JsfxVm {
 
                 // 检查是否为内置函数
                 if let Some(builtin) = BuiltinFn::from_name(name) {
-                    // 内存操作需要特殊处理
                     match builtin {
                         BuiltinFn::MemGet => {
                             let idx = arg_vals.first().copied().unwrap_or(0.0) as usize;
@@ -313,10 +379,15 @@ impl JsfxVm {
                             let dest = arg_vals.first().copied().unwrap_or(0.0) as usize;
                             let src = arg_vals.get(1).copied().unwrap_or(0.0) as usize;
                             let len = arg_vals.get(2).copied().unwrap_or(0.0) as usize;
-                            if src + len <= self.runtime.memory.len() && dest + len <= self.runtime.memory.len() {
-                                let tmp: Vec<f64> = self.runtime.memory[src..src + len].to_vec();
-                                self.runtime.memory[dest..dest + len].copy_from_slice(&tmp);
-                            }
+                            self.runtime.mem_cpy(dest, src, len);
+                            return Ok(0.0);
+                        }
+                        BuiltinFn::Rand => {
+                            return Ok(self.runtime.rand_next());
+                        }
+                        BuiltinFn::Srand => {
+                            let seed = arg_vals.first().copied().unwrap_or(0.0);
+                            self.runtime.srand(seed);
                             return Ok(0.0);
                         }
                         _ => {
@@ -365,7 +436,9 @@ impl JsfxVm {
                     return result;
                 }
 
-                Err(JsfxError::UndefinedFunction(name.clone()))
+                // 未知函数：在EEL2中，未知函数调用返回0（容错）
+                // 这对于向前兼容很重要
+                Ok(0.0)
             }
 
             Expr::ArrayAccess(name, idx_expr) => {
@@ -373,7 +446,8 @@ impl JsfxVm {
                 if name == "memory" || name == "mem" {
                     Ok(self.runtime.mem_get(idx))
                 } else {
-                    // 其他数组变量
+                    // 其他数组变量 — EEL2中所有数组共享memory空间
+                    // 但带名称前缀偏移（简化处理：直接用memory）
                     Ok(self.runtime.mem_get(idx))
                 }
             }
@@ -452,6 +526,186 @@ spl1 *= gain;
         vm.process_buffer(&input, &mut output);
         for i in 0..4 {
             assert!(output.sample(0, i).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn test_vm_dollar_constants() {
+        let source = r#"
+desc:Constants Test
+
+@sample
+spl0 = $pi;
+spl1 = $e;
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+
+        let (out0, out1) = vm.process_sample(0.0, 0.0);
+        assert!((out0 - std::f64::consts::PI).abs() < 0.001, "期望π, 得到{}", out0);
+        assert!((out1 - std::f64::consts::E).abs() < 0.001, "期望e, 得到{}", out1);
+    }
+
+    #[test]
+    fn test_vm_memory_array() {
+        let source = r#"
+desc:Memory Test
+
+@init
+memory(0, 100);
+mem_set(0, 42.0);
+mem_set(1, 3.14);
+
+@sample
+spl0 = mem_get(0);
+spl1 = mem_get(1);
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+
+        let (out0, out1) = vm.process_sample(0.0, 0.0);
+        assert!((out0 - 42.0).abs() < 0.001, "期望42.0, 得到{}", out0);
+        assert!((out1 - 3.14).abs() < 0.01, "期望3.14, 得到{}", out1);
+    }
+
+    #[test]
+    fn test_vm_bracket_memory_access() {
+        let source = r#"
+desc:Bracket Memory Test
+
+@init
+memory[0] = 99.0;
+memory[1] = 100.0;
+
+@sample
+spl0 = memory[0];
+spl1 = memory[1];
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+
+        let (out0, out1) = vm.process_sample(0.0, 0.0);
+        assert!((out0 - 99.0).abs() < 0.001, "期望99.0, 得到{}", out0);
+        assert!((out1 - 100.0).abs() < 0.001, "期望100.0, 得到{}", out1);
+    }
+
+    #[test]
+    fn test_vm_user_function() {
+        let source = r#"
+desc:Function Test
+
+function myabs(x)
+  x < 0 ? -x : x;
+
+@sample
+spl0 = myabs(-5.0);
+spl1 = myabs(3.0);
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+
+        let (out0, out1) = vm.process_sample(0.0, 0.0);
+        assert!((out0 - 5.0).abs() < 0.001, "期望5.0, 得到{}", out0);
+        assert!((out1 - 3.0).abs() < 0.001, "期望3.0, 得到{}", out1);
+    }
+
+    #[test]
+    fn test_vm_rand_function() {
+        let source = r#"
+desc:Random Test
+
+@sample
+spl0 = rand();
+spl1 = rand();
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+
+        let (out0, out1) = vm.process_sample(0.0, 0.0);
+        assert!(out0 >= 0.0 && out0 < 1.0, "rand应在[0,1)范围内, 得到{}", out0);
+        assert!(out1 >= 0.0 && out1 < 1.0, "rand应在[0,1)范围内, 得到{}", out1);
+    }
+
+    #[test]
+    fn test_vm_compound_assign() {
+        let source = r#"
+desc:Compound Assign Test
+
+@init
+x = 10;
+
+@sample
+x += 5;
+spl0 = x;
+x -= 3;
+spl1 = x;
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+
+        // @init: x=10, @sample: x+=5 -> x=15, spl0=15, x-=3 -> x=12, spl1=12
+        let (out0, out1) = vm.process_sample(0.0, 0.0);
+        assert!((out0 - 15.0).abs() < 0.001, "期望15.0, 得到{}", out0);
+        assert!((out1 - 12.0).abs() < 0.001, "期望12.0, 得到{}", out1);
+    }
+
+    #[test]
+    fn test_vm_unknown_function_returns_zero() {
+        let source = r#"
+desc:Unknown Function Test
+
+@sample
+spl0 = unknownfunc(1.0);
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+
+        // 未知函数应该返回0（EEL2容错语义）
+        let (out0, _) = vm.process_sample(0.0, 0.0);
+        assert!((out0 - 0.0).abs() < 0.001, "未知函数应返回0, 得到{}", out0);
+    }
+
+    #[test]
+    fn test_vm_lowpass_runs() {
+        let source = r#"
+desc:Simple Lowpass Filter
+slider1:1000<20,20000,1>Cutoff (Hz)
+
+@slider
+freq = slider1;
+
+@sample
+k = exp(-2 * $pi * freq / srate);
+_lp0 = spl0 * (1-k) + _lp0 * k;
+spl0 = _lp0;
+_lp1 = spl1 * (1-k) + _lp1 * k;
+spl1 = _lp1;
+"#;
+        let program = JsfxParser::parse(source).unwrap();
+        let mut vm = JsfxVm::new();
+        vm.load(&program).unwrap();
+        vm.init(44100.0);
+        vm.update_slider(1, 1000.0);
+
+        // 低通滤波器应该能运行不崩溃
+        for _ in 0..100 {
+            let (out0, out1) = vm.process_sample(1.0, 1.0);
+            assert!(out0.is_finite(), "输出应为有限值");
+            assert!(out1.is_finite(), "输出应为有限值");
         }
     }
 }

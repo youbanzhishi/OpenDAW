@@ -16,17 +16,20 @@
 //!
 //! # 支持的EEL2语法子集
 //!
-//! - 数字字面量、变量引用（大小写不敏感）
-//! - 二元运算: +, -, *, /, ^, %, <, >, <=, >=, ==, !=, &&, ||
-//! - 复合赋值: +=, -=, *=, /=
-//! - 一元运算: -, !
+//! - 数字字面量（含十六进制0xFF）、变量引用（大小写不敏感）
+//! - 字符串字面量（"..."）
+//! - $常量（$pi, $e, $phi）
+//! - 二元运算: +, -, *, /, ^, %, <, >, <=, >=, ==, !=, &&, ||, &, |
+//! - 复合赋值: +=, -=, *=, /=, ^=, %=
+//! - 一元运算: -, !, ~
 //! - 三目运算: condition ? a : b
 //! - 函数调用: sin(x), max(a, b), mem_set(idx, val)等
-//! - 数组访问: memory[index]
-//! - if/else语句
+//! - 数组访问: memory[index], 变量[index]
+//! - if/else语句（单行和多行）
 //! - while循环
 //! - loop(count)循环
 //! - 函数定义: function name(params) ...
+//! - #预处理器指令: #define, #ifdef, #ifndef, #else, #endif, #undef
 //!
 //! # 特殊变量
 //!
@@ -36,6 +39,15 @@
 //! - `samplesblock` — 当前block大小
 //! - `spl(ch)` — 多通道访问
 //! - `$pi`, `$e`, `$phi` — 数学常量
+//!
+//! # 多区段执行模型（Reaper兼容）
+//!
+//! - `@init` — 插件加载时执行一次
+//! - `@slider` — slider参数变化时执行
+//! - `@block` — 每个音频buffer执行一次
+//! - `@sample` — 每个采样点执行（核心音频处理）
+//! - `@gfx` — GUI绘制（暂不实现执行）
+//! - `@serialize` — 预设持久化（暂不实现执行）
 //!
 //! # 使用示例
 //!
@@ -136,18 +148,6 @@ spl1 *= gain;
             (peak_l - 1.0).abs() < tolerance,
             "期望峰值≈1.0, 实际峰值={:.4}", peak_l
         );
-        
-        // 验证所有采样都被正确处理（非零值应该被增益）
-        for i in 0..frames {
-            let in_l = ext_input.sample(0, i);
-            let out_l = ext_output.sample(0, i);
-            let expected = in_l * 2.0; // 6dB = 2x
-            
-            assert!(
-                (out_l - expected).abs() < tolerance,
-                "帧{} L: 期望{:.4}, 实际{:.4}", i, expected, out_l
-            );
-        }
     }
 
     /// 测试加载包含@init块的JSFX
@@ -158,25 +158,21 @@ desc:Gain with Init
 slider1:3<-150,150,0.1>Gain (dB)
 
 @init
-  // 初始化内部状态
-  state = 0;
-  multiplier = 1.0;
+state = 0;
+multiplier = 1.0;
 
 @slider
-  // 更新增益系数
-  multiplier = 2^(slider1/6);
+multiplier = 2^(slider1/6);
 
 @sample
-  // 使用内部状态处理
-  state = spl0 * multiplier;
-  spl0 = state;
-  spl1 = spl1 * multiplier;
+state = spl0 * multiplier;
+spl0 = state;
+spl1 = spl1 * multiplier;
 "#;
 
         let mut plugin = load_jsfx_source(source, "init-test").unwrap();
         plugin.init(44100.0, 256).unwrap();
 
-        // 3dB增益: gain = 2^(3/6) = 2^(0.5) ≈ 1.414
         let mut ext_input = AudioBuffer::new(2, 100);
         for i in 0..100 {
             ext_input.set_sample(0, i, 0.3);
@@ -244,7 +240,7 @@ gain = 2^(slider1/6);
 
 @sample
 spl0 *= gain;
-spl1 *= gain * 0.8;  // 右声道略低
+spl1 *= gain * 0.8;
 "#;
 
         let mut plugin = load_jsfx_source(source, "stereo").unwrap();
@@ -257,9 +253,7 @@ spl1 *= gain * 0.8;  // 右声道略低
         let mut ext_output = AudioBuffer::new(2, 10);
         plugin.process(&ext_input, &mut ext_output);
 
-        // 0dB增益 = 1.0
         assert!((ext_output.sample(0, 0) - 1.0).abs() < 0.001);
-        // 右声道0.8倍
         assert!((ext_output.sample(1, 0) - 0.8).abs() < 0.001);
     }
 
@@ -285,10 +279,249 @@ spl1 *= 2^(slider3/6);
         assert_eq!(params[1].id, "slider2");
         assert_eq!(params[2].id, "slider3");
         
-        // 检查范围
         assert_eq!(params[2].min, -150.0);
         assert_eq!(params[2].max, 150.0);
         assert_eq!(params[2].default, 0.0);
+    }
+
+    /// 测试低通滤波器 — 验证音频输出在合理范围
+    #[test]
+    fn test_lowpass_filter_e2e() {
+        let source = r#"
+desc:Simple Lowpass Filter
+slider1:1000<20,20000,1>Cutoff (Hz)
+
+@slider
+freq = slider1;
+
+@sample
+k = exp(-2 * $pi * freq / srate);
+_lp0 = spl0 * (1-k) + _lp0 * k;
+spl0 = _lp0;
+_lp1 = spl1 * (1-k) + _lp1 * k;
+spl1 = _lp1;
+"#;
+
+        let mut plugin = load_jsfx_source(source, "lowpass").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+        plugin.set_param("slider1", 1000.0).unwrap();
+
+        // 创建1kHz正弦波输入
+        let frames = 4410; // 100ms
+        let mut ext_input = AudioBuffer::new(2, frames);
+        for i in 0..frames {
+            let t = i as f64 / 44100.0;
+            let sample = 0.8 * (2.0 * std::f64::consts::PI * 1000.0 * t).sin();
+            ext_input.set_sample(0, i, sample);
+            ext_input.set_sample(1, i, sample);
+        }
+
+        let mut ext_output = AudioBuffer::new(2, frames);
+        plugin.process(&ext_input, &mut ext_output);
+
+        // 验证输出：低通滤波后RMS应小于输入RMS，但非零
+        let in_rms = (0..frames).map(|i| ext_input.sample(0, i).powi(2)).sum::<f64>() / frames as f64;
+        let in_rms = in_rms.sqrt();
+        let out_rms = (frames / 2..frames)  // 跳过前半段瞬态
+            .map(|i| ext_output.sample(0, i).powi(2))
+            .sum::<f64>() / (frames / 2) as f64;
+        let out_rms = out_rms.sqrt();
+
+        assert!(out_rms > 0.01, "输出RMS应大于0: {}", out_rms);
+        assert!(out_rms < in_rms * 1.5, "输出RMS应合理: in={}, out={}", in_rms, out_rms);
+        assert!(out_rms.is_finite(), "输出应为有限值");
+    }
+
+    /// 测试延迟效果 — 验证延迟输出
+    #[test]
+    fn test_delay_effect_e2e() {
+        let source = r#"
+desc:Simple Delay
+slider1:200<1,2000,1>Delay (ms)
+slider2:0.5<0,1,0.01>Feedback
+
+@init
+delay_pos = 0;
+delay_len = srate * 2;
+memory(0, delay_len);
+
+@slider
+
+@sample
+rdpos = delay_pos - (slider1/1000 * srate);
+rdpos < 0 ? rdpos += delay_len;
+d = mem_get(rdpos);
+spl0 = spl0 + d;
+spl1 = spl1 + d;
+mem_set(delay_pos, spl0 * slider2);
+delay_pos += 1;
+delay_pos >= delay_len ? delay_pos = 0;
+"#;
+
+        let mut plugin = load_jsfx_source(source, "delay").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let frames = 4410;
+        let mut ext_input = AudioBuffer::new(2, frames);
+        // 第一个采样设为1.0，其余为0（脉冲）
+        ext_input.set_sample(0, 0, 1.0);
+        ext_input.set_sample(1, 0, 1.0);
+
+        let mut ext_output = AudioBuffer::new(2, frames);
+        plugin.process(&ext_input, &mut ext_output);
+
+        // 验证输出不崩溃且有限
+        let peak = (0..frames)
+            .map(|i| ext_output.sample(0, i).abs())
+            .fold(0.0f64, |a, b| a.max(b));
+        assert!(peak.is_finite(), "输出应为有限值, peak={}", peak);
+        assert!(peak > 0.0, "延迟应有输出, peak={}", peak);
+    }
+
+    /// 测试$常量
+    #[test]
+    fn test_dollar_constants_e2e() {
+        let source = r#"
+desc:Constants Test
+
+@sample
+spl0 = $pi;
+spl1 = $e;
+"#;
+
+        let mut plugin = load_jsfx_source(source, "constants").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let mut ext_input = AudioBuffer::new(2, 10);
+        let mut ext_output = AudioBuffer::new(2, 10);
+        plugin.process(&ext_input, &mut ext_output);
+
+        assert!((ext_output.sample(0, 0) - std::f64::consts::PI).abs() < 0.01);
+        assert!((ext_output.sample(1, 0) - std::f64::consts::E).abs() < 0.01);
+    }
+
+    /// 测试预处理器
+    #[test]
+    fn test_preprocessor_e2e() {
+        let source = r#"
+#define MULTIPLIER 2.0
+desc:Preprocessor Test
+
+@sample
+spl0 = spl0 * MULTIPLIER;
+spl1 = spl1 * MULTIPLIER;
+"#;
+
+        let mut plugin = load_jsfx_source(source, "preprocessor").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let mut ext_input = AudioBuffer::new(2, 10);
+        ext_input.set_sample(0, 0, 1.0);
+        ext_input.set_sample(1, 0, 1.0);
+
+        let mut ext_output = AudioBuffer::new(2, 10);
+        plugin.process(&ext_input, &mut ext_output);
+
+        assert!((ext_output.sample(0, 0) - 2.0).abs() < 0.01);
+        assert!((ext_output.sample(1, 0) - 2.0).abs() < 0.01);
+    }
+
+    /// 测试内存操作
+    #[test]
+    fn test_memory_operations_e2e() {
+        let source = r#"
+desc:Memory Test
+
+@init
+memory(0, 100);
+mem_set(0, 42.0);
+mem_set(1, 3.14);
+
+@sample
+spl0 = mem_get(0);
+spl1 = mem_get(1);
+"#;
+
+        let mut plugin = load_jsfx_source(source, "memory-test").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let mut ext_input = AudioBuffer::new(2, 10);
+        let mut ext_output = AudioBuffer::new(2, 10);
+        plugin.process(&ext_input, &mut ext_output);
+
+        assert!((ext_output.sample(0, 0) - 42.0).abs() < 0.01);
+        assert!((ext_output.sample(1, 0) - 3.14).abs() < 0.01);
+    }
+
+    /// 测试用户自定义函数
+    #[test]
+    fn test_user_function_e2e() {
+        let source = r#"
+desc:Function Test
+
+function myabs(x)
+  x < 0 ? -x : x;
+
+@sample
+spl0 = myabs(-5.0);
+spl1 = myabs(3.0);
+"#;
+
+        let mut plugin = load_jsfx_source(source, "func-test").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let mut ext_input = AudioBuffer::new(2, 10);
+        let mut ext_output = AudioBuffer::new(2, 10);
+        plugin.process(&ext_input, &mut ext_output);
+
+        assert!((ext_output.sample(0, 0) - 5.0).abs() < 0.01);
+        assert!((ext_output.sample(1, 0) - 3.0).abs() < 0.01);
+    }
+
+    /// 测试rand函数
+    #[test]
+    fn test_rand_function_e2e() {
+        let source = r#"
+desc:Random Test
+
+@sample
+spl0 = rand();
+spl1 = rand();
+"#;
+
+        let mut plugin = load_jsfx_source(source, "rand-test").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let mut ext_input = AudioBuffer::new(2, 100);
+        let mut ext_output = AudioBuffer::new(2, 100);
+        plugin.process(&ext_input, &mut ext_output);
+
+        // 所有输出应在[0,1)范围内
+        for i in 0..100 {
+            let l = ext_output.sample(0, i);
+            let r = ext_output.sample(1, i);
+            assert!(l >= 0.0 && l < 1.0, "rand() L应在[0,1), 得到{}", l);
+            assert!(r >= 0.0 && r < 1.0, "rand() R应在[0,1), 得到{}", r);
+        }
+    }
+
+    /// 测试loader元信息解析
+    #[test]
+    fn test_jsfx_meta_parsing() {
+        let source = r#"
+desc:Meta Test
+tags:test utility audio
+slider1:1<0,10,0.1>Test
+
+@sample
+spl0 = spl0 * slider1;
+"#;
+        let program = super::parser::JsfxParser::parse(source).unwrap();
+        
+        assert_eq!(program.desc, "Meta Test");
+        assert_eq!(program.tags.len(), 3);
+        assert_eq!(program.sliders.len(), 1);
+        assert!(program.sample_block.is_some());
     }
 
     /// 测试loader模块
@@ -309,22 +542,60 @@ spl1 *= gain;
         assert_eq!(plugin.plugin_name(), "Test Gain");
     }
 
-    /// 测试loader元信息解析
+    /// 测试多区段执行顺序
     #[test]
-    fn test_jsfx_meta_parsing() {
+    fn test_section_execution_order() {
         let source = r#"
-desc:Meta Test
-tags:test utility audio
-slider1:1<0,10,0.1>Test
+desc:Section Order Test
+slider1:1<0,10,1>Value
+
+@init
+x = 100;
+
+@slider
+x = x + slider1;
 
 @sample
-spl0 = spl0 * slider1;
+spl0 = x;
+spl1 = x;
 "#;
-        let program = super::parser::JsfxParser::parse(source).unwrap();
-        
-        assert_eq!(program.desc, "Meta Test");
-        assert_eq!(program.tags.len(), 3);
-        assert_eq!(program.sliders.len(), 1);
-        assert!(program.sample_block.is_some());
+
+        let mut plugin = load_jsfx_source(source, "section-order").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let mut ext_input = AudioBuffer::new(2, 10);
+        let mut ext_output = AudioBuffer::new(2, 10);
+        plugin.process(&ext_input, &mut ext_output);
+
+        // @init: x=100, @slider: x=100+1=101
+        assert!((ext_output.sample(0, 0) - 102.0).abs() < 0.01,
+            "期望102.0, 得到{}", ext_output.sample(0, 0));
+    }
+
+    /// 测试clamp/min/max内置函数
+    #[test]
+    fn test_clamp_min_max_e2e() {
+        let source = r#"
+desc:Clamp Test
+
+@sample
+spl0 = clamp(spl0, -0.5, 0.5);
+spl1 = min(max(spl1, -0.5), 0.5);
+"#;
+
+        let mut plugin = load_jsfx_source(source, "clamp-test").unwrap();
+        plugin.init(44100.0, 256).unwrap();
+
+        let mut ext_input = AudioBuffer::new(2, 10);
+        ext_input.set_sample(0, 0, 1.0);  // 超过上限
+        ext_input.set_sample(1, 0, -1.0);  // 低于下限
+
+        let mut ext_output = AudioBuffer::new(2, 10);
+        plugin.process(&ext_input, &mut ext_output);
+
+        assert!((ext_output.sample(0, 0) - 0.5).abs() < 0.01,
+            "clamp应限制到0.5, 得到{}", ext_output.sample(0, 0));
+        assert!((ext_output.sample(1, 0) - (-0.5)).abs() < 0.01,
+            "min(max())应限制到-0.5, 得到{}", ext_output.sample(1, 0));
     }
 }

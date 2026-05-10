@@ -8,7 +8,6 @@ delay_len = srate * 2;
 memory(0, delay_len);
 
 @slider
-// 参数更新在运行时自动读取slider值
 
 @sample
 rdpos = delay_pos - (slider1/1000 * srate);

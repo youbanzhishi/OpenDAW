@@ -1,8 +1,27 @@
 //! PluginChain — 信号链
 //!
 //! input -> plugin1 -> plugin2 -> ... -> output
+//!
+//! # 信号处理流程
+//!
+//! ```text
+//! input ──► [Plugin 1] ──► [Plugin 2] ──► ... ──► [Plugin N] ──► output
+//!              │               │                         │
+//!           (bypass:直通)   (bypass:直通)            (bypass:直通)
+//! ```
+//!
+//! # 零拷贝优化
+//!
+//! 使用双缓冲区交替读写，避免每帧数据拷贝：
+//! - 偶数插件读 buf_a 写 buf_b
+//! - 奇数插件读 buf_b 写 buf_a
+//! - 最终结果拷贝到 output
+//!
+//! # Bypass 模式
+//!
+//! 禁用的插件直接将输入传递到下一个插件，不进行任何处理。
 
-use opendaw_extension::{AudioBuffer as ExtAudioBuffer, VcPlugin, PluginError};
+use opendaw_extension::{AudioBuffer as ExtAudioBuffer, VcPlugin, PluginError, PluginInfo};
 use audio_engine::buffer::AudioBuffer as EngineAudioBuffer;
 
 /// 信号链节点
@@ -13,18 +32,20 @@ struct ChainNode {
 
 /// 插件信号链
 ///
-/// 音频数据按顺序通过链中的每个插件
-/// 禁用的插件会被旁路（直通）
+/// 音频数据按顺序通过链中的每个插件。
+/// 禁用的插件会被旁路（直通）。
 pub struct PluginChain {
     nodes: Vec<ChainNode>,
-    /// 临时缓冲区（用于插件间传递数据）
-    temp_buffer: ExtAudioBuffer,
-    /// 引擎临时缓冲区（用于 process_engine）
-    engine_temp_buffer: EngineAudioBuffer,
+    /// 双缓冲区 A（用于交替读写，减少拷贝）
+    buf_a: ExtAudioBuffer,
+    /// 双缓冲区 B
+    buf_b: ExtAudioBuffer,
     /// 通道数
     channels: usize,
     /// 缓冲区大小
     buffer_size: usize,
+    /// 引擎临时缓冲区（用于 process_engine）
+    engine_temp_buffer: EngineAudioBuffer,
 }
 
 impl PluginChain {
@@ -32,10 +53,11 @@ impl PluginChain {
     pub fn new(channels: usize, buffer_size: usize) -> Self {
         Self {
             nodes: Vec::new(),
-            temp_buffer: ExtAudioBuffer::new(channels, buffer_size),
-            engine_temp_buffer: EngineAudioBuffer::new(channels, buffer_size, 44100.0),
+            buf_a: ExtAudioBuffer::new(channels, buffer_size),
+            buf_b: ExtAudioBuffer::new(channels, buffer_size),
             channels,
             buffer_size,
+            engine_temp_buffer: EngineAudioBuffer::new(channels, buffer_size, 44100.0),
         }
     }
 
@@ -68,13 +90,20 @@ impl PluginChain {
     pub fn resize(&mut self, channels: usize, buffer_size: usize) {
         self.channels = channels;
         self.buffer_size = buffer_size;
-        self.temp_buffer = ExtAudioBuffer::new(channels, buffer_size);
+        self.buf_a = ExtAudioBuffer::new(channels, buffer_size);
+        self.buf_b = ExtAudioBuffer::new(channels, buffer_size);
         self.engine_temp_buffer = EngineAudioBuffer::new(channels, buffer_size, 44100.0);
     }
 
     /// 处理信号链（使用 Extension AudioBuffer f64）
     ///
-    /// 输入通过所有启用的插件，最终写入输出
+    /// 采用双缓冲区交替策略减少拷贝：
+    /// - 第1个插件：input → buf_a
+    /// - 第2个插件：buf_a → buf_b
+    /// - 第3个插件：buf_b → buf_a
+    /// - ...交替使用
+    ///
+    /// bypass 的插件跳过处理，直接传递数据。
     pub fn process(&mut self, input: &ExtAudioBuffer, output: &mut ExtAudioBuffer) {
         // 调整缓冲区大小如果需要
         if input.channels != self.channels || input.frames != self.buffer_size {
@@ -83,46 +112,42 @@ impl PluginChain {
 
         if self.nodes.is_empty() {
             // 空链：直通
-            output.channels = input.channels;
-            output.frames = input.frames;
-            if output.data.len() != input.data.len() {
-                output.data.resize(input.data.len(), 0.0);
-            }
-            output.data.copy_from_slice(&input.data);
+            output.copy_from(input);
             return;
         }
 
-        // 第一个插件从input读取，写入temp_buffer
-        let mut src_data = input.data.clone();
+        // 确保双缓冲区尺寸匹配
+        self.ensure_buffer_size(input.channels, input.frames);
+
+        // 将输入数据拷贝到 buf_a 作为起始
+        self.buf_a.copy_from(input);
+
+        // 双缓冲区交替：偶数步读 buf_a 写 buf_b，奇数步读 buf_b 写 buf_a
+        let mut read_buf_has_data = true; // true = buf_a 有最新数据
 
         for node in &mut self.nodes {
             if !node.enabled {
-                continue; // 旁路
+                // bypass: 不处理，数据保持在当前缓冲区
+                continue;
             }
 
-            let src = ExtAudioBuffer {
-                channels: input.channels,
-                frames: input.frames,
-                data: src_data,
-            };
-
-            // 确保 temp_buffer 大小匹配
-            if self.temp_buffer.data.len() != src.data.len() {
-                self.temp_buffer.data.resize(src.data.len(), 0.0);
-                self.temp_buffer.channels = src.channels;
-                self.temp_buffer.frames = src.frames;
+            if read_buf_has_data {
+                // buf_a → buf_b
+                node.plugin.process(&self.buf_a, &mut self.buf_b);
+                read_buf_has_data = false;
+            } else {
+                // buf_b → buf_a
+                node.plugin.process(&self.buf_b, &mut self.buf_a);
+                read_buf_has_data = true;
             }
-
-            node.plugin.process(&src, &mut self.temp_buffer);
-            src_data = self.temp_buffer.data.clone();
         }
 
-        output.channels = input.channels;
-        output.frames = input.frames;
-        if output.data.len() != src_data.len() {
-            output.data.resize(src_data.len(), 0.0);
+        // 将最终结果写入 output
+        if read_buf_has_data {
+            output.copy_from(&self.buf_a);
+        } else {
+            output.copy_from(&self.buf_b);
         }
-        output.data.copy_from_slice(&src_data);
     }
 
     /// 使用 audio-engine AudioBuffer 处理信号链（f32）
@@ -140,7 +165,7 @@ impl PluginChain {
         }
 
         // engine f32 → extension f64
-        let mut ext_input = ExtAudioBuffer {
+        let ext_input = ExtAudioBuffer {
             channels: input.channels,
             frames: input.frames,
             data: input.as_slice().iter().map(|&s| s as f64).collect(),
@@ -150,9 +175,8 @@ impl PluginChain {
         // 通过插件链处理
         self.process(&ext_input, &mut ext_output);
 
-        // 确保 output 大小匹配 — 用公开API（EngineAudioBuffer.data是私有字段）
+        // 确保 output 大小匹配
         if output.len() != input.len() {
-            // 重新创建output（EngineAudioBuffer没有公开resize方法，通过赋值替换）
             *output = EngineAudioBuffer::zeros(input.channels, input.frames, input.sample_rate);
         }
 
@@ -174,7 +198,7 @@ impl PluginChain {
         self.nodes.is_empty()
     }
 
-    /// 启用/禁用指定位置的插件
+    /// 启用/禁用指定位置的插件（bypass 模式）
     pub fn set_enabled(&mut self, index: usize, enabled: bool) -> Result<(), PluginError> {
         self.nodes
             .get_mut(index)
@@ -197,7 +221,7 @@ impl PluginChain {
         self.nodes.get_mut(index).map(|n| n.plugin.as_mut())
     }
 
-    /// 列出链中所有插件信息
+    /// 获取链中所有插件的元信息
     pub fn list_plugins(&self) -> Vec<ChainPluginInfo> {
         self.nodes
             .iter()
@@ -208,6 +232,14 @@ impl PluginChain {
                 name: n.plugin.plugin_name().to_string(),
                 enabled: n.enabled,
             })
+            .collect()
+    }
+
+    /// 获取链中所有插件的详细 PluginInfo
+    pub fn get_plugin_infos(&self) -> Vec<PluginInfo> {
+        self.nodes
+            .iter()
+            .map(|n| n.plugin.get_info())
             .collect()
     }
 
@@ -223,6 +255,15 @@ impl PluginChain {
         }
         self.nodes.swap(a, b);
         Ok(())
+    }
+
+    /// 确保双缓冲区尺寸匹配
+    fn ensure_buffer_size(&mut self, channels: usize, frames: usize) {
+        let expected_len = channels * frames;
+        if self.buf_a.data.len() != expected_len || self.buf_b.data.len() != expected_len {
+            self.buf_a = ExtAudioBuffer::new(channels, frames);
+            self.buf_b = ExtAudioBuffer::new(channels, frames);
+        }
     }
 }
 
@@ -253,7 +294,9 @@ mod tests {
         fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
         fn process(&mut self, input: &ExtAudioBuffer, output: &mut ExtAudioBuffer) {
             for (i, &s) in input.data.iter().enumerate() {
-                output.data[i] = s * self.gain;
+                if i < output.data.len() {
+                    output.data[i] = s * self.gain;
+                }
             }
         }
         fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> { vec![] }
@@ -262,8 +305,26 @@ mod tests {
         fn destroy(&mut self) {}
     }
 
+    /// 测试用直通插件（不做任何处理）
+    struct TestPassthrough;
+
+    impl VcPlugin for TestPassthrough {
+        fn plugin_id(&self) -> &str { "test-passthrough" }
+        fn plugin_name(&self) -> &str { "直通" }
+        fn plugin_type(&self) -> PluginType { PluginType::Effect }
+        fn version(&self) -> &str { "0.1.0" }
+        fn init(&mut self, _sr: f64, _bs: usize) -> Result<(), PluginError> { Ok(()) }
+        fn process(&mut self, input: &ExtAudioBuffer, output: &mut ExtAudioBuffer) {
+            output.copy_from(input);
+        }
+        fn get_params(&self) -> Vec<opendaw_extension::ParamInfo> { vec![] }
+        fn set_param(&mut self, _id: &str, _v: f64) -> Result<(), PluginError> { Ok(()) }
+        fn get_param(&self, _id: &str) -> Option<f64> { None }
+        fn destroy(&mut self) {}
+    }
+
     #[test]
-    fn test_chain_process() {
+    fn test_chain_process_double_buffer() {
         let mut chain = PluginChain::new(2, 256);
         chain.push(Box::new(TestGain { gain: 2.0 }));
         chain.push(Box::new(TestGain { gain: 0.5 })); // 2.0 * 0.5 = 1.0
@@ -278,6 +339,22 @@ mod tests {
     }
 
     #[test]
+    fn test_chain_three_plugins() {
+        let mut chain = PluginChain::new(2, 64);
+        chain.push(Box::new(TestGain { gain: 2.0 }));
+        chain.push(Box::new(TestGain { gain: 3.0 }));
+        chain.push(Box::new(TestGain { gain: 0.5 }));
+        // 2.0 * 3.0 * 0.5 = 3.0
+
+        let mut input = ExtAudioBuffer::new(2, 64);
+        input.data[0] = 1.0;
+        let mut output = ExtAudioBuffer::new(2, 64);
+
+        chain.process(&input, &mut output);
+        assert!((output.data[0] - 3.0).abs() < 1e-10);
+    }
+
+    #[test]
     fn test_chain_bypass() {
         let mut chain = PluginChain::new(2, 256);
         chain.push(Box::new(TestGain { gain: 10.0 }));
@@ -289,6 +366,35 @@ mod tests {
 
         chain.process(&input, &mut output);
         assert!((output.data[0] - 0.5).abs() < 1e-10); // 直通
+    }
+
+    #[test]
+    fn test_chain_mixed_bypass() {
+        let mut chain = PluginChain::new(2, 64);
+        chain.push(Box::new(TestGain { gain: 2.0 }));   // 启用
+        chain.push(Box::new(TestGain { gain: 100.0 }));  // 将被旁路
+        chain.push(Box::new(TestGain { gain: 0.5 }));   // 启用
+
+        chain.set_enabled(1, false).unwrap(); // 旁路中间插件
+
+        let mut input = ExtAudioBuffer::new(2, 64);
+        input.data[0] = 1.0;
+        let mut output = ExtAudioBuffer::new(2, 64);
+
+        chain.process(&input, &mut output);
+        // 1.0 * 2.0 * 0.5 = 1.0 (bypass了100x)
+        assert!((output.data[0] - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_chain_empty_passthrough() {
+        let mut chain = PluginChain::new(2, 64);
+        let mut input = ExtAudioBuffer::new(2, 64);
+        input.data[0] = 0.75;
+        let mut output = ExtAudioBuffer::new(2, 64);
+
+        chain.process(&input, &mut output);
+        assert!((output.data[0] - 0.75).abs() < 1e-10);
     }
 
     #[test]
@@ -353,5 +459,42 @@ mod tests {
 
         chain.process_engine(&input, &mut output);
         assert!((output.as_slice()[0] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_chain_list_plugins() {
+        let mut chain = PluginChain::new(2, 64);
+        chain.push(Box::new(TestGain { gain: 2.0 }));
+        chain.push(Box::new(TestPassthrough));
+
+        let infos = chain.list_plugins();
+        assert_eq!(infos.len(), 2);
+        assert_eq!(infos[0].id, "test-gain");
+        assert_eq!(infos[1].id, "test-passthrough");
+        assert!(infos[0].enabled);
+        assert!(infos[1].enabled);
+    }
+
+    #[test]
+    fn test_chain_plugin_infos() {
+        let mut chain = PluginChain::new(2, 64);
+        chain.push(Box::new(TestGain { gain: 2.0 }));
+
+        let infos = chain.get_plugin_infos();
+        assert_eq!(infos.len(), 1);
+        assert_eq!(infos[0].id, "test-gain");
+        assert_eq!(infos[0].plugin_type, PluginType::Effect);
+    }
+
+    #[test]
+    fn test_chain_clear() {
+        let mut chain = PluginChain::new(2, 64);
+        chain.push(Box::new(TestGain { gain: 2.0 }));
+        chain.push(Box::new(TestGain { gain: 3.0 }));
+        assert_eq!(chain.len(), 2);
+
+        chain.clear();
+        assert_eq!(chain.len(), 0);
+        assert!(chain.is_empty());
     }
 }

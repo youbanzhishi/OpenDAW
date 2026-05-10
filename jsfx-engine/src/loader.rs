@@ -1,6 +1,7 @@
 //! JSFX文件加载器
 //!
 //! 提供从文件或源码字符串加载JSFX插件的功能
+//! 支持批量扫描和元信息快速提取
 
 use std::path::Path;
 use std::fs;
@@ -58,7 +59,7 @@ pub fn load_jsfx_source(source: &str, name: &str) -> Result<JsfxPlugin, JsfxErro
 /// * `dir` - 要扫描的目录路径
 ///
 /// # Returns
-/// * 成功返回JsfxPlugin实例Vec（包含加载失败的文件名用于调试）
+/// * 成功返回JsfxPlugin实例Vec
 pub fn scan_jsfx_directory(dir: &Path) -> Result<Vec<JsfxPlugin>, JsfxError> {
     JsfxPlugin::scan_directory(dir)
 }
@@ -66,25 +67,11 @@ pub fn scan_jsfx_directory(dir: &Path) -> Result<Vec<JsfxPlugin>, JsfxError> {
 /// 解析JSFX源码并返回程序结构（不创建Plugin）
 ///
 /// 适用于只需要检查源码结构而不创建完整插件的场景
-///
-/// # Arguments
-/// * `source` - JSFX源码
-///
-/// # Returns
-/// * 成功返回JsfxProgram
-/// * 失败返回JsfxError
 pub fn parse_jsfx_source(source: &str) -> Result<JsfxProgram, JsfxError> {
     JsfxParser::parse(source)
 }
 
 /// 验证JSFX文件是否有效
-///
-/// # Arguments
-/// * `path` - .jsfx文件路径
-///
-/// # Returns
-/// * 有效返回Ok(插件描述)
-/// * 无效返回Err(JsfxError)
 pub fn validate_jsfx_file(path: &Path) -> Result<String, JsfxError> {
     let plugin = load_jsfx_file(path)?;
     Ok(plugin.plugin_name().to_string())
@@ -102,6 +89,16 @@ pub struct JsfxMeta {
     pub sliders: Vec<SliderDef>,
     /// 文件路径
     pub path: std::path::PathBuf,
+    /// 是否有@init块
+    pub has_init: bool,
+    /// 是否有@sample块
+    pub has_sample: bool,
+    /// 是否有@block块
+    pub has_block: bool,
+    /// 是否有@gfx块
+    pub has_gfx: bool,
+    /// 用户自定义函数数量
+    pub function_count: usize,
 }
 
 impl JsfxMeta {
@@ -115,6 +112,28 @@ impl JsfxMeta {
             tags: program.tags,
             sliders: program.sliders,
             path: path.to_path_buf(),
+            has_init: program.init_block.is_some(),
+            has_sample: program.sample_block.is_some(),
+            has_block: program.block_block.is_some(),
+            has_gfx: program.gfx_block.is_some(),
+            function_count: program.functions.len(),
+        })
+    }
+
+    /// 从源码加载元信息
+    pub fn from_source(source: &str, path: &Path) -> Option<Self> {
+        let program = JsfxParser::parse(source).ok()?;
+
+        Some(Self {
+            desc: program.desc,
+            tags: program.tags,
+            sliders: program.sliders,
+            path: path.to_path_buf(),
+            has_init: program.init_block.is_some(),
+            has_sample: program.sample_block.is_some(),
+            has_block: program.block_block.is_some(),
+            has_gfx: program.gfx_block.is_some(),
+            function_count: program.functions.len(),
         })
     }
 }
@@ -175,5 +194,26 @@ spl0 = spl0 * slider1;
         assert_eq!(program.desc, "Test Plugin");
         assert_eq!(program.sliders.len(), 1);
         assert!(program.sample_block.is_some());
+    }
+
+    #[test]
+    fn test_meta_from_source() {
+        let source = r#"
+desc:Meta Test
+tags:test audio
+slider1:1<0,10,0.1>Value
+
+@init
+x = 0;
+
+@sample
+spl0 = x;
+"#;
+        let meta = JsfxMeta::from_source(source, Path::new("test.jsfx")).unwrap();
+        assert_eq!(meta.desc, "Meta Test");
+        assert_eq!(meta.tags.len(), 2);
+        assert!(meta.has_init);
+        assert!(meta.has_sample);
+        assert!(!meta.has_gfx);
     }
 }

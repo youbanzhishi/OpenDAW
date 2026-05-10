@@ -3,17 +3,16 @@ slider1:1000<20,20000,1>Cutoff (Hz)
 slider2:0.7<0.01,1,0.01>Resonance
 
 @init
-freq = 1000;
-q = 0.7;
+_lp0 = 0;
+_lp1 = 0;
 
 @slider
 freq = slider1;
 q = slider2;
 
 @sample
-// 一阶低通滤波器
 k = exp(-2 * $pi * freq / srate);
-spl0 = spl0 * (1-k) + _lp0 * k;
-_lp0 = spl0;
-spl1 = spl1 * (1-k) + _lp1 * k;
-_lp1 = spl1;
+_lp0 = spl0 * (1-k) + _lp0 * k;
+spl0 = _lp0;
+_lp1 = spl1 * (1-k) + _lp1 * k;
+spl1 = _lp1;
