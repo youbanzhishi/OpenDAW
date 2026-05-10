@@ -5,11 +5,11 @@ members = [
     "opendaw-extension",
     "opendaw-core",
     "plugin-host",
-    "desktop/src-tauri",
     "crates/opendaw-api",
     "crates/opendaw-ws",
     "crates/opendaw-cli",
 ]
+exclude = ["desktop/src-tauri"]
 resolver = "2"
 
 [workspace.package]
