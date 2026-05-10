@@ -349,26 +349,50 @@ impl JsfxParser {
 
             // 检测if/else多行块
             if line.to_lowercase().starts_with("if ") || line.to_lowercase().starts_with("if(") {
-                let (stmt, advance) = Self::parse_if_statement(lines, i)?;
-                statements.push(stmt);
-                i += advance;
-                continue;
+                match Self::parse_if_statement(lines, i) {
+                    Ok((stmt, advance)) => {
+                        statements.push(stmt);
+                        i += advance;
+                        continue;
+                    }
+                    Err(e) => {
+                        eprintln!("JSFX解析警告 行{}: {} — 跳过if语句", i + 1, e);
+                        i += 1;
+                        continue;
+                    }
+                }
             }
 
             // 检测while循环
             if line.to_lowercase().starts_with("while ") || line.to_lowercase().starts_with("while(") {
-                let (stmt, advance) = Self::parse_while_statement(lines, i)?;
-                statements.push(stmt);
-                i += advance;
-                continue;
+                match Self::parse_while_statement(lines, i) {
+                    Ok((stmt, advance)) => {
+                        statements.push(stmt);
+                        i += advance;
+                        continue;
+                    }
+                    Err(e) => {
+                        eprintln!("JSFX解析警告 行{}: {} — 跳过while语句", i + 1, e);
+                        i += 1;
+                        continue;
+                    }
+                }
             }
 
             // 检测loop
             if line.to_lowercase().starts_with("loop(") || line.to_lowercase().starts_with("loop (") {
-                let (stmt, advance) = Self::parse_loop_statement(lines, i)?;
-                statements.push(stmt);
-                i += advance;
-                continue;
+                match Self::parse_loop_statement(lines, i) {
+                    Ok((stmt, advance)) => {
+                        statements.push(stmt);
+                        i += advance;
+                        continue;
+                    }
+                    Err(e) => {
+                        eprintln!("JSFX解析警告 行{}: {} — 跳过loop语句", i + 1, e);
+                        i += 1;
+                        continue;
+                    }
+                }
             }
 
             // 检测function（不应在块内出现，但容错）
@@ -377,9 +401,14 @@ impl JsfxParser {
                 continue;
             }
 
-            // 普通语句行
-            if let Some(stmt) = Self::parse_single_line(line, i + 1)? {
-                statements.push(stmt);
+            // 普通语句行 — 错误恢复：单行解析失败时跳过该行而非中断整个块
+            match Self::parse_single_line(line, i + 1) {
+                Ok(Some(stmt)) => statements.push(stmt),
+                Ok(None) => {},
+                Err(e) => {
+                    // 词法/语法错误恢复：记录警告但跳过该行继续解析
+                    eprintln!("JSFX解析警告 行{}: {} — 跳过该行", i + 1, e);
+                }
             }
             i += 1;
         }
@@ -1274,8 +1303,9 @@ impl JsfxParser {
             }
 
             _ => {
-                let desc = format!("{:?}", tokens[*pos]);
-                Err(JsfxError::parse(line_num, format!("无法解析表达式token: {}", desc)))
+                // 错误恢复：跳过无法识别的token，返回0
+                *pos += 1;
+                Ok(Expr::Number(0.0))
             }
         }
     }

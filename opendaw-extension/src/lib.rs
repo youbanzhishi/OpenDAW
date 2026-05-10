@@ -6,6 +6,7 @@
 pub mod error;
 pub mod types;
 pub mod plugin_api;
+pub mod plugin_param;
 pub mod script_runtime;
 pub mod model_bus;
 pub mod hook_system;
@@ -16,6 +17,7 @@ pub mod registry;
 pub use error::{ExtensionError, PluginError, ScriptError, ModelError, HookError};
 pub use types::{AudioBuffer, ParamInfo, PluginType, ModelInput, ModelOutput, ScriptValue};
 pub use plugin_api::{VcPlugin, PluginInfo, PluginEntry};
+pub use plugin_param::{PluginParameter, ParameterValue, ParameterType};
 pub use script_runtime::{ScriptEngine, SimpleScriptEngine};
 pub use model_bus::{ModelBackend, LocalBackend};
 pub use hook_system::{HookSystem, HookContext, HookInfo};

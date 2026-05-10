@@ -34,11 +34,40 @@ pub struct JsfxRuntime {
     pub play_position: f64,
     /// 是否已初始化
     pub initialized: bool,
-    /// 预处理器定义的常量（$pi等通过变量系统解析）
     /// 随机数种子
     rand_seed: u64,
     /// pdc延迟值（插件延迟补偿）
     pub pdc: usize,
+
+    // ---- gfx 变量支持 ----
+    /// gfx窗口宽度
+    pub gfx_w: f64,
+    /// gfx窗口高度
+    pub gfx_h: f64,
+    /// 当前绘图x坐标
+    pub gfx_x: f64,
+    /// 当前绘图y坐标
+    pub gfx_y: f64,
+    /// 当前绘图R分量 [0,1]
+    pub gfx_r: f64,
+    /// 当前绘图G分量 [0,1]
+    pub gfx_g: f64,
+    /// 当前绘图B分量 [0,1]
+    pub gfx_b: f64,
+    /// 当前绘图A分量 [0,1]
+    pub gfx_a: f64,
+    /// 绘图模式（0=铅笔,1=擦除等）
+    pub gfx_mode: f64,
+    /// 字体大小
+    pub gfx_texth: f64,
+    /// 鼠标x坐标
+    pub mouse_x: f64,
+    /// 鼠标y坐标
+    pub mouse_y: f64,
+    /// 鼠标按键状态
+    pub mouse_cap: f64,
+    /// 鼠标滚轮
+    pub mouse_wheel: f64,
 }
 
 impl JsfxRuntime {
@@ -57,6 +86,22 @@ impl JsfxRuntime {
             initialized: false,
             rand_seed: 12345,
             pdc: 0,
+
+            // gfx变量默认值
+            gfx_w: 400.0,
+            gfx_h: 300.0,
+            gfx_x: 0.0,
+            gfx_y: 0.0,
+            gfx_r: 1.0,
+            gfx_g: 1.0,
+            gfx_b: 1.0,
+            gfx_a: 1.0,
+            gfx_mode: 0.0,
+            gfx_texth: 14.0,
+            mouse_x: 0.0,
+            mouse_y: 0.0,
+            mouse_cap: 0.0,
+            mouse_wheel: 0.0,
         };
 
         // 初始化内置变量
@@ -110,6 +155,22 @@ impl JsfxRuntime {
         if name_lower == "tempo" { return self.tempo; }
         if name_lower == "pdc" { return self.pdc as f64; }
 
+        // gfx 变量
+        if name_lower == "gfx_w" { return self.gfx_w; }
+        if name_lower == "gfx_h" { return self.gfx_h; }
+        if name_lower == "gfx_x" { return self.gfx_x; }
+        if name_lower == "gfx_y" { return self.gfx_y; }
+        if name_lower == "gfx_r" { return self.gfx_r; }
+        if name_lower == "gfx_g" { return self.gfx_g; }
+        if name_lower == "gfx_b" { return self.gfx_b; }
+        if name_lower == "gfx_a" { return self.gfx_a; }
+        if name_lower == "gfx_mode" { return self.gfx_mode; }
+        if name_lower == "gfx_texth" { return self.gfx_texth; }
+        if name_lower == "mouse_x" { return self.mouse_x; }
+        if name_lower == "mouse_y" { return self.mouse_y; }
+        if name_lower == "mouse_cap" { return self.mouse_cap; }
+        if name_lower == "mouse_wheel" { return self.mouse_wheel; }
+
         // $常量（$pi, $e, $phi）- 变量名中包含$前缀
         if name_lower.starts_with("$") {
             // 尝试从vars中查找
@@ -150,6 +211,22 @@ impl JsfxRuntime {
         if name_lower == "samplesblock" { self.samplesblock = value as usize; return; }
         if name_lower == "tempo" { self.tempo = value; return; }
         if name_lower == "pdc" { self.pdc = value as usize; return; }
+
+        // gfx 变量（可写）
+        if name_lower == "gfx_w" { self.gfx_w = value; return; }
+        if name_lower == "gfx_h" { self.gfx_h = value; return; }
+        if name_lower == "gfx_x" { self.gfx_x = value; return; }
+        if name_lower == "gfx_y" { self.gfx_y = value; return; }
+        if name_lower == "gfx_r" { self.gfx_r = value; return; }
+        if name_lower == "gfx_g" { self.gfx_g = value; return; }
+        if name_lower == "gfx_b" { self.gfx_b = value; return; }
+        if name_lower == "gfx_a" { self.gfx_a = value; return; }
+        if name_lower == "gfx_mode" { self.gfx_mode = value; return; }
+        if name_lower == "gfx_texth" { self.gfx_texth = value; return; }
+        if name_lower == "mouse_x" { self.mouse_x = value; return; }
+        if name_lower == "mouse_y" { self.mouse_y = value; return; }
+        if name_lower == "mouse_cap" { self.mouse_cap = value; return; }
+        if name_lower == "mouse_wheel" { self.mouse_wheel = value; return; }
 
         // $常量不可赋值
         if name_lower.starts_with("$") {

@@ -740,3 +740,302 @@ spl0 = x;
     assert!(meta.has_sample);
     assert!(!meta.has_gfx);
 }
+
+// ==================== @block 回调测试 ====================
+
+/// 测试@block回调正确执行
+#[test]
+fn test_block_callback() {
+    let source = r#"
+desc:Block Callback Test
+
+@init
+block_count = 0;
+
+@block
+block_count += 1;
+
+@sample
+spl0 = block_count;
+spl1 = block_count;
+"#;
+    let mut plugin = load_jsfx_source(source, "block-cb").unwrap();
+    plugin.init(44100.0, 256).unwrap();
+
+    let mut ext_input = AudioBuffer::new(2, 10);
+    let mut ext_output = AudioBuffer::new(2, 10);
+    plugin.process(&ext_input, &mut ext_output);
+
+    // After first process_buffer, @block should have run once
+    assert!((ext_output.sample(0, 0) - 1.0).abs() < 0.01,
+        "block_count应为1, 得到{}", ext_output.sample(0, 0));
+}
+
+// ==================== @serialize 回调测试 ====================
+
+/// 测试@serialize回调正确执行
+#[test]
+fn test_serialize_callback() {
+    let source = r#"
+desc:Serialize Callback Test
+
+@init
+preset_data = 0;
+
+@serialize
+preset_data = 999;
+
+@sample
+spl0 = preset_data;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    // Before serialize
+    let (out0, _) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 0.0).abs() < 0.01, "init后preset_data=0, 得到{}", out0);
+
+    // Execute serialize
+    vm.execute_serialize();
+
+    // After serialize
+    let (out0, _) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 999.0).abs() < 0.01, "serialize后preset_data=999, 得到{}", out0);
+}
+
+// ==================== gfx 变量测试 ====================
+
+/// 测试gfx变量读写
+#[test]
+fn test_gfx_variables() {
+    let source = r#"
+desc:GFX Variables Test
+
+@sample
+spl0 = gfx_w;
+spl1 = gfx_h;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    // Default gfx_w=400, gfx_h=300
+    let (out0, out1) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 400.0).abs() < 0.01, "gfx_w默认=400, 得到{}", out0);
+    assert!((out1 - 300.0).abs() < 0.01, "gfx_h默认=300, 得到{}", out1);
+
+    // Set gfx variables
+    vm.runtime.set_var("gfx_w", 800.0);
+    vm.runtime.set_var("gfx_h", 600.0);
+    let (out0, out1) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 800.0).abs() < 0.01, "gfx_w=800, 得到{}", out0);
+    assert!((out1 - 600.0).abs() < 0.01, "gfx_h=600, 得到{}", out1);
+}
+
+/// 测试gfx绘图颜色变量
+#[test]
+fn test_gfx_color_variables() {
+    let source = r#"
+desc:GFX Color Test
+
+@sample
+gfx_r = 0.5;
+gfx_g = 0.3;
+gfx_b = 0.1;
+gfx_a = 0.9;
+spl0 = gfx_r + gfx_g + gfx_b + gfx_a;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    let (out0, _) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 1.8).abs() < 0.01, "颜色总和=1.8, 得到{}", out0);
+}
+
+// ==================== @gfx 区段执行测试 ====================
+
+/// 测试@gfx区段执行
+#[test]
+fn test_gfx_section_execution() {
+    let source = r#"
+desc:GFX Section Test
+
+@gfx
+gfx_x = 10;
+gfx_y = 20;
+
+@sample
+spl0 = gfx_x;
+spl1 = gfx_y;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    // Before gfx execution
+    let (out0, out1) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 0.0).abs() < 0.01, "gfx执行前gfx_x=0, 得到{}", out0);
+    assert!((out1 - 0.0).abs() < 0.01, "gfx执行前gfx_y=0, 得到{}", out1);
+
+    // Execute gfx
+    vm.execute_gfx();
+
+    let (out0, out1) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 10.0).abs() < 0.01, "gfx后gfx_x=10, 得到{}", out0);
+    assert!((out1 - 20.0).abs() < 0.01, "gfx后gfx_y=20, 得到{}", out1);
+}
+
+// ==================== gfx绘图函数容错测试 ====================
+
+/// 测试gfx绘图函数调用不崩溃
+#[test]
+fn test_gfx_functions_noop() {
+    let source = r#"
+desc:GFX Functions Noop Test
+
+@gfx
+gfx_clear(0);
+gfx_set(1);
+gfx_rect(10, 20, 100, 50);
+gfx_lineto(100, 100);
+gfx_moveto(10, 10);
+gfx_drawnumber(3.14, 2);
+
+@sample
+spl0 = 1.0;
+spl1 = 1.0;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    // Should not crash when executing gfx section with drawing functions
+    vm.execute_gfx();
+
+    let (out0, out1) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 1.0).abs() < 0.01, "gfx函数应不影响音频, 得到{}", out0);
+}
+
+// ==================== 完整内置数学函数测试 ====================
+
+/// 测试所有数学内置函数
+#[test]
+fn test_all_math_builtins() {
+    let source = r#"
+desc:All Math Builtins
+
+@sample
+a = sin($pi / 2);
+b = cos(0);
+c = tan($pi / 4);
+d = asin(1);
+e = acos(1);
+f = atan(1);
+g = sqrt(144);
+h = abs(-7);
+i = floor(3.9);
+j = ceil(3.1);
+k = round(3.5);
+l = sign(-5);
+m = min(3, 7);
+n = max(3, 7);
+o = pow(2, 10);
+p = exp(0);
+q = log($e);
+r = log10(100);
+spl0 = a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    let (out0, _) = vm.process_sample(0.0, 0.0);
+    // sin(π/2)=1, cos(0)=1, tan(π/4)≈1, asin(1)=π/2≈1.5708
+    // acos(1)=0, atan(1)=π/4≈0.7854, sqrt(144)=12, abs(-7)=7
+    // floor(3.9)=3, ceil(3.1)=4, round(3.5)=4, sign(-5)=-1
+    // min(3,7)=3, max(3,7)=7, pow(2,10)=1024, exp(0)=1, ln(e)=1, log10(100)=2
+    // total ≈ 1+1+1+1.5708+0+0.7854+12+7+3+4+4+(-1)+3+7+1024+1+1+2 = 1072.356
+    assert!((out0 - 1072.356).abs() < 1.0, "期望≈1072.356, 得到{}", out0);
+}
+
+/// 测试双参数数学函数
+#[test]
+fn test_two_arg_builtins() {
+    let source = r#"
+desc:Two Arg Builtins
+
+@sample
+a = atan2(1, 1);
+b = pow(3, 3);
+c = min(-5, 3);
+d = max(-5, 3);
+spl0 = a + b + c + d;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    let (out0, _) = vm.process_sample(0.0, 0.0);
+    // atan2(1,1)=π/4≈0.7854, pow(3,3)=27, min(-5,3)=-5, max(-5,3)=3
+    // total ≈ 0.7854 + 27 + (-5) + 3 = 25.7854
+    assert!((out0 - 25.785).abs() < 0.1, "期望≈25.785, 得到{}", out0);
+}
+
+// ==================== 解析器错误恢复测试 ====================
+
+/// 测试解析器在遇到语法错误时能恢复继续
+#[test]
+fn test_parser_error_recovery() {
+    // 包含一行有问题的代码，但不应阻止其他行解析
+    let source = r#"
+desc:Error Recovery Test
+
+@init
+x = 10;
+
+@sample
+spl0 = x;
+spl1 = x * 2;
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    let (out0, out1) = vm.process_sample(0.0, 0.0);
+    assert!((out0 - 10.0).abs() < 0.01, "x=10, 得到{}", out0);
+    assert!((out1 - 20.0).abs() < 0.01, "x*2=20, 得到{}", out1);
+}
+
+// ==================== 多通道spl测试 ====================
+
+/// 测试spl(2)...spl(63)多通道访问
+#[test]
+fn test_multi_channel_spl() {
+    let source = r#"
+desc:Multi Channel Test
+
+@sample
+spl(2) = spl0 * 0.5;
+spl(3) = spl1 * 0.5;
+spl0 = spl(2);
+spl1 = spl(3);
+"#;
+    let program = jsfx_engine::parser::JsfxParser::parse(source).unwrap();
+    let mut vm = jsfx_engine::vm::JsfxVm::new();
+    vm.load(&program).unwrap();
+    vm.init(44100.0);
+
+    let (out0, out1) = vm.process_sample(1.0, 0.8);
+    assert!((out0 - 0.5).abs() < 0.01, "spl(2)→spl0 = 0.5, 得到{}", out0);
+    assert!((out1 - 0.4).abs() < 0.01, "spl(3)→spl1 = 0.4, 得到{}", out1);
+}

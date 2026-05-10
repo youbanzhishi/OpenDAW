@@ -12,7 +12,8 @@
 //!
 //! 所有插件格式通过 `VcPlugin` trait 统一接口，
 //! 由 `PluginHost` 管理生命周期，`PluginChain` 调度信号处理。
-//! `PluginScanner` 统一发现系统中的插件。
+//! `PluginLoader` 工厂模式加载插件，`PluginScanner` 统一发现。
+//! `PluginParameter` 提供多类型参数模型（float/int/bool/enum）。
 //!
 //! ```text
 //! ┌─────────────┐     ┌──────────────┐
@@ -30,11 +31,14 @@
 //!              └────────────┬───────────────┘
 //!                           │
 //!              ┌────────────▼───────────────┐
+//!              │     PluginLoader            │  ← 工厂模式
+//!              ├────────────────────────────┤
 //!              │     PluginHost              │
 //!              │  ┌──────────────────────┐  │
 //!              │  │  PluginChain          │  │
 //!              │  │  ParamManager         │  │
 //!              │  │  PresetManager        │  │
+//!              │  │  PluginParameter      │  │  ← 统一参数模型
 //!              │  └──────────────────────┘  │
 //!              └────────────────────────────┘
 //! ```
@@ -51,6 +55,7 @@ pub mod param;
 pub mod vc_adapter;
 pub mod preset;
 pub mod scanner;
+pub mod loader;
 
 // JSFX 适配器（总是编译，内部有 feature 门控）
 pub mod jsfx_adapter;
@@ -68,6 +73,7 @@ pub use param::ParamManager;
 pub use vc_adapter::{VcPluginAdapter, all_known_plugin_ids};
 pub use preset::PresetManager;
 pub use scanner::{PluginScanner, ScannedPlugin, PluginFormat, ScanStats};
+pub use loader::PluginLoader;
 pub use jsfx_adapter::JsfxAdapter;
 
 // 条件导出适配器
@@ -77,4 +83,7 @@ pub use clap_adapter::ClapAdapter;
 pub use vst3_adapter::Vst3Adapter;
 
 // 重导出 opendaw-extension 的核心类型，方便下游使用
-pub use opendaw_extension::{VcPlugin, PluginInfo, PluginType, AudioBuffer, ParamInfo, PluginError};
+pub use opendaw_extension::{
+    VcPlugin, PluginInfo, PluginType, AudioBuffer, ParamInfo, PluginError,
+    PluginParameter, ParameterValue, ParameterType,
+};

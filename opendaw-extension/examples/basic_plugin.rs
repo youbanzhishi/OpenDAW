@@ -8,9 +8,9 @@
 
 use opendaw_extension::{
     AudioBuffer, ExtensionRegistry, HookContext, ModelInput, ParamInfo, PluginType,
-    ScriptValue, SimpleScriptEngine, VcPlugin, LocalBackend, ModelBackend,
+    ScriptValue, SimpleScriptEngine, VcPlugin, LocalBackend, ScriptEngine,
 };
-use std::path::Path;
+
 
 // ===== Gain 插件实现 =====
 
