@@ -1,6 +1,6 @@
 [package]
 name = "plugin-host"
-version = "0.1.0"
+version = "0.24.0"
 edition = "2021"
 description = "OpenDAW 插件宿主 - 加载/管理/调度插件链，支持 VST3/CLAP/VC-Plugin 多格式"
 

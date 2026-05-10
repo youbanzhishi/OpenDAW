@@ -1,6 +1,6 @@
 [package]
 name = "opendaw-extension"
-version = "0.1.0"
+version = "0.24.0"
 edition = "2021"
 description = "OpenDAW 扩展注册中心 - Plugin API + Script Runtime + Model Bus + Hook System"
 

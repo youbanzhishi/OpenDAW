@@ -1,6 +1,6 @@
 [project]
 name = "vcmix"
-version = "0.23.0"
+version = "0.24.0"
 description = "AI-native DAW — VCMix"
 requires-python = ">=3.9"
 

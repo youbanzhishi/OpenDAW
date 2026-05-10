@@ -1,6 +1,6 @@
 [package]
 name = "audio-engine"
-version = "0.1.0"
+version = "0.24.0"
 edition = "2021"
 description = "OpenDAW音频引擎核心 - CPAL实时音频I/O"
 

@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.24.0] - 2026-05-10
+
+### Added
+#### v0.24.0 集成：Rust引擎+Plugin Host+PyO3桥接
+
+**Step1: Engine Tauri Commands**
+- 14个Tauri命令：engine_start/stop/pause, register_track, load_wav, set_track_volume等
+- AudioEngine新增：set_track_volume, toggle_track_mute, set_master_volume, load_wav, set_track_pan
+
+**Step2: WAV加载+实时播放+控制**
+- hound库集成：from_wav_file支持8/16/24/32bit PCM和32bit Float
+- 声像控制：set_track_pan/get_track_pan (-1.0~1.0)
+
+**Step3+4: PluginChain+JSFX适配器+AudioBuffer桥接**
+- PluginChain：process(f64) + process_engine(f32)
+- JsfxPlugin实现VcPlugin trait
+- AudioBuffer桥接层：ext_to_engine/engine_to_ext (f64<->f32)
+
+**Step5: PyO3桥接+RustEngineProxy**
+- RustEngine PyClass + RustEngineProxy (fallback to PythonFallbackEngine)
+
+#### Phase 22b: 多模型+Persona
+- EnhancedModelBus：4个LLM后端(OpenAI/Anthropic/Google/Ollama)
+- PersonaManager：内置/自定义Persona
+- EnhancedRuntime + ModelProvider
+
+### Fixed
+- CI: libsoup-3.0-dev + webkit2gtk deps
+- chain.rs: EngineAudioBuffer.data private field access
+- phase22b: ruff-broken imports restored
+- Track::stereo/mono convenience constructors
+- EngineAudioBuffer: resize/get/set/data_len public methods
+
+
 ## [0.21.0] - 2026-05-15
 
 ### Added
