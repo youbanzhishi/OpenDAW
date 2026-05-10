@@ -19,6 +19,17 @@
 //! - 离线渲染
 //! - AudioBuffer 桥接层
 //! - PyO3 Python绑定（需要python feature）
+//!
+//! Phase 29: AI引擎深度集成
+//! - 扒带引擎（音频→MIDI）
+//! - 智能混音v2
+//! - 风格迁移v2
+//!
+//! Phase 30: 跨DAW格式兼容
+//! - Reaper RPP导入
+//! - Ableton ALS解析
+//! - MIDI导出
+//! - 导入/导出注册表
 
 // Phase 20-25: 核心引擎层
 pub mod project;
@@ -39,6 +50,15 @@ pub mod automation;
 pub mod pattern;
 pub mod chord;
 pub mod timeline;
+
+// Phase 29: AI引擎深度集成
+pub mod transcription;
+pub mod smart_mix;
+pub mod style_transfer;
+
+// Phase 30: 跨DAW格式兼容
+pub mod import;
+pub mod export;
 
 // PyO3 Python bindings (optional, requires python feature)
 #[cfg(feature = "python")]
@@ -103,6 +123,47 @@ pub use chord::{
 pub use timeline::{
     Timeline, TimelineCursor, TimeSignature, TimeSignatureChange,
     TempoChange, TempoChangeType, TimePosition,
+};
+
+// Phase 29 重导出
+pub use transcription::{
+    TranscriptionEngine, TranscriptionConfig, TranscriptionResult,
+    TranscribedNote, PitchDetector, PitchDetection,
+    BeatDetector, BeatDetection, OnsetMethod,
+    TranscriptionToProject, TrackAllocationStrategy, TrackSuggestion,
+    KeyEstimate,
+};
+pub use smart_mix::{
+    SmartMixEngine, FrequencyAnalyzer, SpectrumAnalysis, OctaveAnalysis,
+    MixSuggestion, EqSuggestion, CompressionSuggestion,
+    AutoMixProfile, MixStyle, PanStrategy, CompressionPreset, EqCharacter,
+    LoudnessNormalizer, LoudnessResult,
+    TrackAnalysis, TrackRole,
+};
+pub use style_transfer::{
+    StyleTransferEngine, StyleProfile, StyleMorpher, MorphParams,
+    StyleFeatures, RhythmFeatures, HarmonyFeatures, TimbreFeatures,
+};
+
+// Phase 30 重导出
+pub use import::{
+    ImportRegistry, ExportRegistry,
+    ImportFormat, ExportFormat, FormatDetector,
+    ImportError, ExportError,
+};
+pub use import::reaper::{
+    ReaperProjectParser, ReaperProject, ReaperTrack, ReaperFx, ReaperFxType,
+    ReaperMidiItem, ReaperAudioItem, ReaperSend, ReaperMarker,
+    ReaperToProject, FxMapper, ReaperParseError,
+};
+pub use import::ableton::{
+    AbletonProjectParser, AbletonProject, AbletonTrack, AbletonTrackType,
+    AbletonDevice, AbletonDeviceType, AbletonParameter,
+    AbletonClip, AbletonClipContent, AbletonMidiNote, AbletonSend,
+    AbletonToProject, AbletonParseError,
+};
+pub use export::{
+    MidiExporter, MidiExportConfig, MidiEvent, MidiTrack,
 };
 
 // 兼容性别名
