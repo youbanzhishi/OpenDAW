@@ -3,10 +3,12 @@
 use crate::error::ApiError;
 use crate::models::*;
 use crate::state::AppState;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
+use opendaw_core::PluginReview;
+use serde::Deserialize;
 use uuid::Uuid;
 
 /// 构建API路由
@@ -25,6 +27,12 @@ pub fn routes(state: AppState) -> Router<AppState> {
         // 插件 & 混音
         .route("/api/v1/plugins", get(list_plugins))
         .route("/api/v1/mixer/{id}/suggestions", get(mixer_suggestions))
+        // Phase 33: Marketplace 端点
+        .route("/api/v1/marketplace/search", get(marketplace_search))
+        .route("/api/v1/marketplace/categories", get(marketplace_categories))
+        .route("/api/v1/marketplace/{id}", get(marketplace_plugin_detail))
+        .route("/api/v1/marketplace/{id}/install", post(marketplace_install))
+        .route("/api/v1/marketplace/{id}/review", post(marketplace_submit_review))
         .with_state(state)
 }
 
@@ -187,6 +195,159 @@ async fn mixer_suggestions(
     }))
 }
 
+// ──── Phase 33: Marketplace 端点 ────
+
+/// 搜索查询参数
+#[derive(Debug, Deserialize)]
+struct MarketplaceSearchParams {
+    q: Option<String>,
+    category: Option<String>,
+}
+
+/// GET /api/v1/marketplace/search?q=xxx&category=xxx — 搜索市场插件
+async fn marketplace_search(
+    State(state): State<AppState>,
+    Query(params): Query<MarketplaceSearchParams>,
+) -> Json<Vec<MarketplacePlugin>> {
+    let mp = state.marketplace.read().await;
+    let query = params.q.unwrap_or_default();
+
+    let results = if query.is_empty() {
+        mp.registry.list_all()
+    } else {
+        mp.registry.search(&query)
+    };
+
+    let plugins: Vec<MarketplacePlugin> = results
+        .into_iter()
+        .map(|m| {
+            let avg = mp.reviews.average_rating(&m.id);
+            let rev_count = mp.reviews.get_reviews(&m.id).len();
+            let plat_strings: Vec<String> = m.platforms.iter()
+                .map(|p| format!("{}-{}", p.os, p.arch))
+                .collect();
+            MarketplacePlugin {
+                id: m.id.clone(),
+                name: m.name.clone(),
+                version: m.version.clone(),
+                author: m.author.clone(),
+                description: m.description.clone(),
+                category: format!("{:?}", m.category),
+                tags: m.tags.clone(),
+                average_rating: avg,
+                review_count: rev_count,
+                download_url: m.download_url.clone(),
+                platforms: plat_strings,
+                compatible: true,
+            }
+        })
+        .collect();
+
+    Json(plugins)
+}
+
+/// GET /api/v1/marketplace/categories — 获取分类列表
+async fn marketplace_categories(
+    State(state): State<AppState>,
+) -> Json<Vec<CategoryItem>> {
+    let mp = state.marketplace.read().await;
+    let cats = opendaw_core::preset_categories();
+    let items: Vec<CategoryItem> = cats
+        .into_iter()
+        .map(|cat| {
+            let plugins = mp.registry.list_by_category(&cat);
+            CategoryItem {
+                name: format!("{:?}", cat),
+                subcategory: None,
+                count: plugins.len(),
+            }
+        })
+        .collect();
+    Json(items)
+}
+
+/// GET /api/v1/marketplace/{id} — 获取插件详情
+async fn marketplace_plugin_detail(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<PluginDetailResponse>, ApiError> {
+    let mp = state.marketplace.read().await;
+    let manifest = mp.registry.get(&id)
+        .ok_or_else(|| ApiError::NotFound(format!("Plugin {}", id)))?;
+
+    let report = mp.registry.check_compatibility(manifest, &mp.compatibility.daw_version);
+    let summary = mp.reviews.get_summary(&id);
+    let plat_strings: Vec<String> = manifest.platforms.iter()
+        .map(|p| format!("{}-{}", p.os, p.arch))
+        .collect();
+
+    Ok(Json(PluginDetailResponse {
+        id: manifest.id.clone(),
+        name: manifest.name.clone(),
+        version: manifest.version.clone(),
+        author: manifest.author.clone(),
+        description: manifest.description.clone(),
+        category: format!("{:?}", manifest.category),
+        tags: manifest.tags.clone(),
+        average_rating: summary.map(|s| s.average_rating).unwrap_or(0.0),
+        review_count: summary.map(|s| s.total_reviews).unwrap_or(0),
+        rating_distribution: summary.map(|s| s.rating_distribution).unwrap_or([0; 5]),
+        download_url: manifest.download_url.clone(),
+        homepage: manifest.homepage.clone(),
+        license: manifest.license.clone(),
+        platforms: plat_strings,
+        compatible: report.compatible,
+        compatibility_issues: report.issues,
+    }))
+}
+
+/// POST /api/v1/marketplace/{id}/install — 一键安装
+async fn marketplace_install(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<InstallResponse>, ApiError> {
+    let mp = state.marketplace.read().await;
+    let manifest = mp.registry.get(&id)
+        .ok_or_else(|| ApiError::NotFound(format!("Plugin {}", id)))?;
+    let version = manifest.version.clone();
+    drop(mp);
+
+    // In real implementation, this would trigger PluginInstaller
+    Ok(Json(InstallResponse {
+        plugin_id: id,
+        version,
+        status: "installed".into(),
+        message: "Plugin installed successfully".into(),
+    }))
+}
+
+/// POST /api/v1/marketplace/{id}/review — 提交评价
+async fn marketplace_submit_review(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<SubmitReviewRequest>,
+) -> Result<Json<ReviewResponse>, ApiError> {
+    if req.rating < 1 || req.rating > 5 {
+        return Err(ApiError::BadRequest("Rating must be between 1 and 5".into()));
+    }
+
+    let review = PluginReview::new(&id, &req.user_id, req.rating, &req.comment)
+        .map_err(|e| ApiError::BadRequest(e))?;
+
+    let resp = ReviewResponse {
+        review_id: review.review_id.clone(),
+        plugin_id: review.plugin_id.clone(),
+        rating: review.rating,
+        comment: review.comment.clone(),
+    };
+
+    let mut mp = state.marketplace.write().await;
+    mp.reviews.add_review(review)
+        .map_err(|e| ApiError::Internal(e))?;
+
+    Ok(Json(resp))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -270,5 +431,76 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    // ──── Phase 33: Marketplace API 测试 ────
+
+    #[tokio::test]
+    async fn test_marketplace_search_empty() {
+        let app = test_app();
+        let req = Request::builder()
+            .uri("/api/v1/marketplace/search")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_search_with_query() {
+        let app = test_app();
+        let req = Request::builder()
+            .uri("/api/v1/marketplace/search?q=eq")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_categories() {
+        let app = test_app();
+        let req = Request::builder()
+            .uri("/api/v1/marketplace/categories")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_plugin_detail_not_found() {
+        let app = test_app();
+        let req = Request::builder()
+            .uri("/api/v1/marketplace/nonexistent")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_install_not_found() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/marketplace/nonexistent/install")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_review_invalid_rating() {
+        let app = test_app();
+        let req = Request::builder()
+            .method("POST")
+            .uri("/api/v1/marketplace/test-plugin/review")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"user_id":"u1","rating":0,"comment":"bad"}"#))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
 }

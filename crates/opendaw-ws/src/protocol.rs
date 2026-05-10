@@ -1,4 +1,6 @@
 //! WebSocket 消息协议
+//!
+//! Phase 34: 新增 CollabComment / CollabSync / CollabAck 变体
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -61,6 +63,30 @@ pub enum WsMessage {
         action: PresenceAction,
     },
 
+    // ──── Phase 34 新增 ────
+
+    /// 协作评论（添加/回复/解决）
+    CollabComment {
+        room_id: Uuid,
+        action: CommentAction,
+        comment: CollabCommentData,
+    },
+
+    /// 全量状态同步（新用户加入时）
+    CollabSync {
+        room_id: Uuid,
+        target_user: String,
+        state: serde_json::Value,
+    },
+
+    /// 操作确认
+    CollabAck {
+        room_id: Uuid,
+        op_id: Uuid,
+        user_id: String,
+        sequence: u64,
+    },
+
     /// 心跳/Ping
     Ping,
 
@@ -110,6 +136,36 @@ pub enum PresenceAction {
     CursorMove { x: f64, y: f64 },
 }
 
+// ──── Phase 34 新增类型 ────
+
+/// 评论动作
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum CommentAction {
+    Add,
+    Reply,
+    Resolve,
+}
+
+/// 评论数据
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CollabCommentData {
+    pub comment_id: Uuid,
+    pub thread_id: Option<Uuid>,   // None = 顶级评论, Some = 回复
+    pub user_id: String,
+    pub target: CommentTarget,
+    pub content: String,
+    pub resolved: bool,
+    pub created_at: u64,
+}
+
+/// 评论目标（针对轨道/时间范围）
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum CommentTarget {
+    Track { track_id: Uuid },
+    TimeRange { start_beat: f64, end_beat: f64 },
+    TrackAndTime { track_id: Uuid, start_beat: f64, end_beat: f64 },
+}
+
 impl WsMessage {
     /// 从JSON字符串解析
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
@@ -131,6 +187,9 @@ impl WsMessage {
             WsMessage::Spectrum { .. } => "Spectrum",
             WsMessage::CollabOperation { .. } => "CollabOperation",
             WsMessage::CollabPresence { .. } => "CollabPresence",
+            WsMessage::CollabComment { .. } => "CollabComment",
+            WsMessage::CollabSync { .. } => "CollabSync",
+            WsMessage::CollabAck { .. } => "CollabAck",
             WsMessage::Ping => "Ping",
             WsMessage::Pong => "Pong",
         }
@@ -269,5 +328,104 @@ mod tests {
         };
         let json = msg.to_json().unwrap();
         assert!(json.contains("SetParam"));
+    }
+
+    // ──── Phase 34 新增测试 ────
+
+    #[test]
+    fn test_collab_comment_add() {
+        let msg = WsMessage::CollabComment {
+            room_id: Uuid::new_v4(),
+            action: CommentAction::Add,
+            comment: CollabCommentData {
+                comment_id: Uuid::new_v4(),
+                thread_id: None,
+                user_id: "user1".into(),
+                target: CommentTarget::Track { track_id: Uuid::new_v4() },
+                content: "This track needs reverb".into(),
+                resolved: false,
+                created_at: 1000,
+            },
+        };
+        let json = msg.to_json().unwrap();
+        let parsed = WsMessage::from_json(&json).unwrap();
+        assert_eq!(parsed.type_name(), "CollabComment");
+    }
+
+    #[test]
+    fn test_collab_comment_reply() {
+        let thread = Uuid::new_v4();
+        let msg = WsMessage::CollabComment {
+            room_id: Uuid::new_v4(),
+            action: CommentAction::Reply,
+            comment: CollabCommentData {
+                comment_id: Uuid::new_v4(),
+                thread_id: Some(thread),
+                user_id: "user2".into(),
+                target: CommentTarget::Track { track_id: Uuid::new_v4() },
+                content: "Agreed, I'll add it".into(),
+                resolved: false,
+                created_at: 1001,
+            },
+        };
+        let json = msg.to_json().unwrap();
+        let parsed = WsMessage::from_json(&json).unwrap();
+        assert_eq!(parsed.type_name(), "CollabComment");
+    }
+
+    #[test]
+    fn test_collab_comment_resolve() {
+        let msg = WsMessage::CollabComment {
+            room_id: Uuid::new_v4(),
+            action: CommentAction::Resolve,
+            comment: CollabCommentData {
+                comment_id: Uuid::new_v4(),
+                thread_id: None,
+                user_id: "user1".into(),
+                target: CommentTarget::TimeRange { start_beat: 0.0, end_beat: 4.0 },
+                content: "Fixed reverb".into(),
+                resolved: true,
+                created_at: 1002,
+            },
+        };
+        let json = msg.to_json().unwrap();
+        assert!(json.contains("Resolve"));
+    }
+
+    #[test]
+    fn test_collab_sync() {
+        let msg = WsMessage::CollabSync {
+            room_id: Uuid::new_v4(),
+            target_user: "newuser".into(),
+            state: serde_json::json!({"tracks": [], "bpm": 120}),
+        };
+        let json = msg.to_json().unwrap();
+        let parsed = WsMessage::from_json(&json).unwrap();
+        assert_eq!(parsed.type_name(), "CollabSync");
+    }
+
+    #[test]
+    fn test_collab_ack() {
+        let msg = WsMessage::CollabAck {
+            room_id: Uuid::new_v4(),
+            op_id: Uuid::new_v4(),
+            user_id: "user1".into(),
+            sequence: 42,
+        };
+        let json = msg.to_json().unwrap();
+        let parsed = WsMessage::from_json(&json).unwrap();
+        assert_eq!(parsed.type_name(), "CollabAck");
+    }
+
+    #[test]
+    fn test_comment_target_track_and_time() {
+        let target = CommentTarget::TrackAndTime {
+            track_id: Uuid::new_v4(),
+            start_beat: 1.0,
+            end_beat: 5.0,
+        };
+        let json = serde_json::to_string(&target).unwrap();
+        let parsed: CommentTarget = serde_json::from_str(&json).unwrap();
+        assert!(matches!(parsed, CommentTarget::TrackAndTime { .. }));
     }
 }

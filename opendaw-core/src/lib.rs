@@ -30,6 +30,12 @@
 //! - Ableton ALS解析
 //! - MIDI导出
 //! - 导入/导出注册表
+//!
+//! Phase 33: 插件市场完善
+//! - 远程仓库连接 + 索引缓存
+//! - 评分与评论系统
+//! - 分类体系增强
+//! - 平台兼容性检测
 
 // Phase 20-25: 核心引擎层
 pub mod project;
@@ -58,6 +64,7 @@ pub mod style_transfer;
 
 // Phase 30: 跨DAW格式兼容
 // Phase 31-32: 接口层后端
+// Phase 33: 插件市场完善
 pub mod marketplace;
 
 pub mod import;
@@ -173,8 +180,14 @@ pub use export::{
 #[deprecated(since = "0.24.0", note = "使用 ExtAudioBuffer 或 EngineAudioBuffer")]
 pub type AudioBuffer = opendaw_extension::AudioBuffer;
 
-// Phase 31-32 重导出
+// Phase 31-33 重导出
 pub use marketplace::{
     PluginRegistry, PluginManifest, PluginCategory, Dependency,
     PluginInstaller, InstallStatus, InstallProgress, CompatibilityReport,
+    // Phase 33 新增
+    PluginRepository, RepositorySource, CachedIndex,
+    PluginReview, ReviewManager, RatingSummary,
+    PluginCompatibility, PlatformTarget,
+    EffectSubcategory, InstrumentSubcategory, UtilitySubcategory,
+    preset_categories,
 };

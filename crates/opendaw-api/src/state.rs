@@ -1,6 +1,10 @@
 //! 应用状态 — 共享项目/引擎实例
 
 use crate::models::{Project, ProjectInfo};
+use opendaw_core::{
+    PluginRegistry, PluginRepository, RepositorySource, ReviewManager,
+    PluginCompatibility, PlatformTarget,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -11,6 +15,8 @@ use uuid::Uuid;
 pub struct AppState {
     pub projects: Arc<RwLock<HashMap<Uuid, Project>>>,
     pub render_tasks: Arc<RwLock<HashMap<Uuid, RenderTask>>>,
+    /// Phase 33: Marketplace 状态
+    pub marketplace: Arc<RwLock<MarketplaceState>>,
 }
 
 /// 渲染任务状态
@@ -32,11 +38,43 @@ pub enum RenderStatus {
     Failed,
 }
 
+/// Phase 33: Marketplace 聚合状态
+#[derive(Debug)]
+pub struct MarketplaceState {
+    pub registry: PluginRegistry,
+    pub repository: PluginRepository,
+    pub reviews: ReviewManager,
+    pub compatibility: PluginCompatibility,
+}
+
+impl MarketplaceState {
+    pub fn new() -> Self {
+        Self {
+            registry: PluginRegistry::new(),
+            repository: PluginRepository::new(),
+            reviews: ReviewManager::new(),
+            compatibility: PluginCompatibility::new("0.31.0", "linux", "x86_64"),
+        }
+    }
+}
+
 impl AppState {
     pub fn new() -> Self {
+        let mut marketplace = MarketplaceState::new();
+        // 预注册官方仓库
+        let _ = marketplace.repository.add_source(RepositorySource {
+            id: "official".into(),
+            url: "https://plugins.opendaw.dev/index.json".into(),
+            name: "OpenDAW Official".into(),
+            is_official: true,
+            enabled: true,
+            ttl_secs: 3600,
+        });
+
         Self {
             projects: Arc::new(RwLock::new(HashMap::new())),
             render_tasks: Arc::new(RwLock::new(HashMap::new())),
+            marketplace: Arc::new(RwLock::new(marketplace)),
         }
     }
 
@@ -200,5 +238,13 @@ mod tests {
         let state = AppState::new();
         let result = state.update_project(Uuid::new_v4(), Some("X".into()), None).await;
         assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_marketplace_state_initialized() {
+        let state = AppState::new();
+        let mp = state.marketplace.read().await;
+        let sources = mp.repository.list_sources();
+        assert!(!sources.is_empty());
     }
 }

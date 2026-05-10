@@ -176,6 +176,80 @@ impl Project {
     }
 }
 
+// ──── Phase 33: Marketplace 模型 ────
+
+/// 市场插件搜索结果
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MarketplacePlugin {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub author: String,
+    pub description: String,
+    pub category: String,
+    pub tags: Vec<String>,
+    pub average_rating: f32,
+    pub review_count: usize,
+    pub download_url: Option<String>,
+    pub platforms: Vec<String>,
+    pub compatible: bool,
+}
+
+/// 提交评价请求
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SubmitReviewRequest {
+    pub user_id: String,
+    pub rating: u8,
+    pub comment: String,
+}
+
+/// 评价响应
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReviewResponse {
+    pub review_id: String,
+    pub plugin_id: String,
+    pub rating: u8,
+    pub comment: String,
+}
+
+/// 插件详情响应
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PluginDetailResponse {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub author: String,
+    pub description: String,
+    pub category: String,
+    pub tags: Vec<String>,
+    pub average_rating: f32,
+    pub review_count: usize,
+    pub rating_distribution: [usize; 5],
+    pub download_url: Option<String>,
+    pub homepage: Option<String>,
+    pub license: Option<String>,
+    pub platforms: Vec<String>,
+    pub compatible: bool,
+    pub compatibility_issues: Vec<String>,
+}
+
+/// 安装响应
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InstallResponse {
+    pub plugin_id: String,
+    pub version: String,
+    pub status: String,
+    pub message: String,
+}
+
+/// 分类列表项
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CategoryItem {
+    pub name: String,
+    pub subcategory: Option<String>,
+    pub count: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,5 +340,35 @@ mod tests {
             reason: "Too loud in mix".into(),
         };
         assert_eq!(item.action, "reduce_volume");
+    }
+
+    #[test]
+    fn test_submit_review_request() {
+        let req = SubmitReviewRequest {
+            user_id: "u1".into(),
+            rating: 4,
+            comment: "Great".into(),
+        };
+        assert_eq!(req.rating, 4);
+    }
+
+    #[test]
+    fn test_marketplace_plugin() {
+        let mp = MarketplacePlugin {
+            id: "eq7".into(),
+            name: "7-Band EQ".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW".into(),
+            description: "An EQ".into(),
+            category: "effect".into(),
+            tags: vec!["equalizer".into()],
+            average_rating: 4.5,
+            review_count: 10,
+            download_url: None,
+            platforms: vec!["linux-x86_64".into()],
+            compatible: true,
+        };
+        assert_eq!(mp.id, "eq7");
+        assert!(mp.compatible);
     }
 }
