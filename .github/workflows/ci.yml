@@ -22,31 +22,19 @@ jobs:
         with:
           components: clippy, rustfmt
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          cache-on-failure: true
 
-      - name: Cargo check (opendaw-core)
-        run: cargo check -p opendaw-core
+      - name: Cargo check
+        run: cargo check --workspace --exclude desktop
 
-      - name: Cargo check (opendaw-api)
-        run: cargo check -p opendaw-api
-
-      - name: Cargo check (opendaw-cli)
-        run: cargo check -p opendaw-cli
-
-      - name: Run tests (opendaw-core only)
-        run: cargo test -p opendaw-core
+      - name: Run tests
+        run: cargo test --workspace --exclude desktop
 
       - name: Clippy
-        run: cargo clippy -p opendaw-core -p opendaw-api -p opendaw-cli -- -D warnings
+        run: cargo clippy --workspace --exclude desktop -- -D warnings
 
       - name: Format check
         run: cargo fmt --check

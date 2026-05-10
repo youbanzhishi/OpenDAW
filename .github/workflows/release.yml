@@ -1,12 +1,3 @@
-# ============================================================================
-# release.yml - OpenDAW Release 工作流
-#
-# 参考: 共享知识/CI模式库/rust-ci.md Release流程
-# 流程: tag v* → 多平台构建 → Docker推GHCR → GitHub Release
-# Docker缓存: GHA原生 cache-from: type=gha, cache-to: type=gha,mode=max
-# Release: softprops/action-gh-release@v2 + generate_release_notes: true
-# ============================================================================
-
 name: Release
 
 on:
@@ -20,7 +11,6 @@ permissions:
   packages: write
 
 jobs:
-  # ========== Rust Release 二进制构建 ==========
   build-binary:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
@@ -30,20 +20,20 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact_name: vcmix
-            asset_name: vcmix-linux-amd64
+            artifact_name: opendaw
+            asset_name: opendaw-linux-amd64
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: vcmix
-            asset_name: vcmix-macos-amd64
+            artifact_name: opendaw
+            asset_name: opendaw-macos-amd64
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact_name: vcmix
-            asset_name: vcmix-macos-arm64
+            artifact_name: opendaw
+            asset_name: opendaw-macos-arm64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: vcmix.exe
-            asset_name: vcmix-windows-amd64.exe
+            artifact_name: opendaw.exe
+            asset_name: opendaw-windows-amd64
 
     steps:
       - uses: actions/checkout@v4
@@ -59,8 +49,14 @@ jobs:
           cache-on-failure: true
           key: ${{ matrix.target }}
 
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev
+
       - name: Build release
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release -p opendaw-cli --target ${{ matrix.target }}
 
       - name: Package (Unix)
         if: matrix.os != 'windows-latest'
@@ -82,87 +78,10 @@ jobs:
             ${{ matrix.asset_name }}.tar.gz
             ${{ matrix.asset_name }}.zip
 
-  # ========== Python 测试 + PyPI 发布 ==========
-  build-and-publish-pypi:
-    name: Build & Publish to PyPI
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install and test
-        run: |
-          pip install -e ".[dev]"
-          pytest --tb=short -q
-
-      - name: Install build tools
-        run: pip install build twine
-
-      - name: Build package
-        run: python -m build
-
-      - name: Check package
-        run: twine check dist/*
-
-      - name: Publish to PyPI (Trusted Publisher)
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          attestations: false
-        continue-on-error: true
-
-  # ========== Docker 镜像构建 + 推 GHCR ==========
-  docker:
-    name: Build & Push Docker
-    runs-on: ubuntu-latest
-    needs: [build-binary, build-and-publish-pypi]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/vcmix
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          build-args: |
-            OPENDAW_VERSION=${{ github.ref_name }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ========== 创建 GitHub Release ==========
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build-binary, docker]
+    needs: [build-binary]
     steps:
       - uses: actions/checkout@v4
         with:

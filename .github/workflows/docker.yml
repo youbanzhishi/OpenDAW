@@ -11,80 +11,41 @@ permissions:
   packages: write
 
 jobs:
-  build-core:
-    name: Build & Push (core)
+  build-and-push:
+    name: Build & Push Docker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract version
-        id: version
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION="${{ github.ref_name }}"
-          else
-            VERSION="dev-$(echo ${{ github.sha }} | cut -c1-7)"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      - name: Build and push core image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          build-args: |
-            VCMIX_PROFILE=core
-            OPENDAW_VERSION=${{ steps.version.outputs.version }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/vcmix:core-${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/vcmix:core-latest
-          cache-from: type=gha,scope=core
-          cache-to: type=gha,mode=max,scope=core
-      - name: Smoke test core
-        run: docker run --rm ghcr.io/${{ github.repository_owner }}/vcmix:core-latest sh -c "python -m vcmix.cli --help && python -c 'from vcmix.web.app import create_app; print(create_app)'"
 
-  build-full:
-    name: Build & Push (full)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract version
-        id: version
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION="${{ github.ref_name }}"
-          else
-            VERSION="dev-$(echo ${{ github.sha }} | cut -c1-7)"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-      - name: Build and push full image
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/opendaw
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          build-args: |
-            VCMIX_PROFILE=full
-            OPENDAW_VERSION=${{ steps.version.outputs.version }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/vcmix:full-${{ steps.version.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/vcmix:full-latest
-          cache-from: type=gha,scope=full
-          cache-to: type=gha,mode=max,scope=full
-      - name: Smoke test full
-        run: |
-          docker run --rm ghcr.io/${{ github.repository_owner }}/vcmix:full-latest python -c "import torch; print(torch.__version__)"
-          docker run --rm ghcr.io/${{ github.repository_owner }}/vcmix:full-latest python -c "import demucs"
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test
+        run: docker run --rm ghcr.io/${{ github.repository }}/opendaw:${{ steps.meta.outputs.version }} ./opendaw --help
