@@ -14,7 +14,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from model_provider import (
+from vcmix.agent.phase22b.model_provider import (
     LLMResponse,
     ModelInfo,
     ModelProvider,

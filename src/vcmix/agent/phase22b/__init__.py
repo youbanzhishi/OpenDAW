@@ -30,12 +30,12 @@ Usage:
 """
 
 # Import from local modules (Phase 22b implementation)
-from enhanced_modelbus import (
+from vcmix.agent.phase22b.enhanced_modelbus import (
     EnhancedModelBus,
     MessageContext,
     ProviderConfig,
 )
-from model_provider import (
+from vcmix.agent.phase22b.model_provider import (
     MODEL_REGISTRY,
     LLMResponse,
     ModelInfo,
@@ -44,7 +44,7 @@ from model_provider import (
     create_provider,
     get_available_models,
 )
-from persona_manager import (
+from vcmix.agent.phase22b.persona_manager import (
     Persona,
     PersonaManager,
     get_persona_manager,
@@ -59,7 +59,7 @@ except ImportError:
     _HAS_PHASE22A = False
 
 # Import enhanced runtime (with fallback stubs)
-from enhanced_runtime import (
+from vcmix.agent.phase22b.enhanced_runtime import (
     AgentAction,
     AgentResponse,
     EnhancedAgentRuntime,

@@ -5,7 +5,7 @@ test_enhanced_runtime.py — Tests for Enhanced Runtime (Phase 22b).
 import tempfile
 
 import pytest
-from persona_manager import PersonaManager
+from vcmix.agent.phase22b.persona_manager import PersonaManager
 
 # Add parent directory to path
 from vcmix.agent.phase22b.enhanced_modelbus import ProviderConfig

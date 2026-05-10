@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from enhanced_modelbus import EnhancedModelBus, ProviderConfig
+from vcmix.agent.phase22b.enhanced_modelbus import EnhancedModelBus, ProviderConfig
 
 # Import Phase 22a components - these are from the existing VCMix agent module
 # When used standalone, we'll use mock implementations
@@ -63,7 +63,7 @@ except ImportError:
             pass
 
 # Import persona from this module (not vcmix)
-from persona_manager import Persona, PersonaManager, get_persona_manager
+from vcmix.agent.phase22b.persona_manager import Persona, PersonaManager, get_persona_manager
 
 logger = logging.getLogger("vcmix.agent.enhanced_runtime")
 
