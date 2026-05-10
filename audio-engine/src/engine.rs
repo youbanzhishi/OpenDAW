@@ -1454,7 +1454,7 @@ mod tests {
         // 两个位置输出的相位应该不同
         // 检查前几个样本
         let same_count = output1.iter().zip(output2.iter())
-            .filter(|(a, b)| (a - b).abs() < 0.001)
+            .filter(|(a, b)| (*a - *b).abs() < 0.001f32)
             .count();
         
         // 由于相位不同，相同样本数量应该很少

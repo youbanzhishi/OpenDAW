@@ -615,8 +615,8 @@ mod tests {
         // 使用hound写入WAV文件
         let tmp_path = std::env::temp_dir().join("hound_test.wav");
         let spec = hound::WavSpec {
-            channels,
-            sample_rate,
+            channels: channels as u16,
+            sample_rate: sample_rate as u32,
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
