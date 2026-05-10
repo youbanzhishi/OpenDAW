@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.25.0] - 2026-05-10
+
+### Added
+#### v0.25.0 桌面App音频播放串联
+
+**音频后端集成 (audio-engine)**
+- 新增 `channel` feature：通过 crossbeam-channel 传递音频帧
+- 新增 `channel_output.rs`：AudioOutputHandle, AudioFrame, AudioRenderer
+- AudioEngine 新增：setup_channel_output, send_output_frame, set_output_handle
+
+**Desktop音频输出 (desktop/src-tauri/src/audio_output.rs)**
+- DesktopAudioOutput：通过CPAL实现实时音频播放
+- 在独立线程中运行CPAL Stream（解决Linux下Stream不是Send的问题）
+- AudioOutputState：线程安全的音频输出封装
+
+**Tauri命令增强**
+- audio_init：初始化音频输出
+- audio_get_status：获取播放状态
+- audio_play/stop/pause/resume：播放控制
+- audio_load_and_play：加载WAV并播放
+- audio_set_master_volume：设置主音量
+- audio_get_devices：获取可用音频设备
+
+**前端UI增强**
+- 播放/停止按钮绑定到Tauri音频命令
+- 音量滑块 → audio_set_master_volume
+- Load WAV按钮 → audio_load_and_play
+- 播放状态显示
+
+### Changed
+- desktop/Cargo.toml：启用 audio-engine/channel feature，添加 cpal + crossbeam-channel 依赖
+- desktop/src-tauri/src/state.rs：添加 audio_output 状态
+- desktop/src-tauri/src/lib.rs：注册新音频命令
+
 ## [0.24.0] - 2026-05-10
 
 ### Added

@@ -56,6 +56,11 @@ const dom = {
   timeSigSelect:   $('time-sig-select'),
   backendStatus:   $('backend-status'),
 
+  // v0.25.0: Audio controls
+  btnLoadWav:      $('btn-load-wav'),
+  volumeSlider:    $('volume-slider'),
+  volumeDisplay:  $('volume-display'),
+
   // DAW Layout
   trackList:       $('track-list'),
   mixerStrips:     $('mixer-strips'),
@@ -124,18 +129,77 @@ function updateTimeDisplay() {
 
 let transportRaf = null;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// v0.25.0: Tauri Audio Commands
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function tauriInvoke(cmd, args = {}) {
+  if (typeof window.__TAURI_INVOKE__ !== 'undefined') {
+    try {
+      return await window.__TAURI_INVOKE__(cmd, args);
+    } catch (e) {
+      console.error(`Tauri invoke ${cmd} failed:`, e);
+      return null;
+    }
+  }
+  return null;
+}
+
+async function audioPlay() {
+  // 初始化音频输出（如果尚未初始化）
+  await tauriInvoke('audio_init', { sample_rate: 44100, buffer_size: 256 });
+  // 启动播放
+  await tauriInvoke('audio_play');
+  setStatus('Playing (real audio)');
+}
+
+async function audioStop() {
+  await tauriInvoke('audio_stop');
+  state.currentTime = 0;
+  updateTimeDisplay();
+  setStatus('Stopped');
+}
+
+async function audioLoadAndPlay(filePath) {
+  try {
+    await tauriInvoke('audio_load_and_play', {
+      file_path: filePath,
+      track_id: 'main'
+    });
+    setStatus(`Playing: ${filePath.split('/').pop()}`);
+  } catch (e) {
+    setStatus('Failed to load audio');
+    console.error('Failed to load audio:', e);
+  }
+}
+
+async function audioSetVolume(volumeDb) {
+  await tauriInvoke('audio_set_master_volume', { volume_db: volumeDb });
+}
+
+async function audioGetStatus() {
+  return await tauriInvoke('audio_get_status');
+}
+
+// ── Original Transport Functions (enhanced) ─────────────────────────────
+
 function play() {
   if (state.playing) return;
   state.playing = true;
   dom.btnPlay.classList.add('playing');
   dom.btnPlay.textContent = '⏸';
 
+  // 尝试通过Tauri启动真实音频播放
+  audioPlay().catch(() => {
+    // 如果失败，使用模拟播放
+    console.log('Using simulated playback (no audio device or Tauri not available)');
+  });
+
   const startTime = performance.now() - state.currentTime * 1000;
   function tick() {
     if (!state.playing) return;
     state.currentTime = (performance.now() - startTime) / 1000;
     updateTimeDisplay();
-    // Simulate meter activity on playing tracks
     simulateMeters();
     transportRaf = requestAnimationFrame(tick);
   }
@@ -153,6 +217,12 @@ function stop() {
   cancelAnimationFrame(transportRaf);
   dom.btnPlay.classList.remove('playing');
   dom.btnPlay.textContent = '▶';
+
+  // 通过Tauri停止音频播放
+  audioStop().catch(() => {
+    console.log('Using simulated stop');
+  });
+
   setStatus('Stopped');
 }
 
@@ -830,6 +900,43 @@ function setupEventListeners() {
   // Master fader
   dom.masterFader.addEventListener('input', e => {
     dom.masterDb.textContent = parseFloat(e.target.value).toFixed(1) + ' dB';
+  });
+
+  // v0.25.0: Volume slider
+  dom.volumeSlider.addEventListener('input', e => {
+    const vol = parseFloat(e.target.value);
+    dom.volumeDisplay.textContent = vol + ' dB';
+    audioSetVolume(vol);
+  });
+
+  // v0.25.0: Load WAV button
+  dom.btnLoadWav.addEventListener('click', async () => {
+    // 如果在Tauri环境中，使用文件对话框
+    if (typeof window.__TAURI_DIALOG__ !== 'undefined') {
+      try {
+        const { open } = window.__TAURI_DIALOG__;
+        const filePath = await open({
+          multiple: false,
+          filters: [{ name: 'Audio', extensions: ['wav', 'mp3', 'ogg', 'flac'] }]
+        });
+        if (filePath) {
+          await audioLoadAndPlay(filePath);
+        }
+      } catch (e) {
+        console.error('File dialog error:', e);
+        // Fallback: 提示用户输入路径
+        const path = prompt('Enter WAV file path:');
+        if (path) {
+          await audioLoadAndPlay(path);
+        }
+      }
+    } else {
+      // 非Tauri环境：提示用户输入路径
+      const path = prompt('Enter WAV file path:');
+      if (path) {
+        await audioLoadAndPlay(path);
+      }
+    }
   });
 }
 

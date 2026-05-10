@@ -1,27 +1,31 @@
-//! VCMix Desktop — Tauri Shell (v0.24.0)
+//! VCMix Desktop — Tauri Shell (v0.25.0)
 //!
 //! Tauri v2 desktop app for VCMix. Modular structure:
-//!   - backend.rs  → BackendState, spawn/kill/wait backend
-//!   - state.rs    → AppState, Rust engine + Python backend unified state
-//!   - commands.rs → All #[tauri::command] functions
-//!   - lib.rs      → Module declarations + run() entry point
-//!   - main.rs     → fn main() { vcmix_desktop_lib::run() }
+//!   - backend.rs      → BackendState, spawn/kill/wait backend
+//!   - state.rs        → AppState, Rust engine + Python backend unified state
+//!   - audio_output.rs → DesktopAudioOutput, CPAL audio playback
+//!   - commands.rs     → All #[tauri::command] functions
+//!   - lib.rs         → Module declarations + run() entry point
+//!   - main.rs        → fn main() { vcmix_desktop_lib::run() }
 //!
-//! v0.24.0 additions:
-//!   - transport_play / transport_stop / list_projects / get_project
-//!   - create_project / add_track / delete_track / agent_chat / automix_project
+//! v0.25.0 additions:
+//!   - Real-time audio playback via CPAL
+//!   - Channel-based audio frame transport from AudioEngine
+//!   - Frontend UI bindings for play/stop/load_wav/volume controls
 
 mod backend;
 mod commands;
 mod state;
+mod audio_output;
 
 pub use backend::BackendState;
 pub use state::AppState;
+pub use audio_output::{AudioOutputState, DesktopAudioOutput, OutputConfig, OutputError, OutputState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("╔══════════════════════════════════════════╗");
-    println!("║   VCMix Desktop — Tauri Shell (v0.24.0) ║");
+    println!("║   VCMix Desktop — Tauri Shell (v0.25.0) ║");
     println!("╚══════════════════════════════════════════╝");
 
     // Spawn Python backend
@@ -92,6 +96,16 @@ pub fn run() {
             commands::engine_toggle_track_mute,
             // v0.24.0 Registry Commands
             commands::registry_stats,
+            // v0.25.0 Audio Playback Commands
+            commands::audio_init,
+            commands::audio_get_status,
+            commands::audio_play,
+            commands::audio_stop,
+            commands::audio_pause,
+            commands::audio_resume,
+            commands::audio_load_and_play,
+            commands::audio_set_master_volume,
+            commands::audio_get_devices,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

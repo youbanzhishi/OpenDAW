@@ -18,9 +18,11 @@ tokio = { version = "1", features = ["full"] }
 ctrlc = "3"
 urlencoding = "2"
 opendaw-core = { path = "../../opendaw-core" }
-audio-engine = { path = "../../audio-engine" }
+audio-engine = { path = "../../audio-engine", features = ["channel"] }
 opendaw-extension = { path = "../../opendaw-extension" }
 parking_lot = "0.12"
+cpal = "0.15"
+crossbeam-channel = "0.5"
 
 [lib]
 name = "vcmix_desktop_lib"

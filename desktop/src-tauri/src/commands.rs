@@ -588,6 +588,131 @@ pub fn engine_toggle_track_mute(state: State<'_, AppState>, track_id: String) ->
         .map_err(|e| e.to_string())
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// v0.25.0: Audio Playback Commands
+// ═══════════════════════════════════════════════════════════════════════════
+
+use crate::audio_output::{OutputState as AudioOutputState, OutputConfig};
+
+#[derive(Debug, Serialize)]
+pub struct AudioPlaybackStatus {
+    pub engine_state: String,
+    pub output_state: String,
+    pub track_count: usize,
+    pub has_audio_loaded: bool,
+}
+
+/// 初始化音频输出
+#[tauri::command]
+pub fn audio_init(
+    state: State<'_, AppState>,
+    sample_rate: Option<f64>,
+    buffer_size: Option<usize>,
+) -> Result<(), String> {
+    let sr = sample_rate.unwrap_or(44100.0) as f64;
+    let bs = buffer_size.unwrap_or(256);
+    let audio_output = state.audio_output.lock();
+    audio_output.init(sr, bs).map_err(|e| e.to_string())
+}
+
+/// 获取音频播放状态
+#[tauri::command]
+pub fn audio_get_status(state: State<'_, AppState>) -> Result<AudioPlaybackStatus, String> {
+    let audio_output = state.audio_output.lock();
+    let engine = state.engine.lock();
+
+    // 检查是否有音频加载
+    let has_audio_loaded = engine.track_count() > 0 && {
+        let first_track = engine.get_buffer("main")
+            .or_else(|| engine.get_buffer("track_0"));
+        first_track.map(|b| b.frames > 0).unwrap_or(false)
+    };
+
+    Ok(AudioPlaybackStatus {
+        engine_state: format!("{:?}", engine.get_state()),
+        output_state: format!("{:?}", audio_output.output_state()),
+        track_count: engine.track_count(),
+        has_audio_loaded,
+    })
+}
+
+/// 启动音频播放
+#[tauri::command]
+pub fn audio_play(state: State<'_, AppState>) -> Result<(), String> {
+    let audio_output = state.audio_output.lock();
+    audio_output.start().map_err(|e| e.to_string())
+}
+
+/// 停止音频播放
+#[tauri::command]
+pub fn audio_stop(state: State<'_, AppState>) -> Result<(), String> {
+    let audio_output = state.audio_output.lock();
+    audio_output.stop();
+    Ok(())
+}
+
+/// 暂停音频播放
+#[tauri::command]
+pub fn audio_pause(state: State<'_, AppState>) -> Result<(), String> {
+    let audio_output = state.audio_output.lock();
+    audio_output.pause();
+    Ok(())
+}
+
+/// 恢复音频播放
+#[tauri::command]
+pub fn audio_resume(state: State<'_, AppState>) -> Result<(), String> {
+    let audio_output = state.audio_output.lock();
+    audio_output.resume();
+    Ok(())
+}
+
+/// 加载WAV文件到主音轨并播放
+#[tauri::command]
+pub fn audio_load_and_play(
+    state: State<'_, AppState>,
+    file_path: String,
+    track_id: Option<String>,
+) -> Result<(), String> {
+    let track = track_id.unwrap_or_else(|| "main".to_string());
+
+    // 初始化音频输出
+    {
+        let audio_output = state.audio_output.lock();
+        audio_output.init(44100.0, 256).map_err(|e| e.to_string())?;
+    }
+
+    // 注册音轨并加载WAV
+    {
+        let audio_output = state.audio_output.lock();
+        audio_output.register_track(&track)?;
+        audio_output.load_wav(&track, &file_path)?;
+    }
+
+    // 启动播放
+    {
+        let audio_output = state.audio_output.lock();
+        audio_output.start().map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+/// 设置主音量
+#[tauri::command]
+pub fn audio_set_master_volume(state: State<'_, AppState>, volume_db: f64) -> Result<(), String> {
+    let audio_output = state.audio_output.lock();
+    audio_output.set_master_volume(volume_db);
+    Ok(())
+}
+
+/// 获取可用音频设备列表
+#[tauri::command]
+pub fn audio_get_devices() -> Result<Vec<String>, String> {
+    use crate::DesktopAudioOutput;
+    DesktopAudioOutput::device_info().map_err(|e| e.to_string())
+}
+
 // ── Registry命令 ───────────────────────────────────────────────────────
 
 /// 获取扩展注册中心统计信息

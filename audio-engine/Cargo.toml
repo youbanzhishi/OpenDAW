@@ -7,10 +7,11 @@ description = "OpenDAW音频引擎核心 - CPAL实时音频I/O"
 [features]
 default = []
 audio = ["cpal"]
+channel = ["cpal", "crossbeam-channel"]
 
 [dependencies]
 cpal = { version = "0.15", optional = true }
-crossbeam-channel = "0.5"
+crossbeam-channel = { version = "0.5", optional = true }
 parking_lot = "0.12"
 thiserror = "1.0"
 hound = "3.5"

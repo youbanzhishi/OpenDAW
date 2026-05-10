@@ -40,6 +40,12 @@
     </div>
 
     <div class="header-right">
+        <!-- v0.25.0: Audio controls -->
+        <div class="audio-controls">
+            <button id="btn-load-wav" class="action-btn" title="Load WAV File">🎵 Load WAV</button>
+            <input type="range" id="volume-slider" min="-60" max="12" value="0" step="1" title="Master Volume">
+            <span id="volume-display">0 dB</span>
+        </div>
         <div class="backend-status" id="backend-status">
             <span class="dot offline"></span>
             <span class="status-text">Connecting…</span>

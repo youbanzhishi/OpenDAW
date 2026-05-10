@@ -128,6 +128,9 @@ pub struct AudioEngine {
     /// CPAL 音频流（启用 `audio` feature 时可用）
     #[cfg(feature = "audio")]
     stream: Option<cpal::Stream>,
+    /// 音频输出句柄（启用 `channel` feature 时可用）
+    #[cfg(feature = "channel")]
+    output_handle: Option<super::channel_output::AudioOutputHandle>,
 }
 
 impl Default for AudioEngine {
@@ -152,6 +155,8 @@ impl AudioEngine {
             scheduler: None,
             #[cfg(feature = "audio")]
             stream: None,
+            #[cfg(feature = "channel")]
+            output_handle: None,
         }
     }
 
@@ -517,6 +522,74 @@ impl AudioEngine {
         if state.engine_state == EngineState::Playing {
             state.position += self.buffer_size;
         }
+    }
+
+    // ==================== Channel Feature: 音频输出通道 ====================
+
+    /// 设置音频输出句柄（channel feature）
+    ///
+    /// 用于在外部线程中接收渲染好的音频帧。
+    /// 通常与 AudioOutputHandle 配合使用。
+    #[cfg(feature = "channel")]
+    pub fn set_output_handle(&mut self, handle: super::channel_output::AudioOutputHandle) {
+        self.output_handle = Some(handle);
+    }
+
+    /// 获取音频输出句柄的克隆（channel feature）
+    ///
+    /// 如果未设置输出句柄，返回 None。
+    #[cfg(feature = "channel")]
+    pub fn get_output_handle(&self) -> Option<super::channel_output::AudioOutputHandle> {
+        self.output_handle.clone()
+    }
+
+    /// 创建音频输出并返回句柄（channel feature）
+    ///
+    /// 这是一个便捷方法，同时设置内部句柄并返回接收端。
+    /// 返回 (output_handle, receiver)
+    #[cfg(feature = "channel")]
+    pub fn setup_channel_output(
+        &mut self,
+        buffer_size: usize,
+        channels: usize,
+    ) -> (
+        super::channel_output::AudioOutputHandle,
+        crossbeam_channel::Receiver<super::channel_output::AudioFrame>,
+    ) {
+        let (handle, receiver) = super::channel_output::AudioOutputHandle::new(buffer_size, channels);
+        self.output_handle = Some(handle.clone());
+        (handle, receiver)
+    }
+
+    /// 通过channel发送一个渲染帧（channel feature）
+    ///
+    /// 如果设置了output_handle且引擎正在播放，则渲染帧并发送。
+    /// 通常由外部音频线程调用。
+    #[cfg(feature = "channel")]
+    pub fn send_output_frame(&self) -> bool {
+        use super::channel_output::AudioFrame;
+
+        let output_handle = match &self.output_handle {
+            Some(h) => h,
+            None => return false,
+        };
+
+        let state = self.shared.lock();
+        if state.engine_state != EngineState::Playing {
+            return false;
+        }
+
+        let channels = state.channels.max(1);
+        let frames = self.buffer_size;
+        let mut output = vec![0.0f32; channels * frames];
+
+        // 渲染音频
+        drop(state); // 释放锁，允许render_frame获取状态
+        self.render_frame(&mut output, frames);
+
+        // 发送帧
+        let frame = AudioFrame::new(output, channels);
+        output_handle.try_send_frame(frame)
     }
 
     // ==================== 混音辅助（供模拟模式使用）====================

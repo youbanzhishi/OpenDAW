@@ -39,6 +39,10 @@ pub mod scheduler;
 pub mod state;
 pub mod track;
 
+// Channel feature: 音频输出通道，用于跨线程/跨进程传递音频帧
+#[cfg(feature = "channel")]
+pub mod channel_output;
+
 // ==================== 公共接口重导出 ====================
 
 pub use buffer::{AudioBuffer, RingBuffer};
@@ -46,6 +50,10 @@ pub use engine::AudioEngine;
 pub use scheduler::{ProcessCallback, Scheduler};
 pub use state::{EngineError, EngineState};
 pub use track::Track;
+
+// Channel feature exports
+#[cfg(feature = "channel")]
+pub use channel_output::{AudioFrame, AudioOutputHandle, AudioRenderer, OutputConfig};
 
 /// 兼容别名（opendaw-core 使用此名称）
 pub type EngineAudioBuffer = AudioBuffer;
