@@ -105,7 +105,7 @@ impl FrequencyAnalyzer {
         // 计算RMS和峰值
         let rms: f64 = (audio.iter().map(|&s| s * s).sum::<f64>() / audio.len() as f64).sqrt();
         let total_rms_db = if rms > 1e-10 { 20.0 * rms.log10() } else { -120.0 };
-        let peak = audio.iter().cloned().fold(0.0f64, f64::abs);
+        let peak = audio.iter().cloned().fold(0.0f64, |a, b| a.abs().max(b.abs()));
         let peak_db = if peak > 1e-10 { 20.0 * peak.log10() } else { -120.0 };
         let dynamic_range_db = total_rms_db - peak_db;
 
@@ -151,7 +151,7 @@ impl FrequencyAnalyzer {
                 let high_bin = (high / freq_res).min(magnitude_db.len() as f64) as usize;
 
                 let mut energy_sum = 0.0;
-                let mut peak = -120.0;
+                let mut peak: f64 = -120.0;
                 let count = if high_bin > low_bin { high_bin - low_bin } else { 1 };
 
                 for bin in low_bin..high_bin.min(magnitude_db.len()) {
@@ -586,7 +586,7 @@ impl LoudnessNormalizer {
         let gain_db = self.target_lufs - current_lufs;
 
         // 计算真峰值
-        let true_peak = audio.iter().cloned().fold(0.0f64, f64::abs);
+        let true_peak = audio.iter().cloned().fold(0.0f64, |a, b| a.abs().max(b.abs()));
         let true_peak_db = if true_peak > 1e-10 {
             20.0 * true_peak.log10()
         } else {
@@ -620,7 +620,7 @@ impl LoudnessNormalizer {
             if result.needs_limiting {
                 let threshold = 10.0_f64.powf(self.max_true_peak / 20.0);
                 if sample.abs() > threshold {
-                    *sample = threshold * sample.signum() * (1.0 - (-(*sample.abs() - threshold) * 10.0).exp());
+                    *sample = threshold * sample.signum() * (1.0 - (-(sample.abs() - threshold) * 10.0).exp());
                 }
             }
         }
@@ -727,7 +727,7 @@ impl SmartMixEngine {
             track_role: TrackRole::from_name(name),
             spectrum,
             loudness_lufs,
-            peak_db: audio.iter().cloned().fold(0.0f64, f64::abs),
+            peak_db: audio.iter().cloned().fold(0.0f64, |a, b| a.abs().max(b.abs())),
             dynamic_range_db: 0.0, // 简化
         }
     }

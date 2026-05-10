@@ -492,7 +492,7 @@ impl AbletonProjectParser {
                         .or_else(|| Self::extract_xml_attribute(dev_block, "Name", "Value"))
                         .unwrap_or_else(|| tag.to_string());
 
-                    let enabled = Self::extract_xml_int(dev_block, "On", "Value")
+                    let enabled = Self::extract_xml_int_from_attr(dev_block, "Value")
                         .map(|v| v != 0)
                         .unwrap_or(true);
 
@@ -539,7 +539,7 @@ impl AbletonProjectParser {
                     name,
                     start,
                     end,
-                    loop_enabled: Self::extract_xml_int(clip_block, "LoopOn", "Value")
+                    loop_enabled: Self::extract_xml_int_from_attr(clip_block, "Value")
                         .map(|v| v != 0)
                         .unwrap_or(true),
                     loop_start: Self::extract_xml_float(clip_block, "LoopStart").unwrap_or(0.0),
@@ -606,7 +606,7 @@ impl AbletonProjectParser {
             if let Some(end) = clip_block[note_start..].find("/>") {
                 let note_block = &clip_block[note_start..note_start + end + 2];
 
-                let pitch = Self::extract_xml_int(note_block, "NoteEvent", "Note")
+                let pitch = Self::extract_xml_int_from_attr(note_block, "Note")
                     .unwrap_or(60) as u8;
                 let start_beat = Self::extract_xml_float_from_attr(note_block, "Time")
                     .unwrap_or(0.0);
@@ -822,7 +822,7 @@ impl AbletonToProject {
 
         for track in &ableton.tracks {
             report.push_str(&format!("轨道: {} ({:?})\n", track.name, track.track_type));
-            report.push_str(&format!("  音量: {:.2f}, 声像: {:.2f}\n", track.volume, track.pan));
+            report.push_str(&format!("  音量: {:.2}, 声像: {:.2}\n", track.volume, track.pan));
             report.push_str(&format!("  设备: {}\n", track.devices.len()));
             for device in &track.devices {
                 report.push_str(&format!(

@@ -677,13 +677,14 @@ impl ReaperToProject {
                     4.0
                 };
 
-                let mut pattern = Pattern::new(
-                    &format!("rpp_{}_{}", track.index, i),
-                    if midi_item.name.is_empty() {
+                let pattern_name = if midi_item.name.is_empty() {
                         format!("{} - MIDI {}", track.name, i + 1)
                     } else {
                         midi_item.name.clone()
-                    },
+                    };
+                let mut pattern = Pattern::new(
+                    &format!("rpp_{}_{}", track.index, i),
+                    &pattern_name,
                     PatternType::Midi,
                     length_beats,
                 );
@@ -713,7 +714,7 @@ impl ReaperToProject {
 
         for track in &reaper.tracks {
             report.push_str(&format!("轨道: {} (#{})\n", track.name, track.index));
-            report.push_str(&format!("  音量: {:.2f}, 声像: {:.2f}\n", track.volume, track.pan));
+            report.push_str(&format!("  音量: {:.2}, 声像: {:.2}\n", track.volume, track.pan));
             report.push_str(&format!("  FX: {}\n", track.fx_chain.len()));
             for fx in &track.fx_chain {
                 let mapped = self.fx_mapper.map(&fx.name);
