@@ -108,10 +108,9 @@ impl Mixer {
                 continue;
             }
 
-            // 计算立体声增益
-            let theta = (pan + 1.0) / 2.0 * std::f64::consts::FRAC_PI_2;
-            let left_gain = volume * theta.cos();
-            let right_gain = volume * theta.sin();
+            // 计算立体声增益（线性声像：中心=1.0，左右衰减）
+            let left_gain = volume * (1.0 - pan.max(0.0));
+            let right_gain = volume * (1.0 + pan.min(0.0));
 
             // 混合到输出（用get_sample/set_sample避免访问私有字段E0616）
             let frames = buffer.frames.min(output.frames);

@@ -215,10 +215,15 @@ impl PluginLoader {
     fn to_pascal_case(s: &str) -> String {
         s.split('-')
             .map(|part| {
-                let mut chars = part.chars();
-                match chars.next() {
-                    None => String::new(),
-                    Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                // Two-letter abbreviations should be fully uppercased (e.g., "eq" -> "EQ")
+                if part.len() <= 2 {
+                    part.to_uppercase()
+                } else {
+                    let mut chars = part.chars();
+                    match chars.next() {
+                        None => String::new(),
+                        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                    }
                 }
             })
             .collect()

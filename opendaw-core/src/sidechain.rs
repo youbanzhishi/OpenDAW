@@ -330,11 +330,11 @@ impl SidechainRouter {
 
     /// 列出所有连接的描述
     pub fn describe_links(&self) -> Vec<String> {
-        self.links
+        let mut descriptions: Vec<String> = self.links
             .values()
             .map(|l| {
                 format!(
-                    "Track {} → Track {} (param: {}, amount: {:.2}, {})",
+                    "{} → {} (param: {}, amount: {:.2}, {})",
                     l.source_track,
                     l.target_track,
                     l.target_param,
@@ -342,7 +342,9 @@ impl SidechainRouter {
                     if l.enabled { "ON" } else { "OFF" }
                 )
             })
-            .collect()
+            .collect();
+        descriptions.sort();
+        descriptions
     }
 }
 

@@ -33,13 +33,35 @@ pub fn ext_to_engine(ext: &ExtAudioBuffer, engine: &mut EngineAudioBuffer) {
     );
 
     // 确保目标缓冲区大小匹配
-    if engine.channels != ext.channels || engine.frames != ext.frames {
-        *engine = EngineAudioBuffer::new(ext.channels, ext.frames, 44100.0);
+    // 如果ext通道数少于engine（如单声道→立体声），保持engine的通道数并复制数据
+    let target_channels = engine.channels.max(ext.channels);
+    if target_channels != engine.channels || ext.frames != engine.frames {
+        *engine = EngineAudioBuffer::new(target_channels, ext.frames, 44100.0);
     }
 
-    // f64 → f32 转换
-    for (i, &sample) in ext.data.iter().enumerate() {
-        engine.as_mut_slice()[i] = sample as f32;
+    // f64 → f32 转换，支持单声道→多声道扩展
+    if ext.channels == 1 && engine.channels >= 2 {
+        // 单声道 → 立体声/多声道：复制到所有通道
+        for frame in 0..ext.frames {
+            let sample = ext.data[frame] as f32;
+            for ch in 0..engine.channels {
+                engine.set_sample(ch, frame, sample);
+            }
+        }
+    } else if ext.channels >= 2 && engine.channels >= 2 {
+        // 多声道 → 多声道：逐通道复制
+        let ch_count = ext.channels.min(engine.channels);
+        for ch in 0..ch_count {
+            for frame in 0..ext.frames {
+                let sample = ext.data[ch * ext.frames + frame] as f32;
+                engine.set_sample(ch, frame, sample);
+            }
+        }
+    } else {
+        // 通道数匹配（单声道→单声道等）
+        for (i, &sample) in ext.data.iter().enumerate() {
+            engine.as_mut_slice()[i] = sample as f32;
+        }
     }
 }
 

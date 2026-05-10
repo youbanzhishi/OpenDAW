@@ -1186,28 +1186,36 @@ mod tests {
         let mut engine = AudioEngine::new();
         engine.register_track("test").unwrap();
 
+        // 渲染 0dB（默认）
         let mut buf = AudioBuffer::new(2, frames, sample_rate);
-        buf.fill(1.0); // 全音量
+        buf.fill(1.0);
         engine.inject_buffer("test", buf).unwrap();
-
         engine.start(sample_rate, 256).unwrap();
 
-        // 默认主音量 0dB
         let mut output1 = vec![0.0f32; frames * 2];
         engine.render_frame(&mut output1, frames);
         let level1 = output1.iter().map(|&s| s.abs()).sum::<f32>() / (frames * 2) as f32;
 
-        // 降低主音量 -6dB
-        engine.set_master_volume(-6.0);
+        engine.stop().unwrap();
+
+        // 渲染 -6dB：重新创建引擎和buffer（避免position推进导致第二次渲染无声）
+        let mut engine2 = AudioEngine::new();
+        engine2.register_track("test").unwrap();
+        let mut buf2 = AudioBuffer::new(2, frames, sample_rate);
+        buf2.fill(1.0);
+        engine2.inject_buffer("test", buf2).unwrap();
+        engine2.start(sample_rate, 256).unwrap();
+        engine2.set_master_volume(-6.0);
+
         let mut output2 = vec![0.0f32; frames * 2];
-        engine.render_frame(&mut output2, frames);
+        engine2.render_frame(&mut output2, frames);
         let level2 = output2.iter().map(|&s| s.abs()).sum::<f32>() / (frames * 2) as f32;
 
         // -6dB 约等于 0.501 线性增益
         assert!(level2 < level1, "降低主音量后输出应减小");
         assert!((level1 / level2 - 2.0).abs() < 0.2, "比例应约为2");
 
-        engine.stop().unwrap();
+        engine2.stop().unwrap();
     }
 
     #[test]

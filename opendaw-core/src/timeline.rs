@@ -146,7 +146,7 @@ impl TimePosition {
 
     /// 转换为总拍数（从第1小节第1拍开始计数）
     pub fn to_total_beats(&self) -> f64 {
-        ((self.bar - 1) as f64) + (self.beat - 1.0) + self.tick as f64 / 480.0
+        ((self.bar - 1) as f64) * 4.0 + (self.beat - 1.0) + self.tick as f64 / 480.0
     }
 
     /// 从总拍数创建时间位置
@@ -366,8 +366,16 @@ impl Timeline {
 
     /// 获取小节数量（基于拍号变化计算）
     pub fn bar_count(&self, total_beats: f64) -> u32 {
-        let (bar, _) = self.beat_to_bar_beat(total_beats);
-        bar
+        if total_beats <= 0.0 {
+            return 0;
+        }
+        let (bar, beat_in_bar) = self.beat_to_bar_beat(total_beats);
+        // If exactly at the start of a bar, we've completed (bar-1) bars
+        if (beat_in_bar - 1.0).abs() < 1e-10 {
+            bar - 1
+        } else {
+            bar
+        }
     }
 
     /// 默认BPM

@@ -180,7 +180,8 @@ impl Chord {
 
     /// 获取和弦的所有音高（MIDI编号，第4八度为基础）
     pub fn pitches(&self, octave: u8) -> Vec<u8> {
-        let base = octave * 12 + self.root.midi_offset();
+        let base = (octave as u32 + 1) * 12 + self.root.midi_offset() as u32;
+        let base = base as u8;
         self.chord_type.intervals()
             .iter()
             .map(|&interval| base + interval as u8)
@@ -736,7 +737,7 @@ mod tests {
         let voicing = VoicingStrategy::Close.apply(&chord, 4);
         // 所有音应该在相近的范围内
         let max_diff = voicing.iter().max().unwrap() - voicing.iter().min().unwrap();
-        assert!(*max_diff <= 12, "Close voicing should span at most one octave");
+        assert!(max_diff <= 12, "Close voicing should span at most one octave");
     }
 
     #[test]

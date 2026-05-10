@@ -83,6 +83,17 @@ impl PitchDetector {
             };
         }
 
+        // 检测静音：如果信号能量极低，直接返回无音高
+        let rms = (frame.iter().map(|&s| s * s).sum::<f64>() / frame.len() as f64).sqrt();
+        if rms < 1e-6 {
+            return PitchDetection {
+                frequency: None,
+                confidence: 0.0,
+                midi_pitch: None,
+                cents_deviation: None,
+            };
+        }
+
         // YIN差分函数
         let half = self.frame_size / 2;
         let mut diff = vec![0.0f64; half];

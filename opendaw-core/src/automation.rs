@@ -166,7 +166,7 @@ impl AutomationEnvelope {
         if steps == 0 {
             return Vec::new();
         }
-        let step_size = (end_beat - start_beat) / steps as f64;
+        let step_size = if steps > 1 { (end_beat - start_beat) / (steps - 1) as f64 } else { 0.0 };
         (0..steps)
             .map(|i| self.value_at(start_beat + step_size * i as f64))
             .collect()
@@ -606,7 +606,7 @@ mod tests {
     #[test]
     fn test_parameter_automation_create() {
         let mut pa = ParameterAutomation::new();
-        let lane_id = pa.create_automation_for_param(0, "volume", 0.7);
+        let _lane_id = pa.create_automation_for_param(0, "volume", 0.7);
 
         assert!(pa.has_automation(0, "volume"));
         let val = pa.get_value(0, "volume", 0.0);

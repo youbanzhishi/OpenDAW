@@ -183,7 +183,7 @@ impl Pattern {
     pub fn notes_in_range(&self, start_beat: f64, end_beat: f64) -> Vec<&MidiNote> {
         self.midi_notes
             .iter()
-            .filter(|n| n.start_beat < end_beat && n.end_beat() > start_beat)
+            .filter(|n| n.start_beat < end_beat && n.end_beat() >= start_beat)
             .collect()
     }
 
@@ -204,7 +204,8 @@ impl Pattern {
 
     /// 根据内容自动更新类型
     fn update_type(&mut self) {
-        let has_midi = !self.midi_notes.is_empty();
+        let has_midi = !self.midi_notes.is_empty()
+            || matches!(self.pattern_type, PatternType::Midi | PatternType::Hybrid);
         let has_audio = !self.audio_regions.is_empty();
         self.pattern_type = match (has_midi, has_audio) {
             (true, true) => PatternType::Hybrid,
