@@ -6,5 +6,8 @@ members = [
     "opendaw-core",
     "plugin-host",
     "desktop/src-tauri",
+    "crates/opendaw-api",
+    "crates/opendaw-ws",
+    "crates/opendaw-cli",
 ]
 resolver = "2"

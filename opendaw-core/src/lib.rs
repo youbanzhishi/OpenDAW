@@ -57,6 +57,9 @@ pub mod smart_mix;
 pub mod style_transfer;
 
 // Phase 30: 跨DAW格式兼容
+// Phase 31-32: 接口层后端
+pub mod marketplace;
+
 pub mod import;
 pub mod export;
 
@@ -169,3 +172,9 @@ pub use export::{
 // 兼容性别名
 #[deprecated(since = "0.24.0", note = "使用 ExtAudioBuffer 或 EngineAudioBuffer")]
 pub type AudioBuffer = opendaw_extension::AudioBuffer;
+
+// Phase 31-32 重导出
+pub use marketplace::{
+    PluginRegistry, PluginManifest, PluginCategory, Dependency,
+    PluginInstaller, InstallStatus, InstallProgress, CompatibilityReport,
+};
