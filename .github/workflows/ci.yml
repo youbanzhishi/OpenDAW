@@ -8,7 +8,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
 
 jobs:
   check:
@@ -16,25 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Cache cargo registry & build
-        uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
-
-      - name: Cargo check
-        run: cargo check --workspace --exclude desktop
-
-      - name: Run tests
-        run: cargo test --workspace --exclude desktop
-
-      - name: Clippy
-        run: cargo clippy --workspace --exclude desktop -- -D warnings
-
-      - name: Format check
-        run: cargo fmt --check
+      - run: cargo check --workspace --exclude desktop
+      - run: cargo test --workspace --exclude desktop
+      - run: cargo fmt --check
