@@ -739,6 +739,8 @@ spl0 = x;
     assert!(meta.has_init);
     assert!(meta.has_sample);
     assert!(!meta.has_gfx);
+    assert!(!meta.has_serialize);
+    assert!(!meta.has_slider);
 }
 
 // ==================== @block 回调测试 ====================
@@ -1038,4 +1040,96 @@ spl1 = spl(3);
     let (out0, out1) = vm.process_sample(1.0, 0.8);
     assert!((out0 - 0.5).abs() < 0.01, "spl(2)→spl0 = 0.5, 得到{}", out0);
     assert!((out1 - 0.4).abs() < 0.01, "spl(3)→spl1 = 0.4, 得到{}", out1);
+}
+
+
+// ==================== 元信息完整测试 ====================
+
+/// 测试JsfxMeta包含所有区段信息
+#[test]
+fn test_jsfx_meta_all_sections() {
+    let source = r#"
+desc:All Sections Meta
+tags:audio test
+slider1:1<0,10,0.1>Value
+
+@init
+x = 0;
+
+@slider
+x = slider1;
+
+@block
+block_count = 0;
+
+@sample
+spl0 = x;
+
+@gfx
+gfx_clear(0);
+
+@serialize
+preset_data = 100;
+"#;
+    let meta = jsfx_engine::loader::JsfxMeta::from_source(source, std::path::Path::new("test.jsfx")).unwrap();
+    assert_eq!(meta.desc, "All Sections Meta");
+    assert!(meta.has_init);
+    assert!(meta.has_slider);
+    assert!(meta.has_block);
+    assert!(meta.has_sample);
+    assert!(meta.has_gfx);
+    assert!(meta.has_serialize);
+    assert_eq!(meta.sliders.len(), 1);
+}
+
+// ==================== 适配器扩展方法测试 ====================
+
+/// 测试JsfxPlugin的execute_gfx/execute_serialize/gfx_var方法
+#[test]
+fn test_plugin_extended_api() {
+    let source = r#"
+desc:Extended API Test
+
+@init
+val = 10;
+
+@serialize
+val = 999;
+
+@gfx
+gfx_x = 50;
+
+@sample
+spl0 = val;
+spl1 = gfx_x;
+"#;
+    let mut plugin = jsfx_engine::loader::load_jsfx_source(source, "ext-api-test").unwrap();
+    plugin.init(44100.0, 256).unwrap();
+
+    // Test get_gfx_var
+    assert!((plugin.get_gfx_var("gfx_w") - 400.0).abs() < 0.01, "gfx_w默认=400");
+
+    // Test set_gfx_var
+    plugin.set_gfx_var("gfx_w", 1024.0);
+    assert!((plugin.get_gfx_var("gfx_w") - 1024.0).abs() < 0.01, "gfx_w设为1024");
+
+    // Test execute_gfx changes state
+    let mut ext_input = AudioBuffer::new(2, 10);
+    let mut ext_output = AudioBuffer::new(2, 10);
+    plugin.process(&ext_input, &mut ext_output);
+    // Before gfx: gfx_x = 0
+    assert!((ext_output.sample(1, 0) - 0.0).abs() < 0.01, "gfx执行前gfx_x=0");
+
+    plugin.execute_gfx();
+    plugin.process(&ext_input, &mut ext_output);
+    // After gfx: gfx_x = 50
+    assert!((ext_output.sample(1, 0) - 50.0).abs() < 0.01, "gfx执行后gfx_x=50");
+
+    // Test execute_serialize
+    plugin.execute_serialize();
+    plugin.process(&ext_input, &mut ext_output);
+    // After serialize: val = 999
+    assert!((ext_output.sample(0, 0) - 999.0).abs() < 0.01, "serialize执行后val=999");
+
+    plugin.destroy();
 }

@@ -129,7 +129,40 @@ impl JsfxPlugin {
     pub fn runtime(&self) -> &crate::runtime::JsfxRuntime {
         &self.vm.runtime
     }
+
+    /// 执行@gfx块（手动触发GUI绘制脚本）
+    pub fn execute_gfx(&mut self) {
+        if !self.initialized || self.destroyed { return; }
+        self.vm.execute_gfx();
+    }
+
+    /// 执行@serialize块（用于预设保存/加载）
+    pub fn execute_serialize(&mut self) {
+        if !self.initialized || self.destroyed { return; }
+        self.vm.execute_serialize();
+    }
+
+    /// 获取gfx变量值
+    pub fn get_gfx_var(&self, name: &str) -> f64 {
+        self.vm.runtime.get_var(name)
+    }
+
+    /// 设置gfx变量值（例如从GUI层更新窗口尺寸）
+    pub fn set_gfx_var(&mut self, name: &str, value: f64) {
+        self.vm.runtime.set_var(name, value);
+    }
+
+    /// 获取所有运行时变量（调试/序列化用）
+    pub fn get_all_vars(&self) -> &std::collections::HashMap<String, f64> {
+        &self.vm.runtime.vars
+    }
+
+    /// 获取内存区域引用（调试用）
+    pub fn get_memory(&self) -> &[f64] {
+        &self.vm.runtime.memory
+    }
 }
+
 
 impl VcPlugin for JsfxPlugin {
     fn plugin_id(&self) -> &str {

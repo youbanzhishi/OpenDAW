@@ -39,6 +39,11 @@
 //! - `samplesblock` — 当前block大小
 //! - `spl(ch)` — 多通道访问
 //! - `$pi`, `$e`, `$phi` — 数学常量
+//! - `gfx_w`, `gfx_h` — gfx窗口尺寸
+//! - `gfx_x`, `gfx_y` — 当前绘图坐标
+//! - `gfx_r`, `gfx_g`, `gfx_b`, `gfx_a` — 绘图颜色
+//! - `gfx_mode`, `gfx_texth` — 绘图模式和字体大小
+//! - `mouse_x`, `mouse_y`, `mouse_cap`, `mouse_wheel` — 鼠标状态
 //!
 //! # 多区段执行模型（Reaper兼容）
 //!
@@ -46,8 +51,8 @@
 //! - `@slider` — slider参数变化时执行
 //! - `@block` — 每个音频buffer执行一次
 //! - `@sample` — 每个采样点执行（核心音频处理）
-//! - `@gfx` — GUI绘制（暂不实现执行）
-//! - `@serialize` — 预设持久化（暂不实现执行）
+//! - `@gfx` — GUI绘制（可执行，绘图命令为no-op）
+//! - `@serialize` — 预设保存/加载（可执行）
 //!
 //! # 使用示例
 //!

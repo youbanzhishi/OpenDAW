@@ -97,6 +97,10 @@ pub struct JsfxMeta {
     pub has_block: bool,
     /// 是否有@gfx块
     pub has_gfx: bool,
+    /// 是否有@serialize块
+    pub has_serialize: bool,
+    /// 是否有@slider块
+    pub has_slider: bool,
     /// 用户自定义函数数量
     pub function_count: usize,
 }
@@ -116,6 +120,8 @@ impl JsfxMeta {
             has_sample: program.sample_block.is_some(),
             has_block: program.block_block.is_some(),
             has_gfx: program.gfx_block.is_some(),
+            has_serialize: program.serialize_block.is_some(),
+            has_slider: program.slider_block.is_some(),
             function_count: program.functions.len(),
         })
     }
@@ -133,6 +139,8 @@ impl JsfxMeta {
             has_sample: program.sample_block.is_some(),
             has_block: program.block_block.is_some(),
             has_gfx: program.gfx_block.is_some(),
+            has_serialize: program.serialize_block.is_some(),
+            has_slider: program.slider_block.is_some(),
             function_count: program.functions.len(),
         })
     }
@@ -215,5 +223,7 @@ spl0 = x;
         assert!(meta.has_init);
         assert!(meta.has_sample);
         assert!(!meta.has_gfx);
+        assert!(!meta.has_serialize);
+        assert!(!meta.has_slider);
     }
 }
