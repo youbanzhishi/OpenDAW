@@ -1,9 +1,9 @@
 [package]
 name = "vcmix-desktop"
-version = "0.23.0"
+version.workspace = true
 description = "VCMix — AI-native open-source DAW (Tauri desktop shell)"
 authors = ["OpenDAW Team"]
-edition = "2021"
+edition.workspace = true
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

@@ -36,6 +36,11 @@
 //! - 评分与评论系统
 //! - 分类体系增强
 //! - 平台兼容性检测
+//!
+//! Phase 35: v1.0发布准备
+//! - SDK文档生成（OpenAPI 3.1）
+//! - 项目模板系统
+//! - 音频导出增强（WAV/FLAC/MP3-stub/OGG-stub）
 
 // Phase 20-25: 核心引擎层
 pub mod project;
@@ -69,6 +74,10 @@ pub mod marketplace;
 
 pub mod import;
 pub mod export;
+
+// Phase 35: v1.0发布准备
+pub mod docs;
+pub mod template;
 
 // PyO3 Python bindings (optional, requires python feature)
 #[cfg(feature = "python")]
@@ -190,4 +199,17 @@ pub use marketplace::{
     PluginCompatibility, PlatformTarget,
     EffectSubcategory, InstrumentSubcategory, UtilitySubcategory,
     preset_categories,
+};
+
+// Phase 35 重导出
+pub use docs::{
+    ApiEndpoint, HttpMethod, ApiDocGenerator,
+};
+pub use template::{
+    ProjectTemplate, TemplateTrack, TrackType, PresetName,
+};
+pub use export::audio_export::{
+    AudioExporter, AudioFormat, BitDepth, ExportConfig as AudioExportConfig,
+    ExportResult as AudioExportResult, ExportError as AudioExportError,
+    ExportProgress, RenderPipeline,
 };

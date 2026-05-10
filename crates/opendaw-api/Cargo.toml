@@ -1,7 +1,7 @@
 [package]
 name = "opendaw-api"
-version = "0.31.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "OpenDAW REST API 服务 - HTTP接口层"
 
 [[bin]]

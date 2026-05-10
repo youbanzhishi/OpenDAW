@@ -1,7 +1,7 @@
 [package]
 name = "opendaw-extension"
-version = "0.24.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "OpenDAW 扩展注册中心 - Plugin API + Script Runtime + Model Bus + Hook System"
 
 [dependencies]
@@ -10,4 +10,3 @@ serde_yaml = "0.9"
 thiserror = "1"
 uuid = { version = ">=1.6, <1.10", features = ["v4"] }
 getrandom = "0.2"
-

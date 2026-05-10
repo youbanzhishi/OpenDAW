@@ -1,7 +1,7 @@
 [package]
 name = "opendaw-ws"
-version = "0.31.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "OpenDAW WebSocket 实时通信层"
 
 [lib]

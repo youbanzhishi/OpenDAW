@@ -1,7 +1,7 @@
 [package]
 name = "jsfx-engine"
-version = "0.25.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "JSFX解释器 — 兼容Reaper自定义效果器的EEL2脚本引擎"
 
 [dependencies]

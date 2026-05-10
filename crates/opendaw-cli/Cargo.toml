@@ -1,7 +1,7 @@
 [package]
 name = "opendaw-cli"
-version = "0.31.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "OpenDAW CLI Shell — 命令行界面"
 
 [[bin]]
