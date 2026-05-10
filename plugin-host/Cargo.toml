@@ -47,3 +47,8 @@ jsfx = ["dep:jsfx-engine"]
 [[example]]
 name = "vc_plugin_demo"
 path = "examples/vc_plugin_demo.rs"
+
+[[example]]
+name = "jsfx_e2e"
+path = "examples/jsfx_e2e.rs"
+required-features = ["jsfx"]

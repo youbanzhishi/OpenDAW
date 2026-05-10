@@ -1,0 +1,23 @@
+desc:Waveform Distortion
+tags:distortion effect guitar
+slider1:2<1,10,0.1>Drive
+slider2:0.5<0,1,0.01>Mix
+slider3:0<-150,150,0.1>Output (dB)
+
+@slider
+  drive = slider1;
+  mix = slider2;
+  out_gain = 2^(slider3/6);
+
+@sample
+  // 软clip失真
+  // 左声道
+  x = spl0 * drive;
+  // tanh失真
+  x = (exp(2*x) - 1) / (exp(2*x) + 1);
+  spl0 = (spl0 * (1 - mix) + x * mix) * out_gain;
+  
+  // 右声道
+  x_r = spl1 * drive;
+  x_r = (exp(2*x_r) - 1) / (exp(2*x_r) + 1);
+  spl1 = (spl1 * (1 - mix) + x_r * mix) * out_gain;

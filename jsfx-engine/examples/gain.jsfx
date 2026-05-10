@@ -1,0 +1,13 @@
+desc:Simple Gain
+tags:gain volume utility
+slider1:0<-150,150,0.1>Gain (dB)
+
+@init
+  gain = 1.0;
+
+@slider
+  gain = 2^(slider1/6);
+
+@sample
+spl0 *= gain;
+spl1 *= gain;
