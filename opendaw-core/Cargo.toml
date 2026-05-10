@@ -1,6 +1,6 @@
 [package]
 name = "opendaw-core"
-version = "0.24.0"
+version = "0.26.0"
 edition = "2021"
 description = "OpenDAW 核心胶水层 - 统一入口，组合所有crate"
 
@@ -14,7 +14,9 @@ audio-engine = { path = "../audio-engine" }
 plugin-host = { path = "../plugin-host" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 serde_yaml = "0.9"
+bincode = "1"
 parking_lot = "0.12"
 
 [dependencies.pyo3]

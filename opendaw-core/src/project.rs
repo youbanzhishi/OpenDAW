@@ -190,6 +190,26 @@ impl Project {
             master_volume: 1.0,
         }
     }
+
+    // === Phase 26: 项目格式升级需要的方法 ===
+
+    /// 将项目导出为ProjectConfig
+    pub fn to_config(&self) -> ProjectConfig {
+        ProjectConfig {
+            name: self.name.clone(),
+            sample_rate: self.sample_rate,
+            buffer_size: self.buffer_size,
+            tracks: self.tracks.iter().map(|t| TrackConfig {
+                name: t.name.clone(),
+                channels: t.channels,
+                volume: t.volume,
+                pan: t.pan,
+                muted: t.muted,
+                plugins: vec![],
+            }).collect(),
+            master_volume: self.master_volume,
+        }
+    }
 }
 
 /// 项目错误
