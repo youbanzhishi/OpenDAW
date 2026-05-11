@@ -140,6 +140,8 @@ pub struct DesktopAudioOutput {
     paused: Arc<AtomicBool>,
     /// 配置
     config: Arc<Mutex<OutputConfig>>,
+    /// 音频帧发送器（用于手动注入帧）
+    sender: Arc<Mutex<Option<Sender<AudioFrame>>>>,
     /// 音频帧接收器（由外部填充）
     receiver: Arc<Mutex<Option<Receiver<AudioFrame>>>>,
     /// 音频线程句柄
@@ -162,6 +164,7 @@ impl DesktopAudioOutput {
             running: Arc::new(AtomicBool::new(false)),
             paused: Arc::new(AtomicBool::new(false)),
             config: Arc::new(Mutex::new(OutputConfig::default())),
+            sender: Arc::new(Mutex::new(None)),
             receiver: Arc::new(Mutex::new(None)),
             thread_handle: Arc::new(Mutex::new(None)),
             actual_sample_rate: Arc::new(Mutex::new(44100.0)),
@@ -198,12 +201,12 @@ impl DesktopAudioOutput {
         Ok(())
     }
 
-    /// 设置音频帧接收器
+    /// 设置音频帧通道（发送器和接收器）
     ///
     /// 通常与 AudioEngine.setup_channel_output() 配合使用。
-    pub fn set_receiver(&self, receiver: Receiver<AudioFrame>) {
-        let mut guard = self.receiver.lock();
-        *guard = Some(receiver);
+    pub fn set_channel(&self, sender: Sender<AudioFrame>, receiver: Receiver<AudioFrame>) {
+        *self.sender.lock() = Some(sender);
+        *self.receiver.lock() = Some(receiver);
     }
 
     /// 获取当前状态
@@ -369,9 +372,13 @@ impl DesktopAudioOutput {
             return;
         }
 
+        let buffer_size_display = match &frames_per_buffer {
+            cpal::SupportedBufferSize::Range { min, max } => format!("{}-{}", min, max),
+            cpal::SupportedBufferSize::Unknown => "unknown".to_string(),
+        };
         println!(
-            "[AudioOutput] 播放中 - 采样率: {} Hz, 声道: {}, 缓冲区: {} 帧",
-            sample_rate, channels, frames_per_buffer
+            "[AudioOutput] 播放中 - 采样率: {} Hz, 声道: {}, 缓冲区: {}",
+            sample_rate, channels, buffer_size_display
         );
 
         // 等待停止信号
@@ -392,9 +399,9 @@ impl DesktopAudioOutput {
     ///
     /// 非阻塞发送，如果 channel 已满则丢弃帧。
     pub fn send_frame(&self, frame: AudioFrame) -> bool {
-        let guard = self.receiver.lock();
-        if let Some(ref rx) = *guard {
-            rx.send(frame).is_ok()
+        let guard = self.sender.lock();
+        if let Some(ref tx) = *guard {
+            tx.try_send(frame).is_ok()
         } else {
             false
         }
@@ -463,13 +470,14 @@ impl AudioOutputState {
         // 设置采样率
         engine.sample_rate();
 
-        // 创建 channel 输出
-        let (_handle, receiver) = engine.setup_channel_output(buffer_size, 2);
-        *self.receiver.lock() = Some(receiver);
+        // 创建独立的 channel 用于手动帧注入
+        let (sender, receiver) = crossbeam_channel::bounded(4096);
+        *self.receiver.lock() = Some(receiver.clone());
 
         // 创建音频输出
         let mut output = DesktopAudioOutput::new()?;
         output.configure(sample_rate as u32, buffer_size, 2)?;
+        output.set_channel(sender, receiver);
 
         *self.output.lock() = Some(output);
         Ok(())
@@ -548,6 +556,22 @@ impl AudioOutputState {
     pub fn toggle_track_mute(&self, track_id: &str) -> Result<bool, String> {
         let mut engine = self.engine.lock();
         engine.toggle_track_mute(track_id).map_err(|e| e.to_string())
+    }
+
+    /// 暂停音频播放
+    pub fn pause(&self) {
+        let output_guard = self.output.lock();
+        if let Some(ref output) = *output_guard {
+            output.pause();
+        }
+    }
+
+    /// 恢复音频播放
+    pub fn resume(&self) {
+        let output_guard = self.output.lock();
+        if let Some(ref output) = *output_guard {
+            output.resume();
+        }
     }
 }
 
