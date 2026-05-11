@@ -1,7 +1,7 @@
 [package]
-name = "vcmix-desktop"
+name = "opendaw-desktop"
 version.workspace = true
-description = "VCMix — AI-native open-source DAW (Tauri desktop shell)"
+description = "OpenDAW — AI-native open-source DAW (Tauri desktop shell)"
 authors = ["OpenDAW Team"]
 edition.workspace = true
 
@@ -25,9 +25,9 @@ cpal = "0.15"
 crossbeam-channel = "0.5"
 
 [lib]
-name = "vcmix_desktop_lib"
+name = "opendaw_desktop_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "vcmix-desktop"
+name = "opendaw-desktop"
 path = "src/main.rs"
