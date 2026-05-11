@@ -315,6 +315,10 @@ impl DesktopAudioOutput {
         let channels = default_config.channels();
         let sample_rate = default_config.sample_rate().0;
         let frames_per_buffer = default_config.buffer_size();
+        let buffer_size_display = match frames_per_buffer {
+            cpal::SupportedBufferSize::Range { min, max } => format!("{}-{}", min, max),
+            cpal::SupportedBufferSize::Unknown => "unknown".to_string(),
+        };
 
         // 构建音频流
         let stream = match device.build_output_stream(
@@ -372,10 +376,6 @@ impl DesktopAudioOutput {
             return;
         }
 
-        let buffer_size_display = match &frames_per_buffer {
-            cpal::SupportedBufferSize::Range { min, max } => format!("{}-{}", min, max),
-            cpal::SupportedBufferSize::Unknown => "unknown".to_string(),
-        };
         println!(
             "[AudioOutput] 播放中 - 采样率: {} Hz, 声道: {}, 缓冲区: {}",
             sample_rate, channels, buffer_size_display
