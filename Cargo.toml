@@ -8,6 +8,7 @@ members = [
     "crates/opendaw-api",
     "crates/opendaw-ws",
     "crates/opendaw-cli",
+    "desktop/src-tauri",
 ]
 exclude = []
 resolver = "2"
@@ -18,3 +19,4 @@ edition = "2021"
 authors = ["OpenDAW Team"]
 license = "MIT"
 repository = "https://github.com/youbanzhishi/OpenDAW"
+
