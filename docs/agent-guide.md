@@ -473,3 +473,313 @@ OpenDAW同时暴露MCP Server，支持外部Agent通过MCP协议控制。
 2. `initialize` → 获取能力声明
 3. `tools/list` → 获取可用工具
 4. `tools/call` → 调用工具执行操作
+
+---
+
+## Agent Action Protocol v2 定义
+
+> OpenDAW 的 agent.json v2 能力声明，遵循 [Agent Action Protocol](https://github.com/youbanzhishi/open-knowledge-system/blob/main/共享知识/设计模式/Agent-Action-Protocol.md)。
+
+### agent.json v2
+
+```json
+{
+  "schema_version": "2.0",
+  "name": "opendaw",
+  "description": "AI原生的数字音频工作站——混音、母带、音频分析一体化",
+  "version": "1.0.1",
+  "base_url": "http://localhost:3000",
+  "auth": {
+    "type": "bearer",
+    "header": "Authorization"
+  },
+  "capabilities": [
+    {
+      "name": "open_project",
+      "description": "打开指定工程文件，加载项目状态（轨道、效果器、配置）",
+      "category": "search",
+      "endpoint": "GET /api/v1/projects/{id}",
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "项目UUID"
+          }
+        },
+        "required": ["id"]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "volume": { "type": "number" },
+                "pan": { "type": "number" },
+                "muted": { "type": "boolean" },
+                "solo": { "type": "boolean" },
+                "plugin_count": { "type": "integer" }
+              }
+            }
+          },
+          "bpm": { "type": "number" },
+          "sample_rate": { "type": "integer" }
+        }
+      },
+      "examples": [
+        {
+          "input": { "id": "550e8400-e29b-41d4-a716-446655440000" },
+          "output": {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "name": "夏日之歌",
+            "tracks": [
+              { "id": "t1", "name": "vocal", "volume": 0.8, "pan": 0.0, "muted": false, "solo": false, "plugin_count": 3 }
+            ],
+            "bpm": 120.0,
+            "sample_rate": 44100
+          }
+        }
+      ]
+    },
+    {
+      "name": "ai_mix",
+      "description": "AI混音对话——通过自然语言描述混音需求，Agent自动调整EQ/压缩/空间等参数",
+      "category": "execute",
+      "endpoint": "POST /api/v1/agent/chat",
+      "input": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "自然语言混音指令，如'让人声更亮更靠前'"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "目标项目UUID"
+          }
+        },
+        "required": ["message", "project_id"]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string", "description": "Agent回复文本" },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tool": { "type": "string" },
+                "arguments": { "type": "object" },
+                "result": { "type": "object" },
+                "explanation": { "type": "string" }
+              }
+            }
+          },
+          "requires_confirmation": { "type": "boolean" }
+        }
+      },
+      "examples": [
+        {
+          "input": { "message": "帮我自动混音，风格pop，然后导出wav", "project_id": "550e8400-e29b-41d4-a716-446655440000" },
+          "output": {
+            "message": "已应用Pop风格混音预设：人声EQ提升2kHz-5kHz，压缩比2.5:1，混响房间30%。准备导出WAV。",
+            "actions": [
+              { "tool": "ai_auto_mix", "arguments": { "style": "pop", "apply": true }, "result": { "applied": true }, "explanation": "应用Pop风格AI混音" }
+            ],
+            "requires_confirmation": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "export",
+      "description": "导出音频文件，支持WAV/FLAC/MP3格式，可指定采样率和位深",
+      "category": "execute",
+      "endpoint": "POST /api/v1/projects/{id}/render",
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "项目UUID"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["wav", "flac", "mp3"],
+            "description": "导出格式，默认wav"
+          },
+          "sample_rate": {
+            "type": "integer",
+            "enum": [44100, 48000, 96000],
+            "description": "采样率，默认44100"
+          },
+          "bit_depth": {
+            "type": "integer",
+            "enum": [16, 24, 32],
+            "description": "位深，默认24"
+          },
+          "normalize": {
+            "type": "boolean",
+            "description": "是否响度标准化，默认true"
+          }
+        },
+        "required": ["id"]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string", "description": "渲染任务UUID" },
+          "project_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["pending", "running", "completed", "failed"] },
+          "message": { "type": "string" }
+        }
+      },
+      "examples": [
+        {
+          "input": { "id": "550e8400-e29b-41d4-a716-446655440000", "format": "wav", "sample_rate": 44100, "bit_depth": 24 },
+          "output": {
+            "task_id": "task-7f3a9c",
+            "project_id": "550e8400-e29b-41d4-a716-446655440000",
+            "status": "pending",
+            "message": "渲染任务已创建"
+          }
+        }
+      ]
+    },
+    {
+      "name": "list_projects",
+      "description": "列出所有工程文件，返回项目概览列表",
+      "category": "search",
+      "endpoint": "GET /api/v1/projects",
+      "input": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "projects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "bpm": { "type": "number" },
+                "updated_at": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": {},
+          "output": {
+            "projects": [
+              { "id": "550e8400-e29b-41d4-a716-446655440000", "name": "夏日之歌", "description": "流行曲", "bpm": 120.0, "updated_at": "2024-06-15T10:30:00Z" },
+              { "id": "660f9511-f30c-52e5-b827-557766551111", "name": "深夜爵士", "description": "爵士即兴", "bpm": 95.0, "updated_at": "2024-06-14T22:00:00Z" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "get_analysis",
+      "description": "获取项目音频分析结果，包含频谱、响度、动态范围等",
+      "category": "search",
+      "endpoint": "GET /api/v1/projects/{id}/analysis",
+      "input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "项目UUID"
+          }
+        },
+        "required": ["id"]
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string" },
+          "overall_score": { "type": "number", "description": "整体混音评分 0-100" },
+          "loudness": {
+            "type": "object",
+            "properties": {
+              "integrated_lufs": { "type": "number" },
+              "true_peak_db": { "type": "number" }
+            }
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "track_name": { "type": "string" },
+                "action": { "type": "string" },
+                "reason": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        {
+          "input": { "id": "550e8400-e29b-41d4-a716-446655440000" },
+          "output": {
+            "project_id": "550e8400-e29b-41d4-a716-446655440000",
+            "overall_score": 75.0,
+            "loudness": { "integrated_lufs": -14.2, "true_peak_db": -1.0 },
+            "suggestions": [
+              { "track_name": "vocal", "action": "降低200Hz附近的箱体共鸣", "reason": "人声低频过多导致浑浊" }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "name": "mix_and_publish",
+      "description": "混音发布流：OpenMind找待办→OpenVault取音轨→OpenDAW混音导出→OpenLink发布",
+      "steps": [
+        { "project": "openmind", "action": "find_todos" },
+        { "project": "openvault", "action": "retrieve" },
+        { "project": "opendaw", "action": "open_project" },
+        { "project": "opendaw", "action": "ai_mix" },
+        { "project": "opendaw", "action": "export" },
+        { "project": "openlink", "action": "create_link" }
+      ]
+    },
+    {
+      "name": "knowledge_archive",
+      "description": "知识归档流：OpenDAW导出→OpenMind入库→OpenVault备份",
+      "steps": [
+        { "project": "opendaw", "action": "export" },
+        { "project": "openmind", "action": "ingest" },
+        { "project": "openvault", "action": "backup" }
+      ]
+    }
+  ],
+  "events": {
+    "subscribe": "WS /ws/events",
+    "types": ["render.completed", "render.failed", "mix.applied", "track.level", "warning.clipping"]
+  },
+  "links": {
+    "docs": "https://github.com/youbanzhishi/OpenDAW/docs",
+    "source": "https://github.com/youbanzhishi/OpenDAW",
+    "health": "http://localhost:3000/health"
+  }
+}
+```
