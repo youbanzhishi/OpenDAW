@@ -108,10 +108,18 @@ jobs:
     needs: [build, desktop-build]
     steps:
       - uses: actions/checkout@v4
+      - name: Create tag for release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          TAG="v$(date +%Y%m%d)-$(git rev-parse --short HEAD)"
+          git tag $TAG
+          git push origin $TAG
+          echo "tag_name=$TAG" >> $GITHUB_ENV
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.tag_name || github.ref_name }}
           generate_release_notes: true
           files: artifacts/**/*
