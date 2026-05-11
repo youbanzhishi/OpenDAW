@@ -1,6 +1,6 @@
 {
-  "name": "vcmix-desktop",
-  "version": "0.23.0",
+  "name": "opendaw-desktop",
+  "version": "1.0.1",
   "description": "VCMix \u2014 AI-native open-source DAW desktop application (Tauri shell)",
   "type": "module",
   "scripts": {
