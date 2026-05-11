@@ -9,11 +9,14 @@ use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use opendaw_core::PluginReview;
 use serde::Deserialize;
+use serde_json::{json, Value};
 use uuid::Uuid;
 
 /// 构建API路由
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
+        // Agent发现协议
+        .route("/.well-known/agent.json", get(agent_manifest))
         // 项目CRUD
         .route("/api/v1/projects", get(list_projects).post(create_project))
         .route(
@@ -43,6 +46,125 @@ pub fn routes(state: AppState) -> Router<AppState> {
             post(marketplace_submit_review),
         )
         .with_state(state)
+}
+
+/// GET /.well-known/agent.json — Agent发现协议端点
+///
+/// 返回OpenDAW的能力声明，供外部AI Agent自动发现和接入。
+async fn agent_manifest() -> Json<Value> {
+    Json(json!({
+        "schema_version": "1.0",
+        "name": "OpenDAW",
+        "description": "AI原生数字音频工作站 — 配好模型API即可使用AI辅助做音乐",
+        "version": "1.0.1",
+        "base_url": "http://localhost:3000",
+        "auth": {
+            "type": "none",
+            "note": "本地部署默认无需认证"
+        },
+        "interfaces": {
+            "cli": {
+                "command": "opendaw",
+                "description": "命令行界面"
+            },
+            "api": {
+                "base_url": "/api/v1",
+                "description": "REST API"
+            },
+            "webui": {
+                "url": "/",
+                "description": "Web界面"
+            },
+            "desktop": {
+                "description": "Tauri桌面应用"
+            },
+            "agent": {
+                "url": "/api/v1/agent/chat",
+                "description": "AI Agent对话接口"
+            }
+        },
+        "capabilities": [
+            {
+                "name": "create_project",
+                "description": "创建音频项目",
+                "method": "POST",
+                "path": "/api/v1/projects",
+                "params": {
+                    "name": "项目名称",
+                    "description": "项目描述(可选)"
+                }
+            },
+            {
+                "name": "render",
+                "description": "渲染项目为音频文件",
+                "method": "POST",
+                "path": "/api/v1/projects/{id}/render",
+                "params": {
+                    "format": "wav/flac",
+                    "sample_rate": "采样率",
+                    "bit_depth": "位深"
+                }
+            },
+            {
+                "name": "automix",
+                "description": "AI自动混音",
+                "method": "POST",
+                "path": "/api/v1/projects/{id}/automix",
+                "params": {
+                    "style": "混音风格(pop/rock/edm等)",
+                    "apply": "是否自动应用建议"
+                }
+            },
+            {
+                "name": "agent_chat",
+                "description": "AI Agent对话（支持混音建议、EQ调整、编排等）",
+                "method": "POST",
+                "path": "/api/v1/agent/chat",
+                "params": {
+                    "message": "用户消息",
+                    "project_id": "项目ID(可选)"
+                }
+            },
+            {
+                "name": "mixer_suggestions",
+                "description": "获取混音建议",
+                "method": "GET",
+                "path": "/api/v1/mixer/{id}/suggestions"
+            },
+            {
+                "name": "transcribe",
+                "description": "音频扒带/转录",
+                "method": "POST",
+                "path": "/api/v1/projects/{id}/transcribe",
+                "params": {
+                    "source_track": "源轨道ID",
+                    "options": "转录选项"
+                }
+            }
+        ],
+        "agent_system": {
+            "runtime": "ReAct (Reason + Act)",
+            "max_tool_rounds": 5,
+            "personas": ["mixing_engineer", "producer", "recording_engineer"],
+            "execution_modes": ["auto", "confirm", "suggest"],
+            "model_providers": ["openai", "anthropic", "ollama", "vllm"],
+            "model_config": {
+                "provider": "LLM后端",
+                "model": "模型名称",
+                "api_key": "API密钥",
+                "base_url": "API地址",
+                "temperature": "温度(0-1)",
+                "max_tokens": "最大token数"
+            }
+        },
+        "links": {
+            "user_guide": "/docs/user-guide.md",
+            "agent_guide": "/docs/agent-guide.md",
+            "api_reference": "/docs/api-reference.md",
+            "source": "https://github.com/youbanzhishi/OpenDAW",
+            "health": "/api/health"
+        }
+    }))
 }
 
 /// GET /api/v1/projects — 列出所有项目
