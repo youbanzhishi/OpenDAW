@@ -9,7 +9,7 @@ members = [
     "crates/opendaw-ws",
     "crates/opendaw-cli",
 ]
-exclude = ["desktop/src-tauri"]
+exclude = []
 resolver = "2"
 
 [workspace.package]
