@@ -10,10 +10,10 @@
   "app": {
     "windows": [
       {
-        "title": "VCMix \u2014 AI-native DAW",
+        "title": "OpenDAW \u2014 AI-native DAW",
         "width": 1440,
         "height": 900,
-        "minWidth": 1024,
+        "minWidth": 768,
         "minHeight": 680,
         "resizable": true,
         "fullscreen": false,
