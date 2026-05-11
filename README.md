@@ -1,95 +1,155 @@
 # OpenDAW 🎵
 
-**AI-native open-source DAW** — YAML-driven, cross-platform, AI Agent friendly.
+**AI-native open-source DAW** — Rust-powered, cross-platform, AI Agent friendly.
 
 > Reaper有的我们要有，Reaper没有的我们也要有。
 
+> **历史名称**: 本项目前身为 VCMix（Python 版本），现已使用 Rust 完全重写。以下文档中的 Python/VCMix 功能描述对应历史版本。
+
 ## Three Core Principles
 
-1. **Cross-platform** — Windows / macOS / Linux (pathlib, soundfile, ffmpeg, UTF-8)
-2. **Lightweight & Fast** — Streaming + numpy vectorized + incremental rendering cache
-3. **AI Agent Friendly** — YAML config + CLI zero-GUI + structured JSON output + exit codes
+1. **Cross-platform** — Windows / macOS / Linux (AppImage / dmg / exe / msi)
+2. **High Performance** — Rust native engine + real-time audio + zero-copy pipeline
+3. **AI Agent Friendly** — YAML config + CLI zero-GUI + structured JSON output + REST API + WebSocket
 
-## VCMix — VocalChain Headless Mixing Host
+## Core Components
 
-VCMix is the core component of OpenDAW. It is a YAML-driven headless mixing host that parses declarative mix project files into signal routing graphs and auto-schedules VC plugin CLI for offline rendering.
+OpenDAW consists of three major components built on a shared Rust workspace:
 
-### Quick Start
+| Component | Binary | Description |
+|-----------|--------|-------------|
+| **CLI** | `opendaw-cli` | Project management, offline rendering, mixing, plugin management, audio transcription, REPL |
+| **API Server** | `opendaw-api` | REST API + WebSocket for remote control and AI Agent integration |
+| **Desktop App** | Tauri v2 | Cross-platform desktop application (AppImage / dmg / exe / msi) |
+
+### CLI (opendaw-cli)
 
 ```bash
-pip install -e .
+# Project management
+opendaw init my-project
+opendaw render project.yaml
+opendaw mix project.yaml
 
-# Render a mix project
-vcmix render examples/jiuwanzi.yaml
+# Plugin management
+opendaw plugin list
+opendaw plugin install VC-EQ
 
-# Validate config
-vcmix validate examples/jiuwanzi.yaml
+# Audio transcription
+opendaw transcribe input.wav --output midi
 
-# View signal routing graph
-vcmix graph examples/jiuwanzi.yaml
-
-# Render with real-time analysis report
-vcmix render examples/jiuwanzi.yaml --report
-
-# Render with auto-fix gain staging
-vcmix render examples/jiuwanzi.yaml --auto-fix --stream log
+# Interactive REPL
+opendaw repl
 
 # JSON structured output (AI Agent friendly)
-vcmix render examples/jiuwanzi.yaml --stream json
-
-# A/B comparison rendering
-vcmix render project.yaml --ab
-vcmix render project.yaml --ab --diff
-
-# Auto-mix: analyze + suggest + apply
-vcmix automix project.yaml
-vcmix automix project.yaml --dry-run
-vcmix automix project.yaml --reference ref.wav
-
-# View arrangement analysis
-vcmix arrangement project.yaml --strategy
-
-# List built-in presets
-vcmix presets
+opendaw render project.yaml --stream json
 ```
 
-### Rendering Pipeline
+### API Server (opendaw-api)
+
+```bash
+# Start API server with WebSocket support
+opendaw serve --port 3000
+
+# REST API endpoints
+# GET  /api/v1/projects          — List projects
+# POST /api/v1/projects          — Create project
+# GET  /api/v1/projects/:id      — Get project
+# POST /api/v1/render/:id        — Trigger render
+# WebSocket /ws                   — Real-time events
+```
+
+### Desktop App (Tauri v2)
+
+Download the latest release for your platform:
+
+| Platform | Download |
+|----------|----------|
+| Linux | [AppImage](https://github.com/youbanzhishi/OpenDAW/releases/latest) |
+| macOS | [dmg](https://github.com/youbanzhishi/OpenDAW/releases/latest) |
+| Windows | [exe / msi](https://github.com/youbanzhishi/OpenDAW/releases/latest) |
+
+## Rust Workspace Members
 
 ```
-1. Parse YAML → ProjectConfig
-2. Validate config & check audio files
-3. Build signal routing DAG (tracks → inserts → sends → master)
-4. Render each track through insert chain (sidechain routing)
-5. Process Send/Return buses
-6. Mix tracks with master level balancing + bus returns
-7. Apply master insert chain + DataStream events
-8. Write output + optional A/B versions + analysis report
+opendaw/
+├── audio-engine/          # Real-time audio engine
+├── jsfx-engine/           # JSFX plugin engine
+├── opendaw-core/          # Core abstractions and data structures
+├── opendaw-extension/     # Extension registry and plugin system
+├── plugin-host/           # Plugin hosting and sandboxing
+├── opendaw-api/           # REST API + WebSocket server
+├── opendaw-ws/            # WebSocket protocol layer
+├── opendaw-cli/           # Command-line interface
+└── desktop/src-tauri/     # Tauri v2 desktop application
 ```
+
+## Build Requirements
+
+- **Rust** 1.86+ (required for `icu` dependency which needs edition 2024)
+- **C/C++ compiler** (gcc or clang)
+- **Node.js** 18+ (for Tauri desktop app build only)
+
+```bash
+# Install Rust via rustup
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+## Quick Start
+
+### Download Pre-built Binary
+
+```bash
+# Download pre-built binary
+curl -L https://github.com/youbanzhishi/OpenDAW/releases/latest/download/opendaw-linux-amd64.tar.gz | tar xz
+./opendaw serve
+```
+
+### Build from Source
+
+```bash
+# Build CLI
+cargo build --release -p opendaw-cli
+./target/release/opendaw serve
+
+# Build Desktop App
+cd desktop && npm install && npm run tauri build
+```
+
+### Docker Deployment
+
+```bash
+docker run -d -p 3000:3000 ghcr.io/youbanzhishi/opendaw/opendaw:latest
+```
+
+📖 For full deployment options, see [部署指南](docs/deployment.md) (Docker, binary, source build, systemd, production config).
 
 ## Feature Overview
 
-| Feature | Phase | Status |
-|---------|-------|--------|
-| YAML-driven rendering | 1 | ✅ |
-| Insert chain processing | 1 | ✅ |
-| Multi-track mixing | 1 | ✅ |
-| BPM note value sync | 1 | ✅ |
-| Send/Return buses | 2 | ✅ |
-| Sidechain routing | 2 | ✅ |
-| A/B comparison | 2 | ✅ |
-| AutoFix gain staging v2 | 2 | ✅ |
-| Built-in presets (7) | 3 | ✅ |
-| DataStream closed-loop | 4 | ✅ |
-| Source separation | 5 | ✅ |
-| Arrangement extraction | 5 | ✅ |
-| AutoMix engine | 6 | ✅ |
-| Reference matching | 6 | ✅ |
-| Arrangement-aware mixing | 7 | ✅ |
-| Web UI (FastAPI) | 8 | 🏃 In Progress |
-| Native GUI | 9 | 🔮 Future |
-| Full DAW | 10 | 🔮 Ultimate Goal |
+| Feature | Status |
+|---------|--------|
+| YAML-driven rendering | ✅ |
+| Insert chain processing | ✅ |
+| Multi-track mixing | ✅ |
+| BPM note value sync | ✅ |
+| Send/Return buses | ✅ |
+| Sidechain routing | ✅ |
+| A/B comparison | ✅ |
+| AutoFix gain staging | ✅ |
+| Built-in presets | ✅ |
+| DataStream closed-loop | ✅ |
+| Source separation | ✅ |
+| Arrangement extraction | ✅ |
+| AutoMix engine | ✅ |
+| Reference matching | ✅ |
+| Arrangement-aware mixing | ✅ |
+| Web UI (REST API + WebSocket) | ✅ |
+| Native GUI (Tauri Desktop) | ✅ |
+| VC Plugins (built-in effect chain) | ✅ |
+| Full DAW | 🔮 Ultimate Goal |
 
-## Supported VC Plugins (20)
+## Built-in Effect Chain (VC Plugins)
+
+OpenDAW includes 20 built-in effects, available as the internal effect chain:
 
 ### Gen 1 (16 plugins)
 | Plugin | Key Parameters |
@@ -119,8 +179,6 @@ vcmix presets
 | VC-Reverb | ⬆️ FDN升级 | room, decay, damping, mix, predelay, wetlpf (8-delay FDN) |
 | VC-Comp | ⬆️ 多段升级 | threshold, ratio, --multiband, --band-threshold, --band-ratio |
 
-
-
 ## DataStream Events (AI Agent API)
 
 | Event | Data | Use Case |
@@ -137,41 +195,63 @@ vcmix presets
 |------|---------|
 | 0 | Success |
 | 1 | Config error |
-| 2 | Plugin CLI error |
+| 2 | Plugin error |
 | 3 | Audio I/O error |
 | 4 | Render error |
 | 5 | Cache error |
 | 6 | Missing dependency |
 
-## Docker Deployment
+## Python Version (Historical — VCMix)
 
-VCMix supports two Docker deployment approaches:
-
-### Quick Deploy (Pre-built Image, Recommended)
+The original Python implementation provided:
 
 ```bash
-cp .env.example .env
-docker compose up -d
-# Visit http://your-server-ip:8000
+pip install -e .
+
+# Render a mix project
+vcmix render examples/jiuwanzi.yaml
+
+# Validate config
+vcmix validate examples/jiuwanzi.yaml
+
+# View signal routing graph
+vcmix graph examples/jiuwanzi.yaml
+
+# Render with real-time analysis report
+vcmix render examples/jiuwanzi.yaml --report
+
+# Render with auto-fix gain staging
+vcmix render examples/jiuwanzi.yaml --auto-fix --stream log
+
+# JSON structured output
+vcmix render examples/jiuwanzi.yaml --stream json
+
+# A/B comparison rendering
+vcmix render project.yaml --ab
+
+# Auto-mix: analyze + suggest + apply
+vcmix automix project.yaml
 ```
 
-No build required. Works on 1GB servers. See [DEPLOY.md](DEPLOY.md) for details.
+These features have been superseded by the Rust-based `opendaw-cli`.
 
-### Self-build
+### Rendering Pipeline (Python Version)
 
-```bash
-cp .env.example .env
-docker compose up -d --build
 ```
-
-See [DEPLOY.md](DEPLOY.md) for full documentation including:
-- Pre-built vs self-build comparison
-- Core vs Full mode features
-- Environment variable reference
-- Troubleshooting (memory issues, network problems)
+1. Parse YAML → ProjectConfig
+2. Validate config & check audio files
+3. Build signal routing DAG (tracks → inserts → sends → master)
+4. Render each track through insert chain (sidechain routing)
+5. Process Send/Return buses
+6. Mix tracks with master level balancing + bus returns
+7. Apply master insert chain + DataStream events
+8. Write output + optional A/B versions + analysis report
+```
 
 ## Related Projects
 
+- [OpenLink](https://github.com/youbanzhishi/OpenLink) — 智能体时代的通用路由与编排协议
+- [OpenVault](https://github.com/youbanzhishi/OpenVault) — 3-2-1 backup strategy with self-healing
 - [AudioFX](https://github.com/youbanzhishi/AudioFX) — VC Plugin Series (VST3 effects + CLI tools)
 
 ## License
