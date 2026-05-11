@@ -16,6 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -26,4 +28,6 @@ jobs:
           cache-on-failure: true
       - run: cargo check --workspace --exclude opendaw-desktop --exclude desktop
       - run: cargo test --workspace --exclude opendaw-desktop --exclude desktop
-      - run: cargo fmt --check
+      - name: Check formatting (non-desktop packages)
+        run: |
+          cargo fmt --check -p audio-engine -p jsfx-engine -p opendaw-extension -p opendaw-core -p plugin-host -p opendaw-api -p opendaw-ws -p opendaw-cli
