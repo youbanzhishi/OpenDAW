@@ -1,10 +1,10 @@
 //! AppState — Tauri managed state, holding Rust engine + Python backend + Audio Output
 
-use std::sync::Arc;
-use parking_lot::Mutex;
+use crate::audio_output::AudioOutputState;
 use audio_engine::AudioEngine;
 use opendaw_core::ExtensionRegistry;
-use crate::audio_output::AudioOutputState;
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 pub struct AppState {
     /// 实时音频引擎

@@ -1,8 +1,8 @@
 //! Tauri Commands for VCMix Desktop
 
+use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::state::AppState;
 
 // ── Response Types ───────────────────────────────────────────────────────
 
@@ -124,12 +124,31 @@ pub async fn render_project(
         urlencoding::encode(&yaml_path)
     );
     let client = reqwest::Client::new();
-    let resp = client.post(&url).send().await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let resp = client
+        .post(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(RenderResult {
-        job_id: data.get("job_id").and_then(|v| v.as_str()).unwrap_or("unknown").to_string(),
-        status: data.get("status").and_then(|v| v.as_str()).unwrap_or("unknown").to_string(),
-        message: data.get("message").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        job_id: data
+            .get("job_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        status: data
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string(),
+        message: data
+            .get("message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
     })
 }
 
@@ -138,79 +157,202 @@ pub async fn get_analysis(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<AnalysisResult, String> {
-    let url = format!("{}/api/v1/projects/{}/analysis", state.backend.base_url, project_id);
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let url = format!(
+        "{}/api/v1/projects/{}/analysis",
+        state.backend.base_url, project_id
+    );
+    let resp = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(AnalysisResult {
-        project: data.get("project").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        project: data
+            .get("project")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         bpm: data.get("bpm").and_then(|v| v.as_f64()).unwrap_or(120.0),
-        sample_rate: data.get("sample_rate").and_then(|v| v.as_u64()).unwrap_or(44100) as u32,
-        tracks: data.get("tracks").and_then(|v| v.as_array()).cloned().unwrap_or_default(),
-        master: data.get("master").cloned().unwrap_or(serde_json::Value::Null),
+        sample_rate: data
+            .get("sample_rate")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(44100) as u32,
+        tracks: data
+            .get("tracks")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default(),
+        master: data
+            .get("master")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null),
     })
 }
 
 #[tauri::command]
 pub async fn list_presets(state: State<'_, AppState>) -> Result<PresetList, String> {
     let url = format!("{}/api/presets", state.backend.base_url);
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
-    let presets: Vec<PresetInfo> = data.get("presets").and_then(|v| v.as_array()).cloned().unwrap_or_default()
-        .iter().map(|p| PresetInfo {
-            name: p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            description: p.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        }).collect();
-    Ok(PresetList { count: presets.len(), presets })
+    let resp = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
+    let presets: Vec<PresetInfo> = data
+        .get("presets")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|p| PresetInfo {
+            name: p
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            description: p
+                .get("description")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+        })
+        .collect();
+    Ok(PresetList {
+        count: presets.len(),
+        presets,
+    })
 }
 
 #[tauri::command]
-pub async fn open_file_dialog(_title: String, _filters: Vec<Vec<String>>) -> Result<FileDialogResult, String> {
-    Ok(FileDialogResult { path: None, cancelled: true })
+pub async fn open_file_dialog(
+    _title: String,
+    _filters: Vec<Vec<String>>,
+) -> Result<FileDialogResult, String> {
+    Ok(FileDialogResult {
+        path: None,
+        cancelled: true,
+    })
 }
 
 #[tauri::command]
 pub async fn get_waveform(
-    state: State<'_, AppState>, project_id: String, track: String,
+    state: State<'_, AppState>,
+    project_id: String,
+    track: String,
 ) -> Result<WaveformData, String> {
-    let url = format!("{}/api/v1/waveform/{}/{}", state.backend.base_url, project_id, track);
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let url = format!(
+        "{}/api/v1/waveform/{}/{}",
+        state.backend.base_url, project_id, track
+    );
+    let resp = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(WaveformData {
-        peaks: data.get("peaks").and_then(|v| v.as_array()).cloned().unwrap_or_default().iter().filter_map(|v| v.as_f64()).collect(),
-        sample_count: data.get("sample_count").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
-        sample_rate: data.get("sample_rate").and_then(|v| v.as_u64()).unwrap_or(44100) as u32,
-        duration_s: data.get("duration_s").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        peaks: data
+            .get("peaks")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| v.as_f64())
+            .collect(),
+        sample_count: data
+            .get("sample_count")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as usize,
+        sample_rate: data
+            .get("sample_rate")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(44100) as u32,
+        duration_s: data
+            .get("duration_s")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
         channels: data.get("channels").and_then(|v| v.as_u64()).unwrap_or(1) as u32,
     })
 }
 
 #[tauri::command]
 pub async fn get_spectrum(
-    state: State<'_, AppState>, project_id: String, track: String,
+    state: State<'_, AppState>,
+    project_id: String,
+    track: String,
 ) -> Result<SpectrumData, String> {
-    let url = format!("{}/api/v1/spectrum/{}/{}", state.backend.base_url, project_id, track);
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let url = format!(
+        "{}/api/v1/spectrum/{}/{}",
+        state.backend.base_url, project_id, track
+    );
+    let resp = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(SpectrumData {
-        frequencies: data.get("frequencies").and_then(|v| v.as_array()).cloned().unwrap_or_default().iter().filter_map(|v| v.as_f64()).collect(),
-        magnitudes: data.get("magnitudes").and_then(|v| v.as_array()).cloned().unwrap_or_default().iter().filter_map(|v| v.as_f64()).collect(),
-        sample_rate: data.get("sample_rate").and_then(|v| v.as_u64()).unwrap_or(44100) as u32,
-        fft_size: data.get("fft_size").and_then(|v| v.as_u64()).unwrap_or(2048) as usize,
+        frequencies: data
+            .get("frequencies")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| v.as_f64())
+            .collect(),
+        magnitudes: data
+            .get("magnitudes")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|v| v.as_f64())
+            .collect(),
+        sample_rate: data
+            .get("sample_rate")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(44100) as u32,
+        fft_size: data
+            .get("fft_size")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(2048) as usize,
     })
 }
 
 #[tauri::command]
 pub async fn get_midi_notes(
-    state: State<'_, AppState>, project_id: String, track: String,
+    state: State<'_, AppState>,
+    project_id: String,
+    track: String,
 ) -> Result<MidiNoteData, String> {
-    let url = format!("{}/api/v1/midi/{}/{}", state.backend.base_url, project_id, track);
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let url = format!(
+        "{}/api/v1/midi/{}/{}",
+        state.backend.base_url, project_id, track
+    );
+    let resp = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(MidiNoteData {
-        notes: data.get("notes").and_then(|v| v.as_array()).cloned().unwrap_or_default(),
+        notes: data
+            .get("notes")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default(),
         note_count: data.get("note_count").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
         bpm: data.get("bpm").and_then(|v| v.as_f64()).unwrap_or(120.0),
-        total_beats: data.get("total_beats").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        total_beats: data
+            .get("total_beats")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0),
     })
 }
 
@@ -286,9 +428,18 @@ pub async fn transport_stop(state: State<'_, AppState>) -> Result<TransportStatu
 #[tauri::command]
 pub async fn list_projects(state: State<'_, AppState>) -> Result<ProjectList, String> {
     let url = format!("{}/api/v1/projects", state.backend.base_url);
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
-    let projects = data.get("projects").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+    let resp = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
+    let projects = data
+        .get("projects")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
     Ok(ProjectList {
         count: projects.len(),
         projects,
@@ -301,18 +452,37 @@ pub async fn get_project(
     project_id: String,
 ) -> Result<ProjectInfo, String> {
     let url = format!("{}/api/v1/projects/{}", state.backend.base_url, project_id);
-    let resp = reqwest::get(&url).await.map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let resp = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
 
-    let tracks: Vec<TrackInfo> = data.get("tracks")
+    let tracks: Vec<TrackInfo> = data
+        .get("tracks")
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default()
         .iter()
         .map(|t| TrackInfo {
-            id: t.get("id").or(t.get("name")).and_then(|v| v.as_str()).unwrap_or("").to_string(),
-            name: t.get("name").and_then(|v| v.as_str()).unwrap_or("Track").to_string(),
-            r#type: t.get("type").and_then(|v| v.as_str()).unwrap_or("audio").to_string(),
+            id: t
+                .get("id")
+                .or(t.get("name"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            name: t
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Track")
+                .to_string(),
+            r#type: t
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("audio")
+                .to_string(),
             gain_db: t.get("gain").and_then(|v| v.as_f64()).unwrap_or(0.0),
             pan: t.get("pan").and_then(|v| v.as_f64()).unwrap_or(0.0),
             mute: t.get("mute").and_then(|v| v.as_bool()).unwrap_or(false),
@@ -322,9 +492,16 @@ pub async fn get_project(
 
     Ok(ProjectInfo {
         id: project_id,
-        name: data.get("name").and_then(|v| v.as_str()).unwrap_or("Untitled").to_string(),
+        name: data
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Untitled")
+            .to_string(),
         bpm: data.get("bpm").and_then(|v| v.as_f64()).unwrap_or(120.0),
-        sample_rate: data.get("sample_rate").and_then(|v| v.as_u64()).unwrap_or(44100) as u32,
+        sample_rate: data
+            .get("sample_rate")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(44100) as u32,
         tracks,
     })
 }
@@ -342,7 +519,10 @@ pub async fn create_project(
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(data)
 }
 
@@ -353,7 +533,10 @@ pub async fn add_track(
     name: String,
     track_type: String,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{}/api/v1/projects/{}/tracks", state.backend.base_url, project_id);
+    let url = format!(
+        "{}/api/v1/projects/{}/tracks",
+        state.backend.base_url, project_id
+    );
     let client = reqwest::Client::new();
     let resp = client
         .post(&url)
@@ -361,7 +544,10 @@ pub async fn add_track(
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(data)
 }
 
@@ -406,12 +592,27 @@ pub async fn agent_chat(
         .await
         .map_err(|e| format!("Agent chat failed: {}", e))?;
 
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
 
     Ok(AgentChatResponse {
-        message: data.get("message").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-        actions: data.get("actions").and_then(|v| v.as_array()).cloned().unwrap_or_default(),
-        thinking: data.get("thinking").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        message: data
+            .get("message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
+        actions: data
+            .get("actions")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default(),
+        thinking: data
+            .get("thinking")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
     })
 }
 
@@ -428,7 +629,10 @@ pub async fn automix_project(
         .send()
         .await
         .map_err(|e| format!("Automix failed: {}", e))?;
-    let data: serde_json::Value = resp.json().await.map_err(|e| format!("JSON parse error: {}", e))?;
+    let data: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("JSON parse error: {}", e))?;
     Ok(data)
 }
 
@@ -531,9 +735,7 @@ pub fn engine_set_position(state: State<'_, AppState>, pos: f64) -> Result<(), S
 #[tauri::command]
 pub fn engine_register_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine
-        .register_track(&track_id)
-        .map_err(|e| e.to_string())
+    engine.register_track(&track_id).map_err(|e| e.to_string())
 }
 
 /// 从WAV文件加载音频到指定音轨
@@ -581,7 +783,10 @@ pub fn engine_set_master_volume(state: State<'_, AppState>, volume_db: f64) -> R
 
 /// 切换音轨静音状态
 #[tauri::command]
-pub fn engine_toggle_track_mute(state: State<'_, AppState>, track_id: String) -> Result<bool, String> {
+pub fn engine_toggle_track_mute(
+    state: State<'_, AppState>,
+    track_id: String,
+) -> Result<bool, String> {
     let mut engine = state.engine.lock();
     engine
         .toggle_track_mute(&track_id)
@@ -592,7 +797,7 @@ pub fn engine_toggle_track_mute(state: State<'_, AppState>, track_id: String) ->
 // v0.25.0: Audio Playback Commands
 // ═══════════════════════════════════════════════════════════════════════════
 
-use crate::audio_output::{OutputState as AudioOutputState, OutputConfig};
+use crate::audio_output::{OutputConfig, OutputState as AudioOutputState};
 
 #[derive(Debug, Serialize)]
 pub struct AudioPlaybackStatus {
@@ -623,7 +828,8 @@ pub fn audio_get_status(state: State<'_, AppState>) -> Result<AudioPlaybackStatu
 
     // 检查是否有音频加载
     let has_audio_loaded = engine.track_count() > 0 && {
-        let first_track = engine.get_buffer("main")
+        let first_track = engine
+            .get_buffer("main")
             .or_else(|| engine.get_buffer("track_0"));
         first_track.map(|b| b.frames > 0).unwrap_or(false)
     };
@@ -733,17 +939,29 @@ mod tests {
     #[test]
     fn test_engine_state_response_conversion() {
         use audio_engine::state::EngineState;
-        
-        assert_eq!(EngineStateResponse::from(EngineState::Stopped).state, "Stopped");
-        assert_eq!(EngineStateResponse::from(EngineState::Playing).state, "Playing");
-        assert_eq!(EngineStateResponse::from(EngineState::Paused).state, "Paused");
-        assert_eq!(EngineStateResponse::from(EngineState::Recording).state, "Recording");
+
+        assert_eq!(
+            EngineStateResponse::from(EngineState::Stopped).state,
+            "Stopped"
+        );
+        assert_eq!(
+            EngineStateResponse::from(EngineState::Playing).state,
+            "Playing"
+        );
+        assert_eq!(
+            EngineStateResponse::from(EngineState::Paused).state,
+            "Paused"
+        );
+        assert_eq!(
+            EngineStateResponse::from(EngineState::Recording).state,
+            "Recording"
+        );
     }
 
     #[test]
     fn test_registry_stats_response_conversion() {
         use opendaw_extension::registry::RegistryStats;
-        
+
         let stats = RegistryStats {
             plugins: 5,
             scripts: 3,

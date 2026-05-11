@@ -87,21 +87,37 @@ pub fn wait_for_backend(port: u16) -> Result<(), String> {
     while attempts < max_attempts {
         match client.get(&url).send() {
             Ok(resp) if resp.status().is_success() => {
-                println!("[VCMix] Backend is healthy after {}s", attempts * HEALTH_CHECK_INTERVAL_SECS);
+                println!(
+                    "[VCMix] Backend is healthy after {}s",
+                    attempts * HEALTH_CHECK_INTERVAL_SECS
+                );
                 return Ok(());
             }
             Ok(resp) => {
-                println!("[VCMix] Backend returned {}, retrying... ({}/{})", resp.status(), attempts + 1, max_attempts);
+                println!(
+                    "[VCMix] Backend returned {}, retrying... ({}/{})",
+                    resp.status(),
+                    attempts + 1,
+                    max_attempts
+                );
             }
             Err(e) => {
-                println!("[VCMix] Backend not ready: {} ({}/{})", e, attempts + 1, max_attempts);
+                println!(
+                    "[VCMix] Backend not ready: {} ({}/{})",
+                    e,
+                    attempts + 1,
+                    max_attempts
+                );
             }
         }
         attempts += 1;
         thread::sleep(Duration::from_secs(HEALTH_CHECK_INTERVAL_SECS));
     }
 
-    Err(format!("Backend did not become healthy within {}s", HEALTH_CHECK_TIMEOUT_SECS))
+    Err(format!(
+        "Backend did not become healthy within {}s",
+        HEALTH_CHECK_TIMEOUT_SECS
+    ))
 }
 
 pub fn kill_backend() {

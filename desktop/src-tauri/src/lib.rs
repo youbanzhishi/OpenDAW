@@ -13,14 +13,16 @@
 //!   - Channel-based audio frame transport from AudioEngine
 //!   - Frontend UI bindings for play/stop/load_wav/volume controls
 
+mod audio_output;
 mod backend;
 mod commands;
 mod state;
-mod audio_output;
 
+pub use audio_output::{
+    AudioOutputState, DesktopAudioOutput, OutputConfig, OutputError, OutputState,
+};
 pub use backend::BackendState;
 pub use state::AppState;
-pub use audio_output::{AudioOutputState, DesktopAudioOutput, OutputConfig, OutputError, OutputState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,7 +41,10 @@ pub fn run() {
     }
 
     // Wait for backend
-    println!("[VCMix] Waiting for backend on port {}...", backend::BACKEND_PORT);
+    println!(
+        "[VCMix] Waiting for backend on port {}...",
+        backend::BACKEND_PORT
+    );
     if let Err(e) = backend::wait_for_backend(backend::BACKEND_PORT) {
         eprintln!("[VCMix] FATAL: {}", e);
         backend::kill_backend();

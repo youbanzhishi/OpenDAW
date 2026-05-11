@@ -73,8 +73,7 @@ async fn main() {
 
             // 静态文件服务：/ → index.html, 其他文件按路径匹配
             // SPA fallback: 任何未匹配的路径返回 index.html
-            let serve_dir = ServeDir::new(&web_dir)
-                .fallback(ServeFile::new(&index_path));
+            let serve_dir = ServeDir::new(&web_dir).fallback(ServeFile::new(&index_path));
             app = app.fallback_service(serve_dir);
         } else {
             tracing::warn!("Web UI directory found but no index.html: {}", web_dir);

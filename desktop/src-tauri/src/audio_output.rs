@@ -155,9 +155,7 @@ impl DesktopAudioOutput {
     pub fn new() -> Result<Self, OutputError> {
         // 检查音频设备
         let host = cpal::default_host();
-        let _device = host
-            .default_output_device()
-            .ok_or(OutputError::NoDevice)?;
+        let _device = host.default_output_device().ok_or(OutputError::NoDevice)?;
 
         Ok(Self {
             state: Arc::new(Mutex::new(OutputState::Idle)),
@@ -178,9 +176,7 @@ impl DesktopAudioOutput {
 
         if let Ok(enumerated) = host.output_devices() {
             for (idx, device) in enumerated.enumerate() {
-                let name = device
-                    .name()
-                    .unwrap_or_else(|_| format!("Device {}", idx));
+                let name = device.name().unwrap_or_else(|_| format!("Device {}", idx));
                 devices.push(name);
             }
         }
@@ -193,7 +189,12 @@ impl DesktopAudioOutput {
     }
 
     /// 配置音频输出
-    pub fn configure(&mut self, sample_rate: u32, buffer_size: usize, channels: u16) -> Result<(), OutputError> {
+    pub fn configure(
+        &mut self,
+        sample_rate: u32,
+        buffer_size: usize,
+        channels: u16,
+    ) -> Result<(), OutputError> {
         let mut config = self.config.lock();
         config.sample_rate = sample_rate;
         config.buffer_size = buffer_size;
@@ -243,7 +244,8 @@ impl DesktopAudioOutput {
         let config = self.config.lock().clone();
         let receiver = {
             let guard = self.receiver.lock();
-            guard.clone()
+            guard
+                .clone()
                 .ok_or_else(|| OutputError::ChannelError("未设置音频帧接收器".into()))?
         };
 
@@ -337,7 +339,8 @@ impl DesktopAudioOutput {
                     Ok(frame) => {
                         // 帧数据复制到输出
                         let samples_to_copy = frame.samples.len().min(output.len());
-                        output[..samples_to_copy].copy_from_slice(&frame.samples[..samples_to_copy]);
+                        output[..samples_to_copy]
+                            .copy_from_slice(&frame.samples[..samples_to_copy]);
 
                         // 如果帧比缓冲区小，填充静音
                         if frame.samples.len() < output.len() {
@@ -486,7 +489,9 @@ impl AudioOutputState {
     /// 启动播放
     pub fn start(&self) -> Result<(), OutputError> {
         let mut engine = self.engine.lock();
-        engine.start(44100.0, 256).map_err(|e| OutputError::StreamError(e.to_string()))?;
+        engine
+            .start(44100.0, 256)
+            .map_err(|e| OutputError::StreamError(e.to_string()))?;
 
         let mut output_guard = self.output.lock();
         if let Some(ref mut output) = *output_guard {
@@ -511,10 +516,11 @@ impl AudioOutputState {
         let mut engine = self.engine.lock();
         // 确保音轨存在
         if engine.track_count() == 0 {
-            engine.register_track(track_id)
-                .map_err(|e| e.to_string())?;
+            engine.register_track(track_id).map_err(|e| e.to_string())?;
         }
-        engine.load_wav(track_id, file_path).map_err(|e| e.to_string())
+        engine
+            .load_wav(track_id, file_path)
+            .map_err(|e| e.to_string())
     }
 
     /// 获取引擎状态
@@ -526,7 +532,10 @@ impl AudioOutputState {
     /// 获取输出状态
     pub fn output_state(&self) -> OutputState {
         let guard = self.output.lock();
-        guard.as_ref().map(|o| o.state()).unwrap_or(OutputState::Idle)
+        guard
+            .as_ref()
+            .map(|o| o.state())
+            .unwrap_or(OutputState::Idle)
     }
 
     /// 获取音轨数量
@@ -543,7 +552,9 @@ impl AudioOutputState {
     /// 设置音轨音量
     pub fn set_track_volume(&self, track_id: &str, volume_db: f64) -> Result<(), String> {
         let mut engine = self.engine.lock();
-        engine.set_track_volume(track_id, volume_db).map_err(|e| e.to_string())
+        engine
+            .set_track_volume(track_id, volume_db)
+            .map_err(|e| e.to_string())
     }
 
     /// 设置主音量
@@ -555,7 +566,9 @@ impl AudioOutputState {
     /// 切换音轨静音
     pub fn toggle_track_mute(&self, track_id: &str) -> Result<bool, String> {
         let mut engine = self.engine.lock();
-        engine.toggle_track_mute(track_id).map_err(|e| e.to_string())
+        engine
+            .toggle_track_mute(track_id)
+            .map_err(|e| e.to_string())
     }
 
     /// 暂停音频播放
