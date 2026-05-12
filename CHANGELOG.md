@@ -1,5 +1,71 @@
 # Changelog
 
+## [1.0.1] - 2026-05-11
+
+### Added
+- 品牌升级：VCMix → OpenDAW 全部文档和代码引用
+- Rust 1.86+ 工具链要求（icu依赖需edition 2024）
+- Docker镜像3仓库全就绪（OpenDAW + OpenLink + OpenVault）
+- desktop.yml CI工作流恢复
+- 部署文档完善（3仓库部署指南）
+- 非Docker部署补充（二进制+源码编译+systemd）
+
+## [1.0.0] - 2026-05-10
+
+### Added — Phase 21-35: Rust引擎完整实现 + v1.0.0发布
+
+**Phase 21: JSFX EEL2 VM**
+- EEL2 Parser → AST → 字节码编译 → VM执行
+- @init/@slider/@sample支持，基本运算 + spl0/spl1 + sliderN
+- 内置函数（sin/cos/min/max等），37个测试全绿
+
+**Phase 22: MIDI引擎增强**
+- 硬件MIDI设备管理，量化（Quantize），力度曲线
+- MIDI文件解析+写入，MIDI时钟同步
+
+**Phase 23: PluginHost**
+- VST3 Host Bridge + CLAP适配器（clack-host + ClapAdapter）
+- 插件沙箱化 + 插件链管理
+
+**Phase 24-25: Tauri桌面音频**
+- 桌面App音频播放串联（CPAL + crossbeam-channel）
+- 播放/停止/暂停/恢复/音量控制
+- WAV加载 + 实时播放 + 设备枚举
+
+**Phase 26-28: 服务层**
+- 项目格式（YAML/JSON project files）
+- 高级混音（send/return + sidechain + A/B comparison）
+- 编曲引擎（arrangement strategy + section-aware mixing）
+
+**Phase 29-30: AI引擎深度集成**
+- 音频转录（transcription）+ 智能混音（smart_mix）
+- 风格迁移（style_transfer）
+- 跨DAW格式兼容（import/export: Reaper/Logic/Pro Tools）
+
+**Phase 31-32: 接口层**
+- REST API 62端点（55原有 + 7 Agent接口）
+- WebSocket实时推送（6种DataStream事件）
+- CLI Shell交互模式 + 插件市场API
+
+**Phase 33-34: 插件市场 + CRDT协作**
+- PluginRepository + Review体系
+- CRDT冲突解决 + CommentThread协作
+
+**Phase 35: v1.0.0发布与生态**
+- 版本1.0.0发布
+- OpenAPI 3.0文档
+- 5个项目模板（录音/混音/母带/播客/现场）
+- 音频导出（WAV/FLAC/MP3）
+- 完整文档体系（用户指南/Agent指南/API参考/架构/部署）
+- CI/CD全平台：check→test→fmt + Release + Docker + Desktop Build
+- 499 tests全绿，9 crate Rust workspace
+
+### Changed
+- 从Python VCMix完全迁移到Rust OpenDAW
+- 9 crate workspace: audio-engine, jsfx-engine, opendaw-core, opendaw-extension, plugin-host, opendaw-api, opendaw-ws, opendaw-cli, desktop/src-tauri
+- ~47000行Rust代码
+
+
 ## [0.25.0] - 2026-05-10
 
 ### Added

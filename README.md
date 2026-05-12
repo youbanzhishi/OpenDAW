@@ -6,6 +6,13 @@
 
 > **历史名称**: 本项目前身为 VCMix（Python 版本），现已使用 Rust 完全重写。以下文档中的 Python/VCMix 功能描述对应历史版本。
 
+**v1.0.0 Released** — 9 crate Rust workspace, 499 tests all green, cross-platform CI + Release + Desktop Build.
+
+![Rust](https://img.shields.io/badge/Rust-1.86+-orange?logo=rust)
+![Tests](https://img.shields.io/badge/tests-499%20%E2%9C%85-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)
+
 ## Three Core Principles
 
 1. **Cross-platform** — Windows / macOS / Linux (AppImage / dmg / exe / msi)
