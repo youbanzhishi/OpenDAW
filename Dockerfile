@@ -9,13 +9,20 @@
 
 # ── Stage 1: Build Rust API server ──
 FROM rust:1.85-slim AS builder
+
+# 系统依赖（opendaw-core → audio-engine → ALSA + plugin-host）
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libasound2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY . .
 RUN cargo build --release -p opendaw-api
 
 # ── Stage 2: Runtime ──
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates curl libasound2 && rm -rf /var/lib/apt/lists/*
 
 # API server binary
 COPY --from=builder /app/target/release/opendaw-api /usr/local/bin/opendaw-api
