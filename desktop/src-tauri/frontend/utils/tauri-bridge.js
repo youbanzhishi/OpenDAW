@@ -3,7 +3,7 @@
  * Unified interface for Tauri commands + HTTP API fallback
  */
 const TauriBridge = (() => {
-    const BACKEND_BASE = 'http://localhost:8000';
+    const BACKEND_BASE = window.location.origin  // 同源部署：API和Web UI在同一端口;
     const API = BACKEND_BASE + '/api';
     const API_V1 = BACKEND_BASE + '/api/v1';
     const AGENT_API = API_V1 + '/agent';

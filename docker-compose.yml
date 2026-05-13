@@ -1,93 +1,59 @@
 # ============================================================
-# VCMix Docker Compose 配置（双方案）
+# OpenDAW Docker Compose 配置
 # ============================================================
-# 方案B（推荐，预构建镜像）：
-#   1. 复制 .env.example 为 .env，按需修改
-#   2. docker compose up -d
-#   3. 浏览器访问 http://你的IP:端口
-#
-# 方案A（自建镜像）：
+# 使用方法：
 #   1. 复制 .env.example 为 .env，按需修改
 #   2. docker compose up -d --build
-#   3. 需要 Dockerfile 在同目录，服务器至少2G内存
-#
-# 预构建方案只需2个文件：docker-compose.yml / .env
-# 自建方案需要3个文件：Dockerfile / docker-compose.yml / .env
+#   3. 浏览器访问 http://你的IP:8080
 # ============================================================
 
 version: "3.8"
 
 services:
-  vcmix:
-    # ── 镜像（默认使用预构建镜像）──────────────────────────
-    # 方案B（推荐）：docker compose up -d          → 自动pull预构建镜像
-    # 方案A：       docker compose up -d --build   → 本地构建
-    #
-    # 预构建镜像地址：ghcr.io/youbanzhishi/vcmix
-    # 可用标签：core-latest / full-latest / core-v0.22.2 / full-v0.22.2
-    image: ghcr.io/youbanzhishi/vcmix:${VCMIX_PROFILE:-core}-${VCMIX_IMAGE_TAG:-latest}
-
-    # ── 自建镜像构建配置 ─────────────────────────────────
-    # 仅方案A需要，docker compose up -d --build 时生效
-    # 构建时自动从GitHub下载源码和CLI插件
+  opendaw:
     build:
       context: .
-      args:
-        VCMIX_PROFILE: ${VCMIX_PROFILE:-core}
-        OPENDAW_VERSION: ${OPENDAW_VERSION:-v0.23.0}
-        AUDIOFX_RELEASE_VERSION: ${AUDIOFX_RELEASE_VERSION:-v2.7.0}
+      dockerfile: Dockerfile
 
-    container_name: vcmix-server
+    container_name: opendaw-server
 
     # ── 端口映射 ──────────────────────────────────────────
     # 左边是宿主机端口（改这个），右边是容器内端口（别动）
-    # 改端口方法：在.env里设置 VCMIX_PORT=9000
     ports:
-      - "${VCMIX_PORT:-8000}:8000"
+      - "${OPENDAW_PORT:-8080}:8080"
 
     # ── 数据卷挂载 ────────────────────────────────────────
-    # 项目文件目录（YAML混音工程文件存放处）
-    # 渲染输出目录（混音完成的MP3/WAV存放处）
-    # 支持相对路径(./)和绝对路径(/data/vcmix/)
     volumes:
-      - ${VCMIX_PROJECTS_DIR:-./projects}:/app/projects
-      - ${VCMIX_OUTPUT_DIR:-./output}:/app/output
+      - ${OPENDAW_PROJECTS_DIR:-./projects}:/app/projects
+      - ${OPENDAW_OUTPUT_DIR:-./output}:/app/output
 
     # ── 环境变量 ──────────────────────────────────────────
     environment:
-      - VCMIX_PROFILE=${VCMIX_PROFILE:-core}     # 运行模式
-      - VCMIX_LOG_LEVEL=${VCMIX_LOG_LEVEL:-info}  # 日志级别
-      - VC_AUDIOFX_DIR=/app/plugins               # 插件路径（容器内固定）
+      - RUST_LOG=${OPENDAW_LOG_LEVEL:-opendaw_api=debug,info}
+      - OPENDAW_WEB_DIR=/app/static
 
     # ── 资源限制 ──────────────────────────────────────────
-    # core模式：内存512M起步，1G服务器可用
-    # full模式：内存2G起步，4G+服务器推荐
-    # 修改方式：在.env里设置 VCMIX_MEMORY_LIMIT=2G
     deploy:
       resources:
         limits:
-          memory: ${VCMIX_MEMORY_LIMIT:-512M}
-          cpus: "${VCMIX_CPU_LIMIT:-1.0}"
+          memory: ${OPENDAW_MEMORY_LIMIT:-1G}
+          cpus: "${OPENDAW_CPU_LIMIT:-2.0}"
         reservations:
-          memory: ${VCMIX_MEMORY_RESERVATION:-256M}
+          memory: 256M
           cpus: "0.5"
 
     # ── 重启策略 ──────────────────────────────────────────
-    # 崩溃/服务器重启后自动拉起
     restart: unless-stopped
 
     # ── 健康检查 ──────────────────────────────────────────
-    # 每30秒检查一次/api/health，启动后等15秒再开始检查
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/projects"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
 
     # ── 日志配置 ──────────────────────────────────────────
-    # 限制日志文件大小，防止撑爆磁盘
-    # 最多3个文件，每个最大10MB
     logging:
       driver: json-file
       options:
