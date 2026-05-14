@@ -1,193 +1,183 @@
 #!/usr/bin/env bash
 # ============================================================================
-# setup-rust.sh - 一键安装Rust开发环境 (OpenDAW适配版)
+# setup-rust.sh - 一键安装Rust开发环境 (OpenDAW云电脑版)
 #
-# 基于模板: 项目文档/open-dev-tools/scripts/setup-rust.sh
-# 适配: 加入国内镜像配置(清华+rsproxy)
+# 踩坑记录(2026-05-14)：
+#   - 清华镜像/官方源/rsproxy 在云电脑全部不通
+#   - USTC镜像是唯一稳定可用的国内源
+#   - apt源 mirrors.ivolces.com DNS不通，必须换 mirrors.aliyun.com
+#   - static.rust-lang.org 不可达，必须走镜像下载rustup-init
+#   - 首次安装约需3-5分钟（取决于网速）
 #
-# 用法：./scripts/setup-rust.sh
+# 用法：bash scripts/setup-rust.sh [版本号]
+#   默认版本：1.95.0
 #
 # 特性：
-#   - 幂等：重复运行不出错，已安装则跳过
-#   - Rust >= 1.82 则跳过安装
-#   - 自动配置清华镜像加速下载
-#   - 自动安装 just 命令运行器
-#   - 适配 Debian / Ubuntu / 云电脑环境
+#   - 幂等：已安装且版本>=要求则跳过
+#   - 自动换apt源（阿里云）
+#   - 自动配置USTC cargo镜像
+#   - 内存<=4G时自动限制CARGO_BUILD_JOBS=2
 # ============================================================================
 set -euo pipefail
 
-# 处理 HOME 可能为空的情况（沙箱环境）
 HOME="${HOME:-$(eval echo ~)}"
+RUST_VERSION="${1:-1.95.0}"
 
-# ---------- 颜色定义 ----------
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
+# ---------- 颜色 ----------
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 info()  { echo -e "${BLUE}[setup-rust]${NC} $*"; }
 ok()    { echo -e "${GREEN}[setup-rust]${NC} ✅ $*"; }
 warn()  { echo -e "${YELLOW}[setup-rust]${NC} ⚠️  $*"; }
 fail()  { echo -e "${RED}[setup-rust]${NC} ❌ $*"; exit 1; }
 
-# ---------- 获取脚本所在目录 ----------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# ---------- 检测当前 Rust 版本 ----------
-MIN_RUST_VERSION="1.82.0"
-
-needs_rust_install() {
-    if ! command -v rustc &>/dev/null; then
-        return 0  # 需要安装
+# ---------- 步骤0：换apt源（云电脑ivolces源DNS不通） ----------
+fix_apt_source() {
+    if ! grep -q "mirrors.aliyun.com" /etc/apt/sources.list 2>/dev/null; then
+        if grep -q "mirrors.ivolces.com" /etc/apt/sources.list 2>/dev/null; then
+            info "替换apt源: ivolces → aliyun..."
+            cp /etc/apt/sources.list /etc/apt/sources.list.bak.$(date +%Y%m%d%H%M%S)
+            sed -i 's|mirrors.ivolces.com|mirrors.aliyun.com|g' /etc/apt/sources.list
+            apt-get update -qq 2>/dev/null || true
+            ok "apt源已替换为阿里云"
+        fi
     fi
+}
 
+# ---------- 版本比较 ----------
+needs_rust_install() {
+    if ! command -v rustc &>/dev/null; then return 0; fi
     local current_version
     current_version=$(rustc --version | grep -oP '\d+\.\d+\.\d+' | head -1)
+    info "当前 Rust 版本: ${current_version}，要求: >= ${RUST_VERSION}"
 
-    info "当前 Rust 版本: ${current_version}"
-
-    # 版本比较
     local IFS='.'
     read -ra CUR <<< "${current_version}"
-    read -ra MIN <<< "${MIN_RUST_VERSION}"
+    read -ra REQ <<< "${RUST_VERSION}"
 
-    if (( CUR[0] > MIN[0] )); then return 1; fi
-    if (( CUR[0] < MIN[0] )); then return 0; fi
-    if (( CUR[1] > MIN[1] )); then return 1; fi
-    if (( CUR[1] < MIN[1] )); then return 0; fi
-    if (( CUR[2] >= MIN[2] )); then return 1; fi
+    if (( CUR[0] > REQ[0] )); then return 1; fi
+    if (( CUR[0] < REQ[0] )); then return 0; fi
+    if (( CUR[1] > REQ[1] )); then return 1; fi
+    if (( CUR[1] < REQ[1] )); then return 0; fi
+    if (( CUR[2] >= REQ[2] )); then return 1; fi
     return 0
 }
 
-# ---------- 步骤1：安装系统依赖 ----------
-info "检查系统依赖..."
+# ---------- 步骤1：系统依赖 ----------
+info "步骤1: 检查系统依赖..."
+fix_apt_source
 
 MISSING_DEPS=()
 for cmd in curl git gcc pkg-config; do
-    if ! command -v "${cmd}" &>/dev/null; then
-        MISSING_DEPS+=("${cmd}")
-    fi
+    command -v "${cmd}" &>/dev/null || MISSING_DEPS+=("${cmd}")
 done
 
 if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
     info "安装缺失依赖: ${MISSING_DEPS[*]}"
-    if command -v apt-get &>/dev/null; then
-        sudo apt-get update -qq
-        # OpenDAW额外依赖: libasound2-dev(Tauri音频) libwebkit2gtk-4.1-dev(Tauri Linux)
-        sudo apt-get install -y -qq "${MISSING_DEPS[@]}" libssl-dev libpq-dev libasound2-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf 2>/dev/null || true
-    elif command -v yum &>/dev/null; then
-        sudo yum install -y "${MISSING_DEPS[@]}" openssl-devel postgresql-devel alsa-lib-devel 2>/dev/null || true
-    else
-        warn "无法自动安装依赖，请手动安装: ${MISSING_DEPS[*]}"
-    fi
+    apt-get update -qq 2>/dev/null || true
+    apt-get install -y --no-install-recommends \
+        "${MISSING_DEPS[@]}" \
+        build-essential pkg-config libssl-dev libasound2-dev \
+        2>/dev/null || warn "部分依赖安装失败，尝试继续..."
 else
     ok "系统依赖已满足"
 fi
 
-# ---------- 步骤2：安装/升级 Rust ----------
+# ---------- 步骤2：安装Rust ----------
 if needs_rust_install; then
-    info "安装/升级 Rust (目标版本 >= ${MIN_RUST_VERSION})..."
+    info "步骤2: 安装 Rust ${RUST_VERSION}..."
 
-    # 设置清华镜像加速（国内环境）
-    export RUSTUP_DIST_SERVER="https://mirrors.tuna.tsinghua.edu.cn/rustup"
-    export RUSTUP_UPDATE_ROOT="https://mirrors.tuna.tsinghua.edu.cn/rustup/rustup"
+    # USTC镜像 — 唯一在云电脑环境稳定可用的国内源
+    export RUSTUP_DIST_SERVER="https://mirrors.ustc.edu.cn/rust-static"
+    export RUSTUP_UPDATE_ROOT="https://mirrors.ustc.edu.cn/rust-static/rustup"
 
+    # 先下载rustup-init二进制（小文件，USTC镜像快）
+    RUSTUP_INIT="/tmp/rustup-init-$$"
+    info "下载 rustup-init (USTC镜像)..."
+    curl -L --connect-timeout 30 --retry 3 \
+        -o "${RUSTUP_INIT}" \
+        "https://mirrors.ustc.edu.cn/rust-static/rustup/dist/x86_64-unknown-linux-gnu/rustup-init" \
+        || fail "rustup-init 下载失败，检查网络"
+
+    chmod +x "${RUSTUP_INIT}"
+
+    # 如果已装了旧版rustup，先卸载
     if command -v rustup &>/dev/null; then
-        info "rustup 已存在，尝试升级..."
-        rustup update stable || warn "rustup update 失败，尝试重新安装"
+        info "检测到旧版rustup，先卸载..."
+        rustup self uninstall -y 2>/dev/null || true
     fi
 
-    if needs_rust_install; then
-        info "通过 rustup-init 安装 Rust..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-            | sh -s -- -y --default-toolchain stable
+    info "执行安装 (toolchain=${RUST_VERSION})..."
+    "${RUSTUP_INIT}" -y --default-toolchain "${RUST_VERSION}" --profile default
+    rm -f "${RUSTUP_INIT}"
 
-        # 加载环境变量
-        # shellcheck source=/dev/null
-        source "${HOME}/.cargo/env"
-    fi
+    # 加载环境
+    # shellcheck source=/dev/null
+    source "${HOME}/.cargo/env" 2>/dev/null || true
 
-    # 验证安装
     if command -v rustc &>/dev/null; then
         ok "Rust 安装完成: $(rustc --version)"
     else
-        # 尝试 source env
-        source "${HOME}/.cargo/env" 2>/dev/null || true
-        if command -v rustc &>/dev/null; then
-            ok "Rust 安装完成: $(rustc --version)"
-        else
-            fail "Rust 安装失败，请检查日志"
-        fi
+        fail "Rust 安装失败，请检查日志"
     fi
 else
-    ok "Rust 版本满足要求 ($(rustc --version))，跳过安装"
+    ok "步骤2: Rust 版本满足 ($(rustc --version))，跳过安装"
 fi
 
-# ---------- 步骤3：配置 cargo 镜像（国内加速） ----------
-info "配置 cargo 镜像源（清华+rsproxy）..."
+# ---------- 步骤3：配置cargo镜像 ----------
+info "步骤3: 配置 cargo USTC镜像..."
 CARGO_DIR="${HOME}/.cargo"
 CONFIG_FILE="${CARGO_DIR}/config.toml"
 mkdir -p "${CARGO_DIR}"
 
-# 检查是否已配置清华镜像
-if [[ -f "${CONFIG_FILE}" ]] && grep -q "mirrors.tuna.tsinghua.edu.cn" "${CONFIG_FILE}"; then
-    ok "cargo 镜像已配置（清华）"
-else
-    # 备份已有配置
-    if [[ -f "${CONFIG_FILE}" ]]; then
-        BACKUP="${CONFIG_FILE}.bak.$(date +%Y%m%d%H%M%S)"
-        cp "${CONFIG_FILE}" "${BACKUP}"
-        info "已备份原配置到 ${BACKUP}"
-    fi
-
-    cat >> "${CONFIG_FILE}" << 'MIRROREOF'
-
-# ============================================================
+# 始终覆写为USTC sparse镜像（实测最稳定）
+cat > "${CONFIG_FILE}" << 'MIRROREOF'
 # Cargo 镜像配置（由 setup-rust.sh 生成）
-# ============================================================
-
-[source.tuna]
-registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
-
-[source.rsproxy]
-registry = "https://rsproxy.cn/crates.io-index"
+# 踩坑：清华/rsproxy在云电脑不可用，USTC sparse是唯一稳定源
 
 [source.crates-io]
-replace-with = "tuna"
+replace-with = 'ustc'
 
-# 备用切换：如需临时切换到 rsproxy，修改上面 replace-with 值为 "rsproxy"
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+
+[net]
+retry = 10
+offline = false
 MIRROREOF
 
-    ok "镜像配置已写入 ${CONFIG_FILE}（主源：清华 / 备源：rsproxy）"
-fi
+ok "cargo 镜像已配置: USTC sparse"
 
-# ---------- 步骤4：安装 just ----------
-if command -v just &>/dev/null; then
-    ok "just 已安装: $(just --version)"
+# ---------- 步骤4：内存限制 ----------
+TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "0")
+TOTAL_MEM_MB=$((TOTAL_MEM_KB / 1024))
+
+if [[ ${TOTAL_MEM_MB} -le 4096 ]]; then
+    CARGO_JOBS=2
 else
-    info "安装 just 命令运行器..."
-    # 限制并行数防 OOM（参考: rust-oom.md）
-    CARGO_BUILD_JOBS=2 cargo install just || warn "just 安装失败，可稍后手动安装: cargo install just"
-    if command -v just &>/dev/null; then
-        ok "just 安装完成: $(just --version)"
-    else
-        warn "just 安装未成功，请确保 ~/.cargo/bin 在 PATH 中"
-    fi
+    CARGO_JOBS=$(nproc 2>/dev/null || echo 4)
 fi
 
-# ---------- 步骤5：输出环境信息 ----------
+# 写入环境变量到 .bashrc（持久化）
+BASHRC="${HOME}/.bashrc"
+if ! grep -q "CARGO_BUILD_JOBS" "${BASHRC}" 2>/dev/null; then
+    echo "" >> "${BASHRC}"
+    echo "# Rust编译并行数（防OOM）" >> "${BASHRC}"
+    echo "export CARGO_BUILD_JOBS=${CARGO_JOBS}" >> "${BASHRC}"
+    info "已写入 CARGO_BUILD_JOBS=${CARGO_JOBS} 到 .bashrc"
+fi
+
+export CARGO_BUILD_JOBS="${CARGO_JOBS}"
+
+# ---------- 步骤5：输出 ----------
 echo ""
 echo "============================================"
-info "🔧 OpenDAW Rust 开发环境信息"
+info "🔧 Rust 开发环境"
 echo "============================================"
-echo "Rust 版本:       $(rustc --version 2>/dev/null || echo '未安装')"
-echo "Cargo 版本:      $(cargo --version 2>/dev/null || echo '未安装')"
-echo "rustup 版本:     $(rustup --version 2>/dev/null || echo '未安装')"
-echo "just 版本:       $(just --version 2>/dev/null || echo '未安装')"
-echo "工具链:          $(rustup show active-toolchain 2>/dev/null || echo '未知')"
-echo "Cargo 镜像:      $(grep 'replace-with' ~/.cargo/config.toml 2>/dev/null || echo '未配置')"
-echo "CARGO_BUILD_JOBS: ${CARGO_BUILD_JOBS:-未设置（默认2）}"
+echo "Rust:          $(rustc --version 2>/dev/null || echo '未安装')"
+echo "Cargo:         $(cargo --version 2>/dev/null || echo '未安装')"
+echo "Toolchain:     $(rustup show active-toolchain 2>/dev/null || echo '未知')"
+echo "Cargo镜像:     USTC sparse"
+echo "BUILD_JOBS:    ${CARGO_BUILD_JOBS} (内存${TOTAL_MEM_MB}MB)"
 echo "============================================"
 echo ""
-ok "环境设置完成！下一步：运行 just build"
+ok "环境安装完成！下一步: bash scripts/build.sh --release"
