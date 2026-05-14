@@ -28,10 +28,16 @@ pub fn routes(state: AppState) -> Router<AppState> {
             get(get_project).put(update_project).delete(delete_project),
         )
         // 项目下的轨道
-        .route("/api/v1/projects/{id}/tracks", get(list_project_tracks).post(add_track_to_project))
+        .route(
+            "/api/v1/projects/{id}/tracks",
+            get(list_project_tracks).post(add_track_to_project),
+        )
         // 轨道CRUD (BUG-DAW-002修复)
         .route("/api/v1/tracks", get(list_tracks).post(create_track))
-        .route("/api/v1/tracks/{id}", get(get_track).put(update_track).delete(delete_track))
+        .route(
+            "/api/v1/tracks/{id}",
+            get(get_track).put(update_track).delete(delete_track),
+        )
         // 文件上传 (BUG-DAW-006修复)
         .route("/api/v1/tracks/{id}/audio", post(upload_track_audio))
         // 项目导入 (BUG-DAW-006修复)
@@ -96,11 +102,13 @@ async fn create_track(
     if req.project_id.is_none() {
         return Err(ApiError::BadRequest("project_id is required".into()));
     }
-    
+
     let project_id = req.project_id.unwrap();
-    let project = state.get_project(project_id).await
+    let project = state
+        .get_project(project_id)
+        .await
         .ok_or_else(|| ApiError::NotFound(format!("Project {}", project_id)))?;
-    
+
     let track = TrackInfo {
         id: Uuid::new_v4(),
         name: req.name.unwrap_or_else(|| "New Track".into()),
@@ -110,13 +118,13 @@ async fn create_track(
         solo: req.solo.unwrap_or(false),
         plugin_count: 0,
     };
-    
+
     let mut projects = state.projects.write().await;
     if let Some(project) = projects.get_mut(&project_id) {
         project.tracks.push(track.clone());
         project.updated_at = chrono::Utc::now().to_rfc3339();
     }
-    
+
     Ok((StatusCode::CREATED, Json(track)))
 }
 
@@ -143,7 +151,7 @@ async fn update_track(
     Json(req): Json<UpdateTrackRequest>,
 ) -> Result<Json<TrackInfo>, ApiError> {
     let mut projects = state.projects.write().await;
-    
+
     for project in projects.values_mut() {
         if let Some(track) = project.tracks.iter_mut().find(|t| t.id == id) {
             if let Some(name) = req.name {
@@ -174,7 +182,7 @@ async fn delete_track(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     let mut projects = state.projects.write().await;
-    
+
     for project in projects.values_mut() {
         let initial_len = project.tracks.len();
         project.tracks.retain(|t| t.id != id);
@@ -191,7 +199,9 @@ async fn list_project_tracks(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<TrackInfo>>, ApiError> {
-    let project = state.get_project(id).await
+    let project = state
+        .get_project(id)
+        .await
         .ok_or_else(|| ApiError::NotFound(format!("Project {}", id)))?;
     Ok(Json(project.tracks))
 }
@@ -202,9 +212,11 @@ async fn add_track_to_project(
     Path(id): Path<Uuid>,
     Json(req): Json<CreateTrackRequest>,
 ) -> Result<(StatusCode, Json<TrackInfo>), ApiError> {
-    let project = state.get_project(id).await
+    let project = state
+        .get_project(id)
+        .await
         .ok_or_else(|| ApiError::NotFound(format!("Project {}", id)))?;
-    
+
     let track = TrackInfo {
         id: Uuid::new_v4(),
         name: req.name.unwrap_or_else(|| "New Track".into()),
@@ -214,13 +226,13 @@ async fn add_track_to_project(
         solo: req.solo.unwrap_or(false),
         plugin_count: 0,
     };
-    
+
     let mut projects = state.projects.write().await;
     if let Some(project) = projects.get_mut(&id) {
         project.tracks.push(track.clone());
         project.updated_at = chrono::Utc::now().to_rfc3339();
     }
-    
+
     Ok((StatusCode::CREATED, Json(track)))
 }
 
@@ -475,7 +487,7 @@ async fn transcribe_project(
 async fn list_plugins(State(state): State<AppState>) -> Json<PluginsResponse> {
     let mp = state.marketplace.read().await;
     let manifests = mp.registry.list_all();
-    
+
     let plugins: Vec<PluginInfo> = manifests
         .into_iter()
         .map(|m| PluginInfo {
@@ -487,7 +499,7 @@ async fn list_plugins(State(state): State<AppState>) -> Json<PluginsResponse> {
             description: Some(m.description.clone()),
         })
         .collect();
-    
+
     let total = plugins.len();
     Json(PluginsResponse { total, plugins })
 }
@@ -687,7 +699,6 @@ async fn marketplace_submit_review(
     Ok(Json(resp))
 }
 
-
 // ──── 文件上传处理器 (BUG-DAW-006修复) ────
 
 /// 支持的音频格式
@@ -715,28 +726,31 @@ async fn upload_track_audio(
     let project_id = {
         let projects = state.projects.read().await;
         let mut found_project_id = None;
-        
+
         for (pid, project) in projects.iter() {
             if project.tracks.iter().any(|t| t.id == track_id) {
                 found_project_id = Some(*pid);
                 break;
             }
         }
-        
-        found_project_id
-            .ok_or_else(|| ApiError::NotFound(format!("Track {}", track_id)))?
+
+        found_project_id.ok_or_else(|| ApiError::NotFound(format!("Track {}", track_id)))?
     };
-    
+
     // 处理 multipart 数据
     let mut filename: Option<String> = None;
     let mut file_data: Vec<u8> = Vec::new();
-    
-    while let Some(field) = multipart.next_field().await.map_err(|e| ApiError::BadRequest(e.to_string()))? {
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?
+    {
         let name = field.name().unwrap_or("").to_string();
-        
+
         if name == "file" {
             filename = field.file_name().map(|s| s.to_string());
-            
+
             // 读取文件内容
             use futures::stream::StreamExt;
             let mut stream = field;
@@ -746,28 +760,35 @@ async fn upload_track_audio(
             }
         }
     }
-    
+
     // 验证文件名
     let filename = filename.ok_or_else(|| ApiError::BadRequest("No filename provided".into()))?;
-    
+
     // 验证文件格式
-    let format = is_supported_format(&filename)
-        .ok_or_else(|| ApiError::BadRequest(format!("Unsupported format. Supported: {:?}", SUPPORTED_AUDIO_FORMATS)))?;
-    
+    let format = is_supported_format(&filename).ok_or_else(|| {
+        ApiError::BadRequest(format!(
+            "Unsupported format. Supported: {:?}",
+            SUPPORTED_AUDIO_FORMATS
+        ))
+    })?;
+
     // 验证文件大小
     let size = file_data.len() as u64;
     if size > MAX_FILE_SIZE {
-        return Err(ApiError::BadRequest(format!("File too large. Max size: {} bytes", MAX_FILE_SIZE)));
+        return Err(ApiError::BadRequest(format!(
+            "File too large. Max size: {} bytes",
+            MAX_FILE_SIZE
+        )));
     }
-    
+
     if size == 0 {
         return Err(ApiError::BadRequest("Empty file".into()));
     }
-    
+
     // 确保目录存在并保存文件
     let audio_dir = state.ensure_audio_dir(project_id, track_id);
     let file_path = audio_dir.join(&filename);
-    
+
     // 如果文件已存在，添加时间戳避免覆盖
     let final_path = if file_path.exists() {
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
@@ -777,17 +798,23 @@ async fn upload_track_audio(
     } else {
         file_path
     };
-    
+
     // 写入文件
     tokio::fs::write(&final_path, &file_data)
         .await
         .map_err(|e| ApiError::Internal(format!("Failed to save file: {}", e)))?;
-    
-    tracing::info!("Uploaded audio file: {} ({} bytes) to track {}", filename, size, track_id);
-    
+
+    tracing::info!(
+        "Uploaded audio file: {} ({} bytes) to track {}",
+        filename,
+        size,
+        track_id
+    );
+
     Ok(Json(AudioUploadResponse {
         track_id,
-        filename: final_path.file_name()
+        filename: final_path
+            .file_name()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or(filename),
         size,
@@ -802,17 +829,21 @@ async fn import_project(
 ) -> Result<Json<ProjectImportResponse>, ApiError> {
     // 支持的项目格式
     const SUPPORTED_PROJECT_FORMATS: &[&str] = &["opendaw", "json", "daw"];
-    
+
     // 处理 multipart 数据
     let mut filename: Option<String> = None;
     let mut file_data: Vec<u8> = Vec::new();
-    
-    while let Some(field) = multipart.next_field().await.map_err(|e| ApiError::BadRequest(e.to_string()))? {
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?
+    {
         let name = field.name().unwrap_or("").to_string();
-        
+
         if name == "file" {
             filename = field.file_name().map(|s| s.to_string());
-            
+
             // 读取文件内容
             use futures::stream::StreamExt;
             let mut stream = field;
@@ -822,33 +853,41 @@ async fn import_project(
             }
         }
     }
-    
+
     // 验证文件名
     let filename = filename.ok_or_else(|| ApiError::BadRequest("No filename provided".into()))?;
-    
+
     // 验证文件格式
-    let ext = filename.rsplit('.').next()
+    let ext = filename
+        .rsplit('.')
+        .next()
         .ok_or_else(|| ApiError::BadRequest("No file extension".into()))?
         .to_lowercase();
-    
+
     if !SUPPORTED_PROJECT_FORMATS.contains(&ext.as_str()) {
-        return Err(ApiError::BadRequest(format!("Unsupported project format: {}. Supported: {:?}", ext, SUPPORTED_PROJECT_FORMATS)));
+        return Err(ApiError::BadRequest(format!(
+            "Unsupported project format: {}. Supported: {:?}",
+            ext, SUPPORTED_PROJECT_FORMATS
+        )));
     }
-    
+
     // 验证文件大小
     let size = file_data.len() as u64;
     if size > MAX_FILE_SIZE {
-        return Err(ApiError::BadRequest(format!("File too large. Max size: {} bytes", MAX_FILE_SIZE)));
+        return Err(ApiError::BadRequest(format!(
+            "File too large. Max size: {} bytes",
+            MAX_FILE_SIZE
+        )));
     }
-    
+
     if size == 0 {
         return Err(ApiError::BadRequest("Empty file".into()));
     }
-    
+
     // 确保导入目录存在并保存文件
     let import_dir = state.get_import_dir();
     let file_path = import_dir.join(&filename);
-    
+
     // 如果文件已存在，添加时间戳避免覆盖
     let final_path = if file_path.exists() {
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
@@ -858,42 +897,59 @@ async fn import_project(
     } else {
         file_path
     };
-    
+
     // 写入文件
     tokio::fs::write(&final_path, &file_data)
         .await
         .map_err(|e| ApiError::Internal(format!("Failed to save file: {}", e)))?;
-    
+
     // 尝试解析并创建项目（可选）
     let project_id = if ext == "json" || ext == "opendaw" {
         // 尝试解析项目文件
         if let Ok(project_data) = serde_json::from_slice::<serde_json::Value>(&file_data) {
-            let name = project_data.get("name")
+            let name = project_data
+                .get("name")
                 .and_then(|v| v.as_str())
                 .unwrap_or("Imported Project")
                 .to_string();
-            
-            let project = state.create_project(name, Some(format!("Imported from {}", filename))).await;
+
+            let project = state
+                .create_project(name, Some(format!("Imported from {}", filename)))
+                .await;
             tracing::info!("Created project {} from imported file", project.id);
             project.id
         } else {
             // 无法解析，创建默认项目
-            let project = state.create_project("Imported Project".into(), Some(format!("Imported from {}", filename))).await;
-            tracing::info!("Created project {} from imported file (generic)", project.id);
+            let project = state
+                .create_project(
+                    "Imported Project".into(),
+                    Some(format!("Imported from {}", filename)),
+                )
+                .await;
+            tracing::info!(
+                "Created project {} from imported file (generic)",
+                project.id
+            );
             project.id
         }
     } else {
         // 其他格式，只保存文件
-        let project = state.create_project("Imported Project".into(), Some(format!("Imported from {}", filename))).await;
+        let project = state
+            .create_project(
+                "Imported Project".into(),
+                Some(format!("Imported from {}", filename)),
+            )
+            .await;
         tracing::info!("Created project {} from imported file", project.id);
         project.id
     };
-    
+
     tracing::info!("Imported project file: {} ({} bytes)", filename, size);
-    
+
     Ok(Json(ProjectImportResponse {
         project_id,
-        filename: final_path.file_name()
+        filename: final_path
+            .file_name()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or(filename),
         size,

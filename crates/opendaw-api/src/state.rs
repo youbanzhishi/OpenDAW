@@ -193,7 +193,9 @@ fn register_builtin_plugins(registry: &mut PluginRegistry) {
             version: "1.0.0".into(),
             author: "OpenDAW Team".into(),
             description: "8-voice polyphonic synthesizer with oscillators and filters".into(),
-            category: PluginCategory::Instrument { sub: Some(InstrumentSubcategory::Synthesizer) },
+            category: PluginCategory::Instrument {
+                sub: Some(InstrumentSubcategory::Synthesizer),
+            },
             tags: vec!["synth".into(), "synthesizer".into(), "polyphonic".into()],
             min_daw_version: Some("1.0.0".into()),
             dependencies: vec![],
@@ -213,7 +215,9 @@ fn register_builtin_plugins(registry: &mut PluginRegistry) {
             version: "1.0.0".into(),
             author: "OpenDAW Team".into(),
             description: "Multi-layer sampler with ADSR envelope".into(),
-            category: PluginCategory::Instrument { sub: Some(InstrumentSubcategory::Sampler) },
+            category: PluginCategory::Instrument {
+                sub: Some(InstrumentSubcategory::Sampler),
+            },
             tags: vec!["sampler".into(), "sample".into(), "drum".into()],
             min_daw_version: Some("1.0.0".into()),
             dependencies: vec![],
@@ -233,7 +237,9 @@ fn register_builtin_plugins(registry: &mut PluginRegistry) {
             version: "1.0.0".into(),
             author: "OpenDAW Team".into(),
             description: "16-pad drum machine with step sequencer".into(),
-            category: PluginCategory::Instrument { sub: Some(InstrumentSubcategory::DrumMachine) },
+            category: PluginCategory::Instrument {
+                sub: Some(InstrumentSubcategory::DrumMachine),
+            },
             tags: vec!["drums".into(), "drum machine".into(), "beats".into()],
             min_daw_version: Some("1.0.0".into()),
             dependencies: vec![],
@@ -257,7 +263,9 @@ fn register_builtin_plugins(registry: &mut PluginRegistry) {
             version: "1.0.0".into(),
             author: "OpenDAW Team".into(),
             description: "Volume control with pan and mute".into(),
-            category: PluginCategory::Utility { sub: Some(UtilitySubcategory::Tool) },
+            category: PluginCategory::Utility {
+                sub: Some(UtilitySubcategory::Tool),
+            },
             tags: vec!["gain".into(), "volume".into(), "pan".into(), "mute".into()],
             min_daw_version: Some("1.0.0".into()),
             dependencies: vec![],
@@ -277,8 +285,15 @@ fn register_builtin_plugins(registry: &mut PluginRegistry) {
             version: "1.0.0".into(),
             author: "OpenDAW Team".into(),
             description: "Real-time FFT spectrum analyzer".into(),
-            category: PluginCategory::Utility { sub: Some(UtilitySubcategory::Analyzer) },
-            tags: vec!["analyzer".into(), "spectrum".into(), "fft".into(), "visualization".into()],
+            category: PluginCategory::Utility {
+                sub: Some(UtilitySubcategory::Analyzer),
+            },
+            tags: vec![
+                "analyzer".into(),
+                "spectrum".into(),
+                "fft".into(),
+                "visualization".into(),
+            ],
             min_daw_version: Some("1.0.0".into()),
             dependencies: vec![],
             checksum: None,
@@ -308,10 +323,10 @@ fn register_builtin_plugins(registry: &mut PluginRegistry) {
 impl AppState {
     pub fn new() -> Self {
         let mut marketplace = MarketplaceState::new();
-        
+
         // 预注册内置插件 (BUG-DAW-003修复)
         register_builtin_plugins(&mut marketplace.registry);
-        
+
         // 预注册官方仓库
         let _ = marketplace.repository.add_source(RepositorySource {
             id: "official".into(),
@@ -516,14 +531,14 @@ mod tests {
         let state = AppState::new();
         let mp = state.marketplace.read().await;
         let plugins = mp.registry.list_all();
-        
+
         // 应该至少有内置插件
         assert!(!plugins.is_empty(), "Builtin plugins should be registered");
-        
+
         // 验证特定插件存在
         let eq7 = mp.registry.get("builtin-eq7");
         assert!(eq7.is_some(), "builtin-eq7 should exist");
-        
+
         let synth = mp.registry.get("builtin-synth");
         assert!(synth.is_some(), "builtin-synth should exist");
     }
@@ -541,12 +556,12 @@ impl AppState {
                 return path;
             }
         }
-        
+
         // 默认路径：~/.opendaw/data
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         std::path::PathBuf::from(home).join(".opendaw/data")
     }
-    
+
     /// 确保项目音频目录存在
     pub fn ensure_audio_dir(&self, project_id: Uuid, track_id: Uuid) -> std::path::PathBuf {
         let data_dir = self.get_data_dir();
@@ -555,28 +570,28 @@ impl AppState {
             .join(project_id.to_string())
             .join("audio")
             .join(track_id.to_string());
-        
+
         // 创建目录（如果不存在）
         if !audio_dir.exists() {
             if let Err(e) = std::fs::create_dir_all(&audio_dir) {
                 tracing::warn!("Failed to create audio dir: {}", e);
             }
         }
-        
+
         audio_dir
     }
-    
+
     /// 获取项目导入目录
     pub fn get_import_dir(&self) -> std::path::PathBuf {
         let data_dir = self.get_data_dir();
         let import_dir = data_dir.join("imports");
-        
+
         if !import_dir.exists() {
             if let Err(e) = std::fs::create_dir_all(&import_dir) {
                 tracing::warn!("Failed to create import dir: {}", e);
             }
         }
-        
+
         import_dir
     }
 }

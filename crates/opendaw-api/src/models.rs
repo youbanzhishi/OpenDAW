@@ -64,7 +64,7 @@ pub struct UpdateProjectRequest {
 /// 创建轨道请求
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CreateTrackRequest {
-    pub project_id: Option<Uuid>,  // 如果不指定，则创建独立轨道
+    pub project_id: Option<Uuid>, // 如果不指定，则创建独立轨道
     pub name: Option<String>,
     pub volume: Option<f32>,
     pub pan: Option<f32>,
@@ -369,7 +369,8 @@ mod tests {
 
     #[test]
     fn test_create_track_request() {
-        let json = r#"{"project_id":"550e8400-e29b-41d4-a716-446655440000","name":"Drums","volume":0.9}"#;
+        let json =
+            r#"{"project_id":"550e8400-e29b-41d4-a716-446655440000","name":"Drums","volume":0.9}"#;
         let req: CreateTrackRequest = serde_json::from_str(json).unwrap();
         assert_eq!(req.name, Some("Drums".into()));
         assert_eq!(req.volume, Some(0.9));
@@ -430,16 +431,14 @@ mod tests {
     fn test_plugins_response() {
         let resp = PluginsResponse {
             total: 2,
-            plugins: vec![
-                PluginInfo {
-                    id: "eq7".into(),
-                    name: "7-Band EQ".into(),
-                    version: "1.0.0".into(),
-                    plugin_type: "Effect".into(),
-                    author: Some("OpenDAW".into()),
-                    description: Some("An EQ".into()),
-                },
-            ],
+            plugins: vec![PluginInfo {
+                id: "eq7".into(),
+                name: "7-Band EQ".into(),
+                version: "1.0.0".into(),
+                plugin_type: "Effect".into(),
+                author: Some("OpenDAW".into()),
+                description: Some("An EQ".into()),
+            }],
         };
         assert_eq!(resp.total, 2);
         assert_eq!(resp.plugins.len(), 1);
