@@ -528,3 +528,55 @@ mod tests {
         assert!(synth.is_some(), "builtin-synth should exist");
     }
 }
+
+// ──── 文件上传：数据目录管理 ────
+
+impl AppState {
+    /// 获取项目数据目录路径
+    /// 优先级：环境变量 OPENDAW_DATA_DIR > ~/.opendaw/data
+    pub fn get_data_dir(&self) -> std::path::PathBuf {
+        if let Ok(dir) = std::env::var("OPENDAW_DATA_DIR") {
+            let path = std::path::PathBuf::from(dir);
+            if path.exists() {
+                return path;
+            }
+        }
+        
+        // 默认路径：~/.opendaw/data
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        std::path::PathBuf::from(home).join(".opendaw/data")
+    }
+    
+    /// 确保项目音频目录存在
+    pub fn ensure_audio_dir(&self, project_id: Uuid, track_id: Uuid) -> std::path::PathBuf {
+        let data_dir = self.get_data_dir();
+        let audio_dir = data_dir
+            .join("projects")
+            .join(project_id.to_string())
+            .join("audio")
+            .join(track_id.to_string());
+        
+        // 创建目录（如果不存在）
+        if !audio_dir.exists() {
+            if let Err(e) = std::fs::create_dir_all(&audio_dir) {
+                tracing::warn!("Failed to create audio dir: {}", e);
+            }
+        }
+        
+        audio_dir
+    }
+    
+    /// 获取项目导入目录
+    pub fn get_import_dir(&self) -> std::path::PathBuf {
+        let data_dir = self.get_data_dir();
+        let import_dir = data_dir.join("imports");
+        
+        if !import_dir.exists() {
+            if let Err(e) = std::fs::create_dir_all(&import_dir) {
+                tracing::warn!("Failed to create import dir: {}", e);
+            }
+        }
+        
+        import_dir
+    }
+}

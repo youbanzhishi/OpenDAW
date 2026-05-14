@@ -445,3 +445,73 @@ mod tests {
         assert_eq!(resp.plugins.len(), 1);
     }
 }
+
+// ──── 文件上传响应模型 ────
+
+/// 音频文件上传响应
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AudioUploadResponse {
+    pub track_id: Uuid,
+    pub filename: String,
+    pub size: u64,
+    pub status: String,
+}
+
+/// 项目导入响应
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProjectImportResponse {
+    pub project_id: Uuid,
+    pub filename: String,
+    pub size: u64,
+    pub status: String,
+}
+
+/// 音频文件信息（关联到轨道）
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AudioFileInfo {
+    pub track_id: Uuid,
+    pub filename: String,
+    pub path: String,
+    pub size: u64,
+    pub format: String,
+}
+
+#[cfg(test)]
+mod upload_tests {
+    use super::*;
+
+    #[test]
+    fn test_audio_upload_response() {
+        let resp = AudioUploadResponse {
+            track_id: Uuid::new_v4(),
+            filename: "test.wav".into(),
+            size: 1024,
+            status: "uploaded".into(),
+        };
+        assert_eq!(resp.status, "uploaded");
+        assert_eq!(resp.size, 1024);
+    }
+
+    #[test]
+    fn test_project_import_response() {
+        let resp = ProjectImportResponse {
+            project_id: Uuid::new_v4(),
+            filename: "project.opendaw".into(),
+            size: 2048,
+            status: "imported".into(),
+        };
+        assert_eq!(resp.status, "imported");
+    }
+
+    #[test]
+    fn test_audio_file_info() {
+        let info = AudioFileInfo {
+            track_id: Uuid::new_v4(),
+            filename: "vocals.mp3".into(),
+            path: "/data/audio/track123/vocals.mp3".into(),
+            size: 4096,
+            format: "mp3".into(),
+        };
+        assert_eq!(info.format, "mp3");
+    }
+}
