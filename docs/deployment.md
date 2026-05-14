@@ -86,29 +86,56 @@ sudo systemctl enable opendaw
 sudo systemctl start opendaw
 ```
 
-### 方式二：从源码编译
+### 方式二：从源码编译（⚠️ 必须使用项目脚本）
+
+> **强制要求：新团队/新机器接手本项目时，必须使用 `scripts/` 下的脚本部署，禁止手动安装。**
+> 脚本包含完整的踩坑记录和环境适配，手动安装 = 重复踩坑 = 浪费时间。
+> 没有脚本覆盖的场景，先补充脚本再部署。
 
 ```bash
-# 安装 Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# 克隆仓库
+# 1. 克隆仓库
 git clone https://github.com/youbanzhishi/OpenDAW.git
 cd OpenDAW
 
-# 编译 CLI（服务端）
-cargo build --release -p opendaw-cli
+# 2. 一键安装Rust环境（含系统依赖+国内镜像配置+内存自适应）
+bash scripts/setup-rust.sh [版本号]    # 默认1.95.0
 
-# 编译 API 服务
-cargo build --release -p opendaw-api
+# 3. 配置cargo镜像（默认USTC，国内唯一稳定源）
+bash scripts/cargo-mirror.sh ustc
 
-# 编译 WebSocket 服务
-cargo build --release -p opendaw-ws
+# 4. 编译
+bash scripts/build.sh --release              # 全部构建
+bash scripts/build.sh --release --bin opendaw      # 只构建CLI
+bash scripts/build.sh --release --bin opendaw-api  # 只构建API服务
 
-# 安装
-sudo cp target/release/opendaw /usr/local/bin/
-sudo cp target/release/opendaw-api /usr/local/bin/
-sudo cp target/release/opendaw-ws /usr/local/bin/
+# 5. 启动服务
+bash scripts/deploy-local.sh start    # 启动（端口8080）
+bash scripts/deploy-local.sh status   # 查看状态
+bash scripts/deploy-local.sh logs     # 查看日志
+bash scripts/deploy-local.sh stop     # 停止
+```
+
+#### 脚本说明
+
+| 脚本 | 用途 | 踩坑记录 |
+|------|------|----------|
+| `setup-rust.sh` | 安装Rust+系统依赖+镜像 | USTC唯一可用、ivolces源DNS不通、内存≤4G限2线程 |
+| `cargo-mirror.sh` | 切换cargo镜像源 | 清华/rsproxy在云电脑不可用，USTC sparse唯一稳定 |
+| `build.sh` | 编译构建 | bin名是opendaw不是opendaw-cli、/app/data挂载慢用/tmp |
+| `deploy-local.sh` | 服务管理(start/stop/status/logs) | — |
+
+#### 手动编译（不推荐，仅脚本不可用时）
+
+```bash
+# 安装 Rust（必须走USTC镜像，官方源国内不可达）
+export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
+export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
+curl -L -o /tmp/rustup-init https://mirrors.ustc.edu.cn/rust-static/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+chmod +x /tmp/rustup-init && /tmp/rustup-init -y --default-toolchain 1.95.0
+
+# 编译
+source ~/.cargo/env
+cargo build --release --bin opendaw-api
 ```
 
 #### 编译依赖（Linux）
