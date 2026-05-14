@@ -1,9 +1,10 @@
 //! 应用状态 — 共享项目/引擎实例
+//! BUG修复: BUG-DAW-003 预注册内置插件
 
 use crate::models::{Project, ProjectInfo};
 use opendaw_core::{
-    PlatformTarget, PluginCompatibility, PluginRegistry, PluginRepository, RepositorySource,
-    ReviewManager,
+    EffectSubcategory, InstrumentSubcategory, PluginCategory, PluginCompatibility, PluginManifest,
+    PluginRegistry, PluginRepository, RepositorySource, ReviewManager, UtilitySubcategory,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -58,9 +59,259 @@ impl MarketplaceState {
     }
 }
 
+/// 预注册内置插件 (BUG-DAW-003修复)
+fn register_builtin_plugins(registry: &mut PluginRegistry) {
+    // 内置效果器
+    let builtin_effects = vec![
+        PluginManifest {
+            id: "builtin-eq7".into(),
+            name: "7-Band Equalizer".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Professional 7-band parametric EQ with visual feedback".into(),
+            category: PluginCategory::Effect { sub: Some(EffectSubcategory::Equalizer) },
+            tags: vec!["eq".into(), "equalizer".into(), "frequency".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-compressor".into(),
+            name: "Dynamic Compressor".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Studio-quality dynamics processor with attack, release, ratio and threshold controls".into(),
+            category: PluginCategory::Effect { sub: Some(EffectSubcategory::Dynamics) },
+            tags: vec!["compressor".into(), "dynamics".into(), "limiter".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-reverb".into(),
+            name: "Hall Reverb".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Convolver-based reverb with hall, room and plate presets".into(),
+            category: PluginCategory::Effect { sub: Some(EffectSubcategory::Reverb) },
+            tags: vec!["reverb".into(), "hall".into(), "room".into(), "ambience".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-delay".into(),
+            name: "Echo Delay".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Tempo-synced delay with ping-pong mode".into(),
+            category: PluginCategory::Effect { sub: Some(EffectSubcategory::Delay) },
+            tags: vec!["delay".into(), "echo".into(), "tempo".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-chorus".into(),
+            name: "Chorus/Flanger".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Modulation effect combining chorus and flanger".into(),
+            category: PluginCategory::Effect { sub: Some(EffectSubcategory::Chorus) },
+            tags: vec!["chorus".into(), "flanger".into(), "modulation".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-distortion".into(),
+            name: "Distortion/Overdrive".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Classic guitar distortion and overdrive simulation".into(),
+            category: PluginCategory::Effect { sub: Some(EffectSubcategory::Distortion) },
+            tags: vec!["distortion".into(), "overdrive".into(), "saturation".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+    ];
+
+    // 内置乐器
+    let builtin_instruments = vec![
+        PluginManifest {
+            id: "builtin-synth".into(),
+            name: "Poly Synth".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "8-voice polyphonic synthesizer with oscillators and filters".into(),
+            category: PluginCategory::Instrument { sub: Some(InstrumentSubcategory::Synthesizer) },
+            tags: vec!["synth".into(), "synthesizer".into(), "polyphonic".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-sampler".into(),
+            name: "Sample Player".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Multi-layer sampler with ADSR envelope".into(),
+            category: PluginCategory::Instrument { sub: Some(InstrumentSubcategory::Sampler) },
+            tags: vec!["sampler".into(), "sample".into(), "drum".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-drums".into(),
+            name: "Drum Machine".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "16-pad drum machine with step sequencer".into(),
+            category: PluginCategory::Instrument { sub: Some(InstrumentSubcategory::DrumMachine) },
+            tags: vec!["drums".into(), "drum machine".into(), "beats".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+    ];
+
+    // 内置工具
+    let builtin_utilities = vec![
+        PluginManifest {
+            id: "builtin-gain".into(),
+            name: "Gain/Pan".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Volume control with pan and mute".into(),
+            category: PluginCategory::Utility { sub: Some(UtilitySubcategory::Tool) },
+            tags: vec!["gain".into(), "volume".into(), "pan".into(), "mute".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+        PluginManifest {
+            id: "builtin-analyzer".into(),
+            name: "Spectrum Analyzer".into(),
+            version: "1.0.0".into(),
+            author: "OpenDAW Team".into(),
+            description: "Real-time FFT spectrum analyzer".into(),
+            category: PluginCategory::Utility { sub: Some(UtilitySubcategory::Analyzer) },
+            tags: vec!["analyzer".into(), "spectrum".into(), "fft".into(), "visualization".into()],
+            min_daw_version: Some("1.0.0".into()),
+            dependencies: vec![],
+            checksum: None,
+            download_url: None,
+            homepage: None,
+            license: Some("MIT".into()),
+            platforms: vec![opendaw_core::PlatformTarget {
+                os: "linux".into(),
+                arch: "x86_64".into(),
+            }],
+            repository_id: Some("builtin".into()),
+        },
+    ];
+
+    // 注册所有内置插件
+    for plugin in builtin_effects {
+        let _ = registry.register(plugin);
+    }
+    for plugin in builtin_instruments {
+        let _ = registry.register(plugin);
+    }
+    for plugin in builtin_utilities {
+        let _ = registry.register(plugin);
+    }
+}
+
 impl AppState {
     pub fn new() -> Self {
         let mut marketplace = MarketplaceState::new();
+        
+        // 预注册内置插件 (BUG-DAW-003修复)
+        register_builtin_plugins(&mut marketplace.registry);
+        
         // 预注册官方仓库
         let _ = marketplace.repository.add_source(RepositorySource {
             id: "official".into(),
@@ -257,5 +508,23 @@ mod tests {
         let mp = state.marketplace.read().await;
         let sources = mp.repository.list_sources();
         assert!(!sources.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_builtin_plugins_registered() {
+        // BUG-DAW-003 测试：验证内置插件已注册
+        let state = AppState::new();
+        let mp = state.marketplace.read().await;
+        let plugins = mp.registry.list_all();
+        
+        // 应该至少有内置插件
+        assert!(!plugins.is_empty(), "Builtin plugins should be registered");
+        
+        // 验证特定插件存在
+        let eq7 = mp.registry.get("builtin-eq7");
+        assert!(eq7.is_some(), "builtin-eq7 should exist");
+        
+        let synth = mp.registry.get("builtin-synth");
+        assert!(synth.is_some(), "builtin-synth should exist");
     }
 }

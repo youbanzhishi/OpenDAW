@@ -1,7 +1,10 @@
 //! API 请求/响应模型
+//! BUG修复: 添加Tracks相关模型 (BUG-DAW-002)
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+// ──── 项目模型 ────
 
 /// 项目模型
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -55,6 +58,31 @@ pub struct UpdateProjectRequest {
     pub description: Option<String>,
     pub bpm: Option<f64>,
 }
+
+// ──── Tracks 模型 (BUG-DAW-002新增) ────
+
+/// 创建轨道请求
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CreateTrackRequest {
+    pub project_id: Option<Uuid>,  // 如果不指定，则创建独立轨道
+    pub name: Option<String>,
+    pub volume: Option<f32>,
+    pub pan: Option<f32>,
+    pub muted: Option<bool>,
+    pub solo: Option<bool>,
+}
+
+/// 更新轨道请求
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct UpdateTrackRequest {
+    pub name: Option<String>,
+    pub volume: Option<f32>,
+    pub pan: Option<f32>,
+    pub muted: Option<bool>,
+    pub solo: Option<bool>,
+}
+
+// ──── 渲染 & AI ────
 
 /// 渲染请求
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -115,6 +143,8 @@ pub struct TranscribeResponse {
     pub key_estimate: Option<String>,
 }
 
+// ──── 插件模型 (BUG-DAW-003修复) ────
+
 /// 插件信息
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PluginInfo {
@@ -124,6 +154,13 @@ pub struct PluginInfo {
     pub plugin_type: String,
     pub author: Option<String>,
     pub description: Option<String>,
+}
+
+/// 插件列表响应 (BUG-DAW-003修复)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PluginsResponse {
+    pub total: usize,
+    pub plugins: Vec<PluginInfo>,
 }
 
 /// 混音建议响应
@@ -331,6 +368,23 @@ mod tests {
     }
 
     #[test]
+    fn test_create_track_request() {
+        let json = r#"{"project_id":"550e8400-e29b-41d4-a716-446655440000","name":"Drums","volume":0.9}"#;
+        let req: CreateTrackRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.name, Some("Drums".into()));
+        assert_eq!(req.volume, Some(0.9));
+    }
+
+    #[test]
+    fn test_update_track_request() {
+        let json = r#"{"volume":0.5,"muted":true}"#;
+        let req: UpdateTrackRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.volume, Some(0.5));
+        assert_eq!(req.muted, Some(true));
+        assert!(req.name.is_none());
+    }
+
+    #[test]
     fn test_mix_suggestion_item() {
         let item = MixSuggestionItem {
             track_name: "Vocals".into(),
@@ -370,5 +424,24 @@ mod tests {
         };
         assert_eq!(mp.id, "eq7");
         assert!(mp.compatible);
+    }
+
+    #[test]
+    fn test_plugins_response() {
+        let resp = PluginsResponse {
+            total: 2,
+            plugins: vec![
+                PluginInfo {
+                    id: "eq7".into(),
+                    name: "7-Band EQ".into(),
+                    version: "1.0.0".into(),
+                    plugin_type: "Effect".into(),
+                    author: Some("OpenDAW".into()),
+                    description: Some("An EQ".into()),
+                },
+            ],
+        };
+        assert_eq!(resp.total, 2);
+        assert_eq!(resp.plugins.len(), 1);
     }
 }

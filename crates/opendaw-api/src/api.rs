@@ -1,11 +1,12 @@
 //! 路由定义与处理器
+//! BUG修复: BUG-DAW-001, BUG-DAW-002, BUG-DAW-003
 
 use crate::error::ApiError;
 use crate::models::*;
 use crate::state::AppState;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
-use axum::routing::{delete, get, post, put};
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use opendaw_core::PluginReview;
 use serde::Deserialize;
@@ -17,17 +18,24 @@ pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         // Agent发现协议
         .route("/.well-known/agent.json", get(agent_manifest))
+        // Health check 端点 (BUG-DAW-001修复)
+        .route("/api/health", get(health_check))
         // 项目CRUD
         .route("/api/v1/projects", get(list_projects).post(create_project))
         .route(
             "/api/v1/projects/{id}",
             get(get_project).put(update_project).delete(delete_project),
         )
+        // 项目下的轨道
+        .route("/api/v1/projects/{id}/tracks", get(list_project_tracks).post(add_track_to_project))
+        // 轨道CRUD (BUG-DAW-002修复)
+        .route("/api/v1/tracks", get(list_tracks).post(create_track))
+        .route("/api/v1/tracks/{id}", get(get_track).put(update_track).delete(delete_track))
         // 渲染 & AI
         .route("/api/v1/projects/{id}/render", post(render_project))
         .route("/api/v1/projects/{id}/automix", post(automix_project))
         .route("/api/v1/projects/{id}/transcribe", post(transcribe_project))
-        // 插件 & 混音
+        // 插件 & 混音 (BUG-DAW-003修复)
         .route("/api/v1/plugins", get(list_plugins))
         .route("/api/v1/mixer/{id}/suggestions", get(mixer_suggestions))
         // Phase 33: Marketplace 端点
@@ -47,6 +55,171 @@ pub fn routes(state: AppState) -> Router<AppState> {
         )
         .with_state(state)
 }
+
+// ──── Health Check Handler (BUG-DAW-001修复) ────
+
+/// GET /api/health — 健康检查端点
+/// 返回JSON格式的健康状态信息
+async fn health_check() -> Json<Value> {
+    Json(json!({
+        "status": "ok",
+        "service": "opendaw-api",
+        "version": "1.0.3",
+        "timestamp": chrono::Utc::now().to_rfc3339()
+    }))
+}
+
+// ──── Tracks CRUD Handlers (BUG-DAW-002修复) ────
+
+/// GET /api/v1/tracks — 列出所有轨道（跨项目）
+async fn list_tracks(State(state): State<AppState>) -> Result<Json<Vec<TrackInfo>>, ApiError> {
+    let projects = state.projects.read().await;
+    let mut all_tracks = Vec::new();
+    for project in projects.values() {
+        for track in &project.tracks {
+            all_tracks.push(track.clone());
+        }
+    }
+    Ok(Json(all_tracks))
+}
+
+/// POST /api/v1/tracks — 创建轨道
+async fn create_track(
+    State(state): State<AppState>,
+    Json(req): Json<CreateTrackRequest>,
+) -> Result<(StatusCode, Json<TrackInfo>), ApiError> {
+    if req.project_id.is_none() {
+        return Err(ApiError::BadRequest("project_id is required".into()));
+    }
+    
+    let project_id = req.project_id.unwrap();
+    let project = state.get_project(project_id).await
+        .ok_or_else(|| ApiError::NotFound(format!("Project {}", project_id)))?;
+    
+    let track = TrackInfo {
+        id: Uuid::new_v4(),
+        name: req.name.unwrap_or_else(|| "New Track".into()),
+        volume: req.volume.unwrap_or(0.8),
+        pan: req.pan.unwrap_or(0.0),
+        muted: req.muted.unwrap_or(false),
+        solo: req.solo.unwrap_or(false),
+        plugin_count: 0,
+    };
+    
+    let mut projects = state.projects.write().await;
+    if let Some(project) = projects.get_mut(&project_id) {
+        project.tracks.push(track.clone());
+        project.updated_at = chrono::Utc::now().to_rfc3339();
+    }
+    
+    Ok((StatusCode::CREATED, Json(track)))
+}
+
+/// GET /api/v1/tracks/{id} — 获取轨道详情
+async fn get_track(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<TrackInfo>, ApiError> {
+    let projects = state.projects.read().await;
+    for project in projects.values() {
+        for track in &project.tracks {
+            if track.id == id {
+                return Ok(Json(track.clone()));
+            }
+        }
+    }
+    Err(ApiError::NotFound(format!("Track {}", id)))
+}
+
+/// PUT /api/v1/tracks/{id} — 更新轨道
+async fn update_track(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateTrackRequest>,
+) -> Result<Json<TrackInfo>, ApiError> {
+    let mut projects = state.projects.write().await;
+    
+    for project in projects.values_mut() {
+        if let Some(track) = project.tracks.iter_mut().find(|t| t.id == id) {
+            if let Some(name) = req.name {
+                track.name = name;
+            }
+            if let Some(volume) = req.volume {
+                track.volume = volume;
+            }
+            if let Some(pan) = req.pan {
+                track.pan = pan;
+            }
+            if let Some(muted) = req.muted {
+                track.muted = muted;
+            }
+            if let Some(solo) = req.solo {
+                track.solo = solo;
+            }
+            project.updated_at = chrono::Utc::now().to_rfc3339();
+            return Ok(Json(track.clone()));
+        }
+    }
+    Err(ApiError::NotFound(format!("Track {}", id)))
+}
+
+/// DELETE /api/v1/tracks/{id} — 删除轨道
+async fn delete_track(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    let mut projects = state.projects.write().await;
+    
+    for project in projects.values_mut() {
+        let initial_len = project.tracks.len();
+        project.tracks.retain(|t| t.id != id);
+        if project.tracks.len() < initial_len {
+            project.updated_at = chrono::Utc::now().to_rfc3339();
+            return Ok(StatusCode::NO_CONTENT);
+        }
+    }
+    Err(ApiError::NotFound(format!("Track {}", id)))
+}
+
+/// GET /api/v1/projects/{id}/tracks — 获取项目下的轨道列表
+async fn list_project_tracks(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Vec<TrackInfo>>, ApiError> {
+    let project = state.get_project(id).await
+        .ok_or_else(|| ApiError::NotFound(format!("Project {}", id)))?;
+    Ok(Json(project.tracks))
+}
+
+/// POST /api/v1/projects/{id}/tracks — 向项目添加轨道
+async fn add_track_to_project(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(req): Json<CreateTrackRequest>,
+) -> Result<(StatusCode, Json<TrackInfo>), ApiError> {
+    let project = state.get_project(id).await
+        .ok_or_else(|| ApiError::NotFound(format!("Project {}", id)))?;
+    
+    let track = TrackInfo {
+        id: Uuid::new_v4(),
+        name: req.name.unwrap_or_else(|| "New Track".into()),
+        volume: req.volume.unwrap_or(0.8),
+        pan: req.pan.unwrap_or(0.0),
+        muted: req.muted.unwrap_or(false),
+        solo: req.solo.unwrap_or(false),
+        plugin_count: 0,
+    };
+    
+    let mut projects = state.projects.write().await;
+    if let Some(project) = projects.get_mut(&id) {
+        project.tracks.push(track.clone());
+        project.updated_at = chrono::Utc::now().to_rfc3339();
+    }
+    
+    Ok((StatusCode::CREATED, Json(track)))
+}
+
+// ──── Agent 端点 ────
 
 /// GET /.well-known/agent.json — Agent发现协议端点
 ///
@@ -166,6 +339,8 @@ async fn agent_manifest() -> Json<Value> {
         }
     }))
 }
+
+// ──── Projects 端点 ────
 
 /// GET /api/v1/projects — 列出所有项目
 async fn list_projects(State(state): State<AppState>) -> Result<Json<Vec<ProjectInfo>>, ApiError> {
@@ -288,10 +463,31 @@ async fn transcribe_project(
     }))
 }
 
+// ──── Plugins 端点 (BUG-DAW-003修复) ────
+
 /// GET /api/v1/plugins — 列出可用插件
-async fn list_plugins(State(_state): State<AppState>) -> Json<Vec<PluginInfo>> {
-    Json(vec![])
+/// BUG-DAW-003修复: 从marketplace registry获取插件列表，而非硬编码空数组
+async fn list_plugins(State(state): State<AppState>) -> Json<PluginsResponse> {
+    let mp = state.marketplace.read().await;
+    let manifests = mp.registry.list_all();
+    
+    let plugins: Vec<PluginInfo> = manifests
+        .into_iter()
+        .map(|m| PluginInfo {
+            id: m.id.clone(),
+            name: m.name.clone(),
+            version: m.version.clone(),
+            plugin_type: format!("{:?}", m.category),
+            author: Some(m.author.clone()),
+            description: Some(m.description.clone()),
+        })
+        .collect();
+    
+    let total = plugins.len();
+    Json(PluginsResponse { total, plugins })
 }
+
+// ──── Mixer 端点 ────
 
 /// GET /api/v1/mixer/{id}/suggestions — 混音建议
 async fn mixer_suggestions(
