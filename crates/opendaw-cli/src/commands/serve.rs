@@ -32,28 +32,29 @@ struct ServeResult {
     status: String,
 }
 
-pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::error::Error>> {
-    // 查找 opendaw-api 二进制
-    let binary_name = "opendaw-api";
-    let binary_path = which::which(binary_name)
-        .or_else(|_| {
-            // 尝试相对路径
-            let relative = std::path::PathBuf::from("target/release/opendaw-api");
-            if relative.exists() {
-                Ok(relative)
-            } else {
-                let debug = std::path::PathBuf::from("target/debug/opendaw-api");
-                if debug.exists() {
-                    Ok(debug)
-                } else {
-                    Err(which::Error::CannotFindBinaryPath)
-                }
-            }
-        });
+/// 查找 opendaw-api 二进制
+fn find_opendaw_api() -> Option<std::path::PathBuf> {
+    // 1. PATH 查找
+    if let Ok(path) = which::which("opendaw-api") {
+        return Some(path);
+    }
+    // 2. 相对路径 release
+    let release = std::path::PathBuf::from("target/release/opendaw-api");
+    if release.exists() {
+        return Some(release);
+    }
+    // 3. 相对路径 debug
+    let debug = std::path::PathBuf::from("target/debug/opendaw-api");
+    if debug.exists() {
+        return Some(debug);
+    }
+    None
+}
 
-    let binary_path = match binary_path {
-        Ok(p) => p,
-        Err(_) => {
+pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::error::Error>> {
+    let binary_path = match find_opendaw_api() {
+        Some(p) => p,
+        None => {
             let result = ServeResult {
                 host: args.host.clone(),
                 port: args.port,
@@ -86,57 +87,51 @@ pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::er
     cmd.env("RUST_LOG", "opendaw_api=debug,opendaw_ws=debug");
 
     if args.daemon {
-        // 守护模式：detach 进程
+        // 守护模式：启动子进程并detach
         #[cfg(unix)]
         {
+            use std::os::unix::process::CommandExt;
+            cmd.process_group(0);
             cmd.stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .stdin(std::process::Stdio::null());
-
-            // 使用 pre_exec 双 fork 实现真正的 daemon
-            use std::os::unix::process::CommandExt;
-            cmd.process_group(0);
-
-            let child = cmd.spawn()?;
-            format.print_success(&format!(
-                "OpenDAW server started in daemon mode (PID: {})",
-                child.id()
-            ));
-            format.print_success(&format!(
-                "  API: http://{}:{}",
-                args.host, args.port
-            ));
-            format.print_success(&format!(
-                "  WebSocket: http://{}:{}",
-                args.host, args.ws_port
-            ));
         }
 
-        #[cfg(not(unix))]
+        #[cfg(windows)]
         {
-            // Windows: 使用 CREATE_NEW_PROCESS_GROUP
             use std::os::windows::process::CommandExt;
             const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
             cmd.creation_flags(CREATE_NEW_PROCESS_GROUP);
             cmd.stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .stdin(std::process::Stdio::null());
-
-            let child = cmd.spawn()?;
-            format.print_success(&format!(
-                "OpenDAW server started in daemon mode (PID: {})",
-                child.id()
-            ));
         }
+
+        let child = cmd.spawn()?;
+        format.print_success(&format!(
+            "OpenDAW server started in daemon mode (PID: {})",
+            child.id()
+        ));
+        format.print_success(&format!(
+            "  API: http://{}:{}",
+            args.host, args.port
+        ));
+        format.print_success(&format!(
+            "  WebSocket: http://{}:{}",
+            args.host, args.ws_port
+        ));
     } else {
-        // 前台模式：直接 exec 替换当前进程
+        // 前台模式：启动子进程并等待
         format.print_success(&format!(
             "OpenDAW server starting at {}:{} (WS: {})",
             args.host, args.port, args.ws_port
         ));
 
-        let err = cmd.exec();
-        Err(format!("Failed to exec opendaw-api: {}", err).into())
+        let mut child = cmd.spawn()?;
+        let status = child.wait()?;
+        if !status.success() {
+            return Err(format!("opendaw-api exited with status: {}", status).into());
+        }
     }
 
     Ok(())
