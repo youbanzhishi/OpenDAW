@@ -18,6 +18,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Verify Rust installation
+        run: |
+          cargo --version
+          rustc --version
       - name: Install system dependencies (Linux)
         run: |
           sudo apt-get update
@@ -49,11 +55,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Verify Rust installation
+        shell: bash
+        run: |
+          rustup show
+          cargo --version
+          rustc --version
       - name: Cache Rust dependencies (platform-specific)
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri -> target
-          prefix-key: v0-rust-${{ matrix.platform }}-${{ matrix.target }}
+          prefix-key: v1-rust-${{ matrix.platform }}-${{ matrix.target }}
           cache-on-failure: true
       - name: Install system dependencies (Linux)
         if: matrix.target == 'linux'
