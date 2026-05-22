@@ -17,3 +17,4 @@ serde_yaml = "0.9"
 colored = "2"
 uuid = { version = ">=1.6, <1.10", features = ["v4"] }
 thiserror = "1"
+which = "6"
