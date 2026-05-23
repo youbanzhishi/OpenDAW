@@ -34,16 +34,13 @@ struct ServeResult {
 
 /// 查找 opendaw-api 二进制
 fn find_opendaw_api() -> Option<std::path::PathBuf> {
-    // 1. PATH 查找
     if let Ok(path) = which::which("opendaw-api") {
         return Some(path);
     }
-    // 2. 相对路径 release
     let release = std::path::PathBuf::from("target/release/opendaw-api");
     if release.exists() {
         return Some(release);
     }
-    // 3. 相对路径 debug
     let debug = std::path::PathBuf::from("target/debug/opendaw-api");
     if debug.exists() {
         return Some(debug);
@@ -63,9 +60,7 @@ pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::er
                 status: "error: opendaw-api binary not found".into(),
             };
             format.print(&result);
-            format.print_error(
-                "opendaw-api binary not found. Run `cargo build --release` first.",
-            );
+            format.print_error("opendaw-api binary not found. Run `cargo build --release` first.");
             return Err("opendaw-api binary not found".into());
         }
     };
@@ -79,7 +74,6 @@ pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::er
     };
     format.print(&result);
 
-    // 构建命令
     let mut cmd = Command::new(&binary_path);
     cmd.env("OPENDAW_HOST", &args.host);
     cmd.env("OPENDAW_PORT", args.port.to_string());
@@ -87,7 +81,6 @@ pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::er
     cmd.env("RUST_LOG", "opendaw_api=debug,opendaw_ws=debug");
 
     if args.daemon {
-        // 守护模式：启动子进程并detach
         #[cfg(unix)]
         {
             use std::os::unix::process::CommandExt;
@@ -108,20 +101,11 @@ pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::er
         }
 
         let child = cmd.spawn()?;
-        format.print_success(&format!(
-            "OpenDAW server started in daemon mode (PID: {})",
-            child.id()
-        ));
-        format.print_success(&format!(
-            "  API: http://{}:{}",
-            args.host, args.port
-        ));
-        format.print_success(&format!(
-            "  WebSocket: http://{}:{}",
-            args.host, args.ws_port
-        ));
+        let pid = child.id();
+        format.print_success(&format!("OpenDAW server started in daemon mode (PID: {pid})"));
+        format.print_success(&format!("  API: http://{}:{}", args.host, args.port));
+        format.print_success(&format!("  WebSocket: http://{}:{}", args.host, args.ws_port));
     } else {
-        // 前台模式：启动子进程并等待
         format.print_success(&format!(
             "OpenDAW server starting at {}:{} (WS: {})",
             args.host, args.port, args.ws_port
@@ -130,7 +114,7 @@ pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::er
         let mut child = cmd.spawn()?;
         let status = child.wait()?;
         if !status.success() {
-            return Err(format!("opendaw-api exited with status: {}", status).into());
+            return Err(format!("opendaw-api exited with status: {status}").into());
         }
     }
 
