@@ -1,0 +1,13 @@
+[package]
+name = "phase-cancel"
+version.workspace = true
+edition.workspace = true
+description = "Professional Phase Cancellation & Alignment Plugin for OpenDAW"
+authors = ["OpenDAW Team"]
+license = "MIT"
+
+[dependencies]
+opendaw-extension = { path = "../opendaw-extension" }
+
+[dev-dependencies]
+approx = "0.5"
