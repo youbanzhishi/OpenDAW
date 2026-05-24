@@ -8,6 +8,7 @@ members = [
     "crates/opendaw-api",
     "crates/opendaw-ws",
     "crates/opendaw-cli",
+    "phase-cancel",
     "desktop/src-tauri",
 ]
 exclude = []

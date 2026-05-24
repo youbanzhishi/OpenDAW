@@ -6,6 +6,7 @@ description = "OpenDAW 插件宿主 - 加载/管理/调度插件链，支持 VST
 
 [dependencies]
 opendaw-extension = { path = "../opendaw-extension" }
+phase-cancel = { path = "../phase-cancel" }
 audio-engine = { path = "../audio-engine" }
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }

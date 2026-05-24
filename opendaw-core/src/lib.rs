@@ -97,6 +97,9 @@ pub use opendaw_extension::{
     AudioBuffer as ExtAudioBuffer, ExtensionRegistry, HookContext, HookSystem, ModelBackend,
     ModelInput, ModelOutput, ParamInfo, PluginType, ScriptEngine, ScriptValue, VcPlugin,
 };
+// Phase Cancel Plugin
+pub use phase_cancel::PhaseCancelPlugin;
+
 pub use plugin_host::{
     ParamManager, PluginChain, PluginFormat, PluginHost, PluginScanner, PresetManager,
     ScannedPlugin, VcPluginAdapter,

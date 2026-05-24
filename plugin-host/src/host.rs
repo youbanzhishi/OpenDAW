@@ -44,6 +44,14 @@ pub struct PluginHost {
 }
 
 impl PluginHost {
+    /// 创建并加载内置相位抵消插件
+    ///
+    /// 返回插件ID，可直接用 add_to_chain 添加到信号链
+    pub fn load_phase_cancel(&mut self) -> Result<String, PluginError> {
+        let plugin = Box::new(phase_cancel::PhaseCancelPlugin::new());
+        self.load_plugin(plugin)
+    }
+
     /// 创建新的插件宿主
     pub fn new(sample_rate: f64, buffer_size: usize, channels: usize) -> Self {
         Self {
