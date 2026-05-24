@@ -252,11 +252,7 @@ mod tests {
 
         let result = aligner.analyze(&base, &r, 4096, 44100.0);
         if let Some((delay, _phase)) = result {
-            assert!(
-                delay.abs() > 0,
-                "延迟信号应检测到偏移: delay={}",
-                delay
-            );
+            assert!(delay.abs() > 0, "延迟信号应检测到偏移: delay={}", delay);
         }
     }
 }

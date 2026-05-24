@@ -43,9 +43,7 @@ impl SecondOrderAllPass {
     }
 
     fn process(&mut self, x: f64) -> f64 {
-        let y = -self.a2 * x + self.a1 * self.x1 + self.x2
-            - self.a1 * self.y1
-            - self.a2 * self.y2;
+        let y = -self.a2 * x + self.a1 * self.x1 + self.x2 - self.a1 * self.y1 - self.a2 * self.y2;
 
         self.x2 = self.x1;
         self.x1 = x;
@@ -127,11 +125,7 @@ mod tests {
             max_out = max_out.max(output.abs());
         }
         // 输出幅度应接近1.0（允许建立期误差）
-        assert!(
-            (max_out - 1.0).abs() < 0.15,
-            "全通应保持幅度: {}",
-            max_out
-        );
+        assert!((max_out - 1.0).abs() < 0.15, "全通应保持幅度: {}", max_out);
     }
 
     #[test]
@@ -147,10 +141,6 @@ mod tests {
             energy += output * output;
         }
         let rms = (energy / 900.0).sqrt();
-        assert!(
-            (rms - 0.707).abs() < 0.2,
-            "4阶全通应保持幅度: RMS={}",
-            rms
-        );
+        assert!((rms - 0.707).abs() < 0.2, "4阶全通应保持幅度: RMS={}", rms);
     }
 }
