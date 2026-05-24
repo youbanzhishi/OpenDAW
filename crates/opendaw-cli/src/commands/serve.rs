@@ -102,9 +102,14 @@ pub fn run(args: ServeArgs, format: &OutputFormat) -> Result<(), Box<dyn std::er
 
         let child = cmd.spawn()?;
         let pid = child.id();
-        format.print_success(&format!("OpenDAW server started in daemon mode (PID: {pid})"));
+        format.print_success(&format!(
+            "OpenDAW server started in daemon mode (PID: {pid})"
+        ));
         format.print_success(&format!("  API: http://{}:{}", args.host, args.port));
-        format.print_success(&format!("  WebSocket: http://{}:{}", args.host, args.ws_port));
+        format.print_success(&format!(
+            "  WebSocket: http://{}:{}",
+            args.host, args.ws_port
+        ));
     } else {
         format.print_success(&format!(
             "OpenDAW server starting at {}:{} (WS: {})",
