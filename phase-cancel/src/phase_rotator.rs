@@ -109,11 +109,7 @@ mod tests {
         for i in 0..25 {
             let val = rotator.process(1.0);
             if i >= 20 {
-                assert!(
-                    (val - 1.0).abs() < 0.1,
-                    "0°旋转应近似直通: {}",
-                    val
-                );
+                assert!((val - 1.0).abs() < 0.1, "0°旋转应近似直通: {}", val);
             }
         }
     }
@@ -123,10 +119,6 @@ mod tests {
         let mut rotator = PhaseRotator::new(44100.0);
         rotator.set_phase(180.0);
         let val = rotator.process(1.0);
-        assert!(
-            (val + 1.0).abs() < 0.01,
-            "180°旋转应反转: {}",
-            val
-        );
+        assert!((val + 1.0).abs() < 0.01, "180°旋转应反转: {}", val);
     }
 }

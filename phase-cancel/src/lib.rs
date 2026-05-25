@@ -31,9 +31,7 @@ mod dsp;
 mod ms_processor;
 mod phase_rotator;
 
-use opendaw_extension::{
-    AudioBuffer, ParamInfo, PluginError, PluginInfo, PluginType, VcPlugin,
-};
+use opendaw_extension::{AudioBuffer, ParamInfo, PluginError, PluginInfo, PluginType, VcPlugin};
 
 // ── 参数ID常量 ──────────────────────────────────────────────────
 
@@ -212,8 +210,10 @@ impl VcPlugin for PhaseCancelPlugin {
         // 更新DSP参数
         self.phase_rotator_l.set_phase(phase_l);
         self.phase_rotator_r.set_phase(phase_r);
-        self.allpass_filter_l.set_params(allpass_freq, allpass_q, allpass_order);
-        self.allpass_filter_r.set_params(allpass_freq, allpass_q, allpass_order);
+        self.allpass_filter_l
+            .set_params(allpass_freq, allpass_q, allpass_order);
+        self.allpass_filter_r
+            .set_params(allpass_freq, allpass_q, allpass_order);
         self.ms_processor.set_width(ms_width);
         self.ms_processor.set_mid_phase(ms_phase_mid);
         self.ms_processor.set_side_phase(ms_phase_side);
@@ -230,7 +230,11 @@ impl VcPlugin for PhaseCancelPlugin {
         let mut frame_r = vec![0.0f64; frames];
 
         for i in 0..frames {
-            let mut l = if channels > 0 { input.sample(0, i) } else { 0.0 };
+            let mut l = if channels > 0 {
+                input.sample(0, i)
+            } else {
+                0.0
+            };
             let mut r = if channels > 1 { input.sample(1, i) } else { l };
 
             // 1. 相位反转
@@ -267,8 +271,16 @@ impl VcPlugin for PhaseCancelPlugin {
             }
 
             // 7. 干湿比混合
-            let dry_l = if channels > 0 { input.sample(0, i) } else { 0.0 };
-            let dry_r = if channels > 1 { input.sample(1, i) } else { dry_l };
+            let dry_l = if channels > 0 {
+                input.sample(0, i)
+            } else {
+                0.0
+            };
+            let dry_r = if channels > 1 {
+                input.sample(1, i)
+            } else {
+                dry_l
+            };
             l = dry_l * (1.0 - mix) + l * mix;
             r = dry_r * (1.0 - mix) + r * mix;
 
@@ -292,7 +304,9 @@ impl VcPlugin for PhaseCancelPlugin {
 
         // 自动对齐处理
         if self.auto_align_pending {
-            let result = self.auto_aligner.analyze(&frame_l, &frame_r, frames, self.sample_rate);
+            let result = self
+                .auto_aligner
+                .analyze(&frame_l, &frame_r, frames, self.sample_rate);
             if let Some((delay_offset, phase_offset)) = result {
                 // 应用对齐结果
                 if delay_offset > 0 {
@@ -338,10 +352,7 @@ impl VcPlugin for PhaseCancelPlugin {
             self.params.insert(id.to_string(), clamped);
             Ok(())
         } else {
-            Err(PluginError::ProcessFailed(format!(
-                "未知参数: {}",
-                id
-            )))
+            Err(PluginError::ProcessFailed(format!("未知参数: {}", id)))
         }
     }
 
@@ -397,12 +408,7 @@ impl VcPlugin for PhaseCancelPlugin {
                 self.set_param(PARAM_DELAY_SAMPLES_R, 3.0)?;
                 self.set_param(PARAM_MIX, 100.0)?;
             }
-            _ => {
-                return Err(PluginError::ProcessFailed(format!(
-                    "未知预设: {}",
-                    name
-                )))
-            }
+            _ => return Err(PluginError::ProcessFailed(format!("未知预设: {}", name))),
         }
         Ok(())
     }
@@ -444,10 +450,7 @@ mod tests {
         // 静音输入→静音输出
         for ch in 0..2 {
             for i in 0..256 {
-                assert!(
-                    output.sample(ch, i).abs() < 1e-10,
-                    "静音输入应产生静音输出"
-                );
+                assert!(output.sample(ch, i).abs() < 1e-10, "静音输入应产生静音输出");
             }
         }
     }
@@ -508,11 +511,7 @@ mod tests {
 
         // 50% mix: 左声道应约为0 (1.0 * 0.5 + (-1.0) * 0.5)
         let l_avg: f64 = (0..256).map(|i| output.sample(0, i)).sum::<f64>() / 256.0;
-        assert!(
-            l_avg.abs() < 0.15,
-            "50%混合下左声道应接近零: {}",
-            l_avg
-        );
+        assert!(l_avg.abs() < 0.15, "50%混合下左声道应接近零: {}", l_avg);
     }
 
     #[test]
@@ -534,11 +533,7 @@ mod tests {
         }
 
         let corr = plugin.get_param(PARAM_CORRELATION).unwrap_or(0.0);
-        assert!(
-            corr > 0.8,
-            "同相信号相关度应接近1.0: {}",
-            corr
-        );
+        assert!(corr > 0.8, "同相信号相关度应接近1.0: {}", corr);
     }
 
     #[test]

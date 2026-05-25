@@ -7,7 +7,7 @@ use super::phase_rotator::PhaseRotator;
 
 /// Mid/Side 相位处理器
 pub struct MSProcessor {
-    width: f64,            // 0.0~2.0 (0%=mono, 100%=normal, 200%=extra wide)
+    width: f64, // 0.0~2.0 (0%=mono, 100%=normal, 200%=extra wide)
     mid_rotator: PhaseRotator,
     side_rotator: PhaseRotator,
 }
@@ -91,11 +91,6 @@ mod tests {
 
         let (l, r) = proc.process(0.5, 0.8);
         // 0%宽度: side被消除 → L=R=mid
-        assert!(
-            (l - r).abs() < 0.15,
-            "0%宽度应输出单声道: L={}, R={}",
-            l,
-            r
-        );
+        assert!((l - r).abs() < 0.15, "0%宽度应输出单声道: L={}, R={}", l, r);
     }
 }
