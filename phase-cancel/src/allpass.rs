@@ -32,7 +32,7 @@ impl SecondOrderAllPass {
         let cos_omega = omega.cos();
         let alpha = sin_omega / (2.0 * q);
 
-        let b0 = 1.0 - alpha;
+        let _b0 = 1.0 - alpha; // 全通滤波器b0系数未直接使用
         let b1 = -2.0 * cos_omega;
         let b2 = 1.0 + alpha;
         let a0 = 1.0 + alpha;

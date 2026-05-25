@@ -151,16 +151,16 @@ impl AutoAligner {
         }
 
         // 尝试不同延迟偏移，找到最大互相关
-        let max_lag = 128.min(n / 2);
+        let max_lag = (128.min(n / 2)) as i32;
         let mut best_lag: i32 = 0;
         let mut best_corr = corr_normalized;
 
         for lag in -max_lag..=max_lag {
             let mut corr = 0.0f64;
-            let mut count = 0;
+            let mut count = 0usize;
 
             for i in 0..n {
-                let r_idx = i as i32 + lag;
+                let r_idx = (i as i32) + lag;
                 if r_idx >= 0 && (r_idx as usize) < n {
                     corr += l[i] * r[r_idx as usize];
                     count += 1;
