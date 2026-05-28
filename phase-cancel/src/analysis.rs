@@ -244,13 +244,15 @@ mod tests {
     #[test]
     fn test_auto_align_delayed() {
         let aligner = AutoAligner::new();
-        let base: Vec<f64> = (0..4096).map(|i| (i as f64 * 0.1).sin()).collect();
+        // 用更高频信号使延迟更显著
+        let base: Vec<f64> = (0..512).map(|i| (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / 44100.0).sin()).collect();
 
         // 右声道延迟10个采样
-        let mut r = vec![0.0; 4096];
-        r[10..].copy_from_slice(&base[..4086]);
+        let mut r = vec![0.0; 512];
+        r[10..].copy_from_slice(&base[..502]);
 
-        let result = aligner.analyze(&base, &r, 4096, 44100.0);
+        let result = aligner.analyze(&base, &r, 512, 44100.0);
+        // 应检测到延迟偏移（lag != 0）
         if let Some((delay, _phase)) = result {
             assert!(delay.abs() > 0, "延迟信号应检测到偏移: delay={}", delay);
         }

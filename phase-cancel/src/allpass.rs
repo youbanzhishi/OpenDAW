@@ -32,18 +32,16 @@ impl SecondOrderAllPass {
         let cos_omega = omega.cos();
         let alpha = sin_omega / (2.0 * q);
 
-        let _b0 = 1.0 - alpha; // 全通滤波器b0系数未直接使用
-        let b1 = -2.0 * cos_omega;
-        let b2 = 1.0 + alpha;
         let a0 = 1.0 + alpha;
 
-        // 全通: H(z) = (a2 + a1*z^-1 + z^-2) / (1 + a1*z^-1 + a2*z^-2)
-        self.a1 = b1 / a0;
-        self.a2 = b2 / a0;
+        // 标准二阶全通: H(z) = (d2 + d1*z^-1 + z^-2/a0) / (1 + d1*z^-1 + d2*z^-2)
+        // d1 = -2*cos(omega)/a0, d2 = (1-alpha)/a0
+        self.a1 = -2.0 * cos_omega / a0;  // 分子分母共享
+        self.a2 = (1.0 - alpha) / a0;      // d2系数
     }
 
     fn process(&mut self, x: f64) -> f64 {
-        let y = -self.a2 * x + self.a1 * self.x1 + self.x2 - self.a1 * self.y1 - self.a2 * self.y2;
+        let y = self.a2 * x + self.a1 * self.x1 + self.x2 - self.a1 * self.y1 - self.a2 * self.y2;
 
         self.x2 = self.x1;
         self.x1 = x;
