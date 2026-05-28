@@ -36,8 +36,8 @@ impl SecondOrderAllPass {
 
         // 标准二阶全通: H(z) = (d2 + d1*z^-1 + z^-2/a0) / (1 + d1*z^-1 + d2*z^-2)
         // d1 = -2*cos(omega)/a0, d2 = (1-alpha)/a0
-        self.a1 = -2.0 * cos_omega / a0;  // 分子分母共享
-        self.a2 = (1.0 - alpha) / a0;      // d2系数
+        self.a1 = -2.0 * cos_omega / a0; // 分子分母共享
+        self.a2 = (1.0 - alpha) / a0; // d2系数
     }
 
     fn process(&mut self, x: f64) -> f64 {

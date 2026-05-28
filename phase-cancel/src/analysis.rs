@@ -245,7 +245,9 @@ mod tests {
     fn test_auto_align_delayed() {
         let aligner = AutoAligner::new();
         // 用更高频信号使延迟更显著
-        let base: Vec<f64> = (0..512).map(|i| (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / 44100.0).sin()).collect();
+        let base: Vec<f64> = (0..512)
+            .map(|i| (2.0 * std::f64::consts::PI * 1000.0 * i as f64 / 44100.0).sin())
+            .collect();
 
         // 右声道延迟10个采样
         let mut r = vec![0.0; 512];
