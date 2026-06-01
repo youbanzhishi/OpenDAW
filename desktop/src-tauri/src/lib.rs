@@ -111,6 +111,9 @@ pub fn run() {
             commands::audio_load_and_play,
             commands::audio_set_master_volume,
             commands::audio_get_devices,
+            // v0.26.0 Import Commands
+            commands::list_import_formats,
+            commands::import_project,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
