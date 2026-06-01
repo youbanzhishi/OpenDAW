@@ -22,7 +22,7 @@ pub struct RenderResult {
 #[derive(Debug, Serialize)]
 pub struct AnalysisResult {
     pub project: String,
-    pub bpm: f64,
+    // bpm: currently not in ProjectConfig, using default 120.0
     pub sample_rate: u32,
     pub tracks: Vec<serde_json::Value>,
     pub master: serde_json::Value,
@@ -61,7 +61,7 @@ pub struct SpectrumData {
 pub struct MidiNoteData {
     pub notes: Vec<serde_json::Value>,
     pub note_count: usize,
-    pub bpm: f64,
+    // bpm: currently not in ProjectConfig, using default 120.0
     pub total_beats: f64,
 }
 
@@ -365,7 +365,7 @@ pub struct TransportStatus {
     pub playing: bool,
     pub recording: bool,
     pub current_time_s: f64,
-    pub bpm: f64,
+    // bpm: currently not in ProjectConfig, using default 120.0
     pub time_sig: String,
 }
 
@@ -384,7 +384,7 @@ pub struct TrackInfo {
 pub struct ProjectInfo {
     pub id: String,
     pub name: String,
-    pub bpm: f64,
+    // bpm: currently not in ProjectConfig, using default 120.0
     pub sample_rate: u32,
     pub tracks: Vec<TrackInfo>,
 }
@@ -952,7 +952,7 @@ pub struct ImportProjectResult {
     pub success: bool,
     pub format: String,
     pub project_name: String,
-    pub bpm: f64,
+    // bpm: currently not in ProjectConfig, using default 120.0
     pub track_count: usize,
     pub message: String,
 }
@@ -1019,18 +1019,15 @@ pub fn import_project(file_path: String) -> Result<ImportProjectResult, String> 
     Ok(ImportProjectResult {
         success: true,
         format: format_name.to_string(),
-        project_name: config
-            .project_name
-            .clone()
-            .unwrap_or_else(|| "Imported Project".into()),
-        bpm: config.bpm.unwrap_or(120.0),
+        project_name: config.name.clone(),
+        bpm: 120.0,
         track_count: config.tracks.len(),
         message: format!(
             "Successfully imported {} project: {} ({} tracks, {} BPM)",
             format_name,
-            config.project_name.as_deref().unwrap_or("Untitled"),
+            &config.name,
             config.tracks.len(),
-            config.bpm.unwrap_or(120.0)
+            120.0
         ),
     })
 }
