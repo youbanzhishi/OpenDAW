@@ -1032,6 +1032,121 @@ pub fn import_project(file_path: String) -> Result<ImportProjectResult, String> 
     })
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// Phase 36 — Note System Commands (Markdown Notes)
+// ═══════════════════════════════════════════════════════════════════════
+
+use std::sync::Mutex;
+use opendaw_core::notes::{Note, NoteLevel, NoteStore};
+
+/// Global NoteStore (lazy-initialized)
+static NOTE_STORE: once_cell::sync::Lazy<Mutex<NoteStore>> = once_cell::sync::Lazy::new(|| {
+    Mutex::new(NoteStore::new())
+});
+
+/// Note info for frontend display
+#[derive(Debug, Serialize)]
+pub struct NoteInfo {
+    pub id: String,
+    pub title: String,
+    pub level: String,
+    pub track_id: Option<String>,
+    pub preview: String,
+    pub updated_at: i64,
+    pub tags: Vec<String>,
+}
+
+impl From<&Note> for NoteInfo {
+    fn from(n: &Note) -> Self {
+        Self {
+            id: n.id.clone(),
+            title: n.title.clone(),
+            level: n.level.to_string(),
+            track_id: n.track_id.clone(),
+            preview: n.preview(),
+            updated_at: n.updated_at,
+            tags: n.tags.clone(),
+        }
+    }
+}
+
+/// List all notes
+#[tauri::command]
+pub fn notes_list() -> Result<Vec<NoteInfo>, String> {
+    let store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
+    Ok(store.read_all_notes().iter().map(NoteInfo::from).collect())
+}
+
+/// List notes by level (Global/Project/Track)
+#[tauri::command]
+pub fn notes_list_by_level(level: String) -> Result<Vec<NoteInfo>, String> {
+    let lvl = match level.as_str() {
+        "Global" => NoteLevel::Global,
+        "Project" => NoteLevel::Project,
+        "Track" => NoteLevel::Track,
+        _ => return Err(format!("Invalid note level: {}", level)),
+    };
+    let store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
+    Ok(store.read_notes_by_level(lvl).iter().map(NoteInfo::from).collect())
+}
+
+/// Get a specific note's full content
+#[tauri::command]
+pub fn notes_get(id: String) -> Result<String, String> {
+    let store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
+    let note = store.get_note(&id).ok_or_else(|| format!("Note not found: {}", id))?;
+    Ok(note.content.clone())
+}
+
+/// Create or update a note
+#[tauri::command]
+pub fn notes_save(id: Option<String>, level: String, title: String, content: String, track_id: Option<String>) -> Result<NoteInfo, String> {
+    let lvl = match level.as_str() {
+        "Global" => NoteLevel::Global,
+        "Project" => NoteLevel::Project,
+        "Track" => NoteLevel::Track,
+        _ => return Err(format!("Invalid note level: {}", level)),
+    };
+
+    let mut note = if let Some(tid) = &track_id {
+        Note::new_for_track(tid, &title, &content)
+    } else {
+        Note::new(lvl, &title, &content)
+    };
+
+    // If updating existing note, preserve the id
+    if let Some(existing_id) = id {
+        note.id = existing_id;
+    }
+
+    let info = NoteInfo::from(&note);
+    let mut store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
+    store.save_note(note).map_err(|e| e.to_string())?;
+    Ok(info)
+}
+
+/// Delete a note
+#[tauri::command]
+pub fn notes_delete(id: String) -> Result<(), String> {
+    let mut store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
+    store.delete_note(&id).map_err(|e| e.to_string())
+}
+
+/// Search notes by keyword
+#[tauri::command]
+pub fn notes_search(query: String) -> Result<Vec<NoteInfo>, String> {
+    let store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
+    Ok(store.search_notes(&query).iter().map(NoteInfo::from).collect())
+}
+
+/// Get agent summary of all notes (for AI assistant context)
+#[tauri::command]
+pub fn notes_agent_summary() -> Result<String, String> {
+    let store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
+    Ok(store.agent_summary())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
