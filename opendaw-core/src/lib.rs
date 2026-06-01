@@ -38,6 +38,11 @@
 //! - 平台兼容性检测
 //!
 //! Phase 35: v1.0发布准备
+//!
+//! Phase 36: Note System
+//! - Markdown笔记系统 (Global/Project/Track)
+//! - 智能体友好的笔记访问接口
+//! - 所见即所得编辑器后端支持
 //! - SDK文档生成（OpenAPI 3.1）
 //! - 项目模板系统
 //! - 音频导出增强（WAV/FLAC/MP3-stub/OGG-stub）
@@ -78,6 +83,9 @@ pub mod import;
 // Phase 35: v1.0发布准备
 pub mod docs;
 pub mod template;
+
+// Phase 36: Note System (Markdown notes for Global/Project/Track)
+pub mod notes;
 
 // PyO3 Python bindings (optional, requires python feature)
 #[cfg(feature = "python")]
@@ -210,3 +218,6 @@ pub use export::audio_export::{
     RenderPipeline,
 };
 pub use template::{PresetName, ProjectTemplate, TemplateTrack, TrackType};
+
+// Phase 36 重导出
+pub use notes::{Note, NoteError, NoteLevel, NoteStore};
