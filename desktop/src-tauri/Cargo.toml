@@ -23,6 +23,7 @@ opendaw-extension = { path = "../../opendaw-extension" }
 parking_lot = "0.12"
 cpal = "0.15"
 crossbeam-channel = "0.5"
+once_cell = "1"
 
 [lib]
 name = "opendaw_desktop_lib"
