@@ -932,6 +932,105 @@ pub fn registry_stats(state: State<'_, AppState>) -> Result<RegistryStatsRespons
 // 单元测试
 // ═══════════════════════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// v0.26.0 — Project Import Commands (Reaper RPP / Ableton ALS)
+// ═══════════════════════════════════════════════════════════════════════
+
+use opendaw_core::import::{FormatDetector, ImportFormat, ImportRegistry};
+
+/// Supported import format info for the frontend
+#[derive(Debug, Serialize)]
+pub struct ImportFormatInfo {
+    pub id: String,
+    pub name: String,
+    pub extensions: Vec<String>,
+}
+
+/// Import project result
+#[derive(Debug, Serialize)]
+pub struct ImportProjectResult {
+    pub success: bool,
+    pub format: String,
+    pub project_name: String,
+    pub bpm: f64,
+    pub track_count: usize,
+    pub message: String,
+}
+
+/// List supported import formats
+#[tauri::command]
+pub fn list_import_formats() -> Result<Vec<ImportFormatInfo>, String> {
+    Ok(vec![
+        ImportFormatInfo {
+            id: "reaper_rpp".into(),
+            name: "Reaper Project (.rpp)".into(),
+            extensions: vec!["rpp".into()],
+        },
+        ImportFormatInfo {
+            id: "ableton_als".into(),
+            name: "Ableton Live Project (.als)".into(),
+            extensions: vec!["als".into()],
+        },
+        ImportFormatInfo {
+            id: "opendaw_yaml".into(),
+            name: "OpenDAW Project (.yaml/.yml)".into(),
+            extensions: vec!["yaml".into(), "yml".into()],
+        },
+        ImportFormatInfo {
+            id: "opendaw_json".into(),
+            name: "OpenDAW Project (.json)".into(),
+            extensions: vec!["json".into()],
+        },
+        ImportFormatInfo {
+            id: "midi_file".into(),
+            name: "Standard MIDI File (.mid/.midi)".into(),
+            extensions: vec!["mid".into(), "midi".into()],
+        },
+    ])
+}
+
+/// Import a project file (Reaper RPP, Ableton ALS, etc.) and convert to OpenDAW project
+#[tauri::command]
+pub fn import_project(file_path: String) -> Result<ImportProjectResult, String> {
+    use std::path::Path;
+
+    let path = Path::new(&file_path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", file_path));
+    }
+
+    // Detect format
+    let format = FormatDetector::detect(path).map_err(|e| e.to_string())?;
+
+    // Import and convert
+    let registry = ImportRegistry::new();
+    let config = registry.import_as_project(path).map_err(|e| e.to_string())?;
+
+    let format_name = match format {
+        ImportFormat::ReaperRpp => "Reaper RPP",
+        ImportFormat::AbletonAls => "Ableton ALS",
+        ImportFormat::OpenDawYaml | ImportFormat::OpenDawJson => "OpenDAW",
+        ImportFormat::MidiFile => "MIDI",
+        _ => "Unknown",
+    };
+
+    Ok(ImportProjectResult {
+        success: true,
+        format: format_name.to_string(),
+        project_name: config.project_name.clone().unwrap_or_else(|| "Imported Project".into()),
+        bpm: config.bpm.unwrap_or(120.0),
+        track_count: config.tracks.len(),
+        message: format!(
+            "Successfully imported {} project: {} ({} tracks, {} BPM)",
+            format_name,
+            config.project_name.as_deref().unwrap_or("Untitled"),
+            config.tracks.len(),
+            config.bpm.unwrap_or(120.0)
+        ),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
