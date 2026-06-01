@@ -932,7 +932,6 @@ pub fn registry_stats(state: State<'_, AppState>) -> Result<RegistryStatsRespons
 // 单元测试
 // ═══════════════════════════════════════════════════════════════════════
 
-
 // ═══════════════════════════════════════════════════════════════════════
 // v0.26.0 — Project Import Commands (Reaper RPP / Ableton ALS)
 // ═══════════════════════════════════════════════════════════════════════
@@ -1005,7 +1004,9 @@ pub fn import_project(file_path: String) -> Result<ImportProjectResult, String> 
 
     // Import and convert
     let registry = ImportRegistry::new();
-    let config = registry.import_as_project(path).map_err(|e| e.to_string())?;
+    let config = registry
+        .import_as_project(path)
+        .map_err(|e| e.to_string())?;
 
     let format_name = match format {
         ImportFormat::ReaperRpp => "Reaper RPP",
@@ -1018,7 +1019,10 @@ pub fn import_project(file_path: String) -> Result<ImportProjectResult, String> 
     Ok(ImportProjectResult {
         success: true,
         format: format_name.to_string(),
-        project_name: config.project_name.clone().unwrap_or_else(|| "Imported Project".into()),
+        project_name: config
+            .project_name
+            .clone()
+            .unwrap_or_else(|| "Imported Project".into()),
         bpm: config.bpm.unwrap_or(120.0),
         track_count: config.tracks.len(),
         message: format!(
