@@ -50,6 +50,9 @@ jobs:
             target: windows
       fail-fast: false
     runs-on: ${{ matrix.platform }}
+    env:
+      # macOS deployment target: support macOS 10.15+ (Catalina)
+      MACOSX_DEPLOYMENT_TARGET: "10.15" 
 
     steps:
       - uses: actions/checkout@v4
@@ -148,3 +151,4 @@ jobs:
           path: |
             target/release/bundle/nsis/*.exe
             target/release/bundle/msi/*.msi
+
