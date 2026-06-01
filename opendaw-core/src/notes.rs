@@ -112,11 +112,16 @@ impl Note {
     }
 
     /// 从 Markdown 文件加载
-    pub fn from_markdown(path: &Path, level: NoteLevel, track_id: Option<String>) -> Result<Self, NoteError> {
+    pub fn from_markdown(
+        path: &Path,
+        level: NoteLevel,
+        track_id: Option<String>,
+    ) -> Result<Self, NoteError> {
         let content = fs::read_to_string(path)
             .map_err(|e| NoteError::IoError(format!("读取笔记文件失败: {}", e)))?;
 
-        let filename = path.file_stem()
+        let filename = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("untitled");
 
@@ -205,13 +210,13 @@ impl NoteStore {
                     for entry in entries.flatten() {
                         let path = entry.path();
                         if path.extension().and_then(|e| e.to_str()) == Some("md") {
-                            let stem = path.file_stem()
-                                .and_then(|s| s.to_str())
-                                .unwrap_or("");
+                            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
                             // track_XXX.md → track_id = XXX
                             let track_id = stem.strip_prefix("track_").unwrap_or(stem);
                             if let Ok(note) = Note::from_markdown(
-                                &path, NoteLevel::Track, Some(track_id.to_string()),
+                                &path,
+                                NoteLevel::Track,
+                                Some(track_id.to_string()),
                             ) {
                                 self.cache.insert(note.id.clone(), note);
                             }
@@ -225,7 +230,12 @@ impl NoteStore {
     }
 
     /// 从目录加载笔记
-    fn load_from_dir(&mut self, dir: &Path, level: NoteLevel, track_id: Option<String>) -> Result<(), NoteError> {
+    fn load_from_dir(
+        &mut self,
+        dir: &Path,
+        level: NoteLevel,
+        track_id: Option<String>,
+    ) -> Result<(), NoteError> {
         if !dir.exists() {
             return Ok(());
         }
@@ -259,7 +269,8 @@ impl NoteStore {
 
     /// 读取轨道笔记
     pub fn read_track_notes(&self, track_id: &str) -> Vec<&Note> {
-        self.cache.values()
+        self.cache
+            .values()
             .filter(|n| n.level == NoteLevel::Track && n.track_id.as_deref() == Some(track_id))
             .collect()
     }
@@ -278,11 +289,9 @@ impl NoteStore {
     pub fn save_note(&mut self, note: Note) -> Result<(), NoteError> {
         let dir = match note.level {
             NoteLevel::Global => self.global_dir.clone(),
-            NoteLevel::Project => self.project_dir.clone()
-                .ok_or(NoteError::NoProjectBound)?,
+            NoteLevel::Project => self.project_dir.clone().ok_or(NoteError::NoProjectBound)?,
             NoteLevel::Track => {
-                let base = self.project_dir.clone()
-                    .ok_or(NoteError::NoProjectBound)?;
+                let base = self.project_dir.clone().ok_or(NoteError::NoProjectBound)?;
                 base.join("tracks")
             }
         };
@@ -297,18 +306,22 @@ impl NoteStore {
         if let Some(note) = self.cache.remove(id) {
             let dir = match note.level {
                 NoteLevel::Global => self.global_dir.clone(),
-                NoteLevel::Project => self.project_dir.clone()
-                    .ok_or(NoteError::NoProjectBound)?,
+                NoteLevel::Project => self.project_dir.clone().ok_or(NoteError::NoProjectBound)?,
                 NoteLevel::Track => {
-                    let base = self.project_dir.clone()
-                        .ok_or(NoteError::NoProjectBound)?;
+                    let base = self.project_dir.clone().ok_or(NoteError::NoProjectBound)?;
                     base.join("tracks")
                 }
             };
 
             let filename = match note.level {
-                NoteLevel::Track => format!("track_{}.md", note.track_id.as_deref().unwrap_or("unknown")),
-                _ => format!("{}_{}.md", note.level.to_string().to_lowercase(), sanitize_filename(&note.id)),
+                NoteLevel::Track => {
+                    format!("track_{}.md", note.track_id.as_deref().unwrap_or("unknown"))
+                }
+                _ => format!(
+                    "{}_{}.md",
+                    note.level.to_string().to_lowercase(),
+                    sanitize_filename(&note.id)
+                ),
             };
 
             let path = dir.join(&filename);
@@ -323,11 +336,14 @@ impl NoteStore {
     /// 搜索笔记内容（简单关键词搜索，未来可升级为语义搜索）
     pub fn search_notes(&self, query: &str) -> Vec<&Note> {
         let query_lower = query.to_lowercase();
-        self.cache.values()
+        self.cache
+            .values()
             .filter(|n| {
                 n.title.to_lowercase().contains(&query_lower)
                     || n.content.to_lowercase().contains(&query_lower)
-                    || n.tags.iter().any(|t| t.to_lowercase().contains(&query_lower))
+                    || n.tags
+                        .iter()
+                        .any(|t| t.to_lowercase().contains(&query_lower))
             })
             .collect()
     }
@@ -360,7 +376,10 @@ impl NoteStore {
             summary.push_str("## 轨道笔记\n\n");
             for note in tracks {
                 let tid = note.track_id.as_deref().unwrap_or("unknown");
-                summary.push_str(&format!("### [{}] {}\n{}\n\n", tid, note.title, note.content));
+                summary.push_str(&format!(
+                    "### [{}] {}\n{}\n\n",
+                    tid, note.title, note.content
+                ));
             }
         }
 
@@ -413,7 +432,13 @@ fn chrono_now() -> i64 {
 /// 文件名安全化
 fn sanitize_filename(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -425,7 +450,11 @@ mod tests {
 
     #[test]
     fn test_note_creation() {
-        let note = Note::new(NoteLevel::Global, "混音理念", "我偏好温暖的混音风格，低频要厚实");
+        let note = Note::new(
+            NoteLevel::Global,
+            "混音理念",
+            "我偏好温暖的混音风格，低频要厚实",
+        );
         assert_eq!(note.level, NoteLevel::Global);
         assert_eq!(note.title, "混音理念");
         assert!(note.track_id.is_none());
