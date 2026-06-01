@@ -114,6 +114,14 @@ pub fn run() {
             // v0.26.0 Import Commands
             commands::list_import_formats,
             commands::import_project,
+            // Phase 36: Note System Commands
+            commands::notes_list,
+            commands::notes_list_by_level,
+            commands::notes_get,
+            commands::notes_save,
+            commands::notes_delete,
+            commands::notes_search,
+            commands::notes_agent_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
