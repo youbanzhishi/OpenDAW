@@ -196,15 +196,19 @@ impl NoteStore {
 
     /// 加载所有笔记
     pub fn load_all(&mut self) -> Result<(), NoteError> {
+        // Clone dirs to avoid borrow checker conflict
+        let global_dir = self.global_dir.clone();
+        let project_dir = self.project_dir.clone();
+
         // 加载全局笔记
-        self.load_from_dir(&self.global_dir, NoteLevel::Global, None)?;
+        self.load_from_dir(&global_dir, NoteLevel::Global, None)?;
 
         // 加载项目笔记
-        if let Some(ref project_dir) = self.project_dir {
-            self.load_from_dir(project_dir, NoteLevel::Project, None)?;
+        if let Some(ref pd) = project_dir {
+            self.load_from_dir(pd, NoteLevel::Project, None)?;
 
             // 加载轨道笔记
-            let track_notes_dir = project_dir.join("tracks");
+            let track_notes_dir = pd.join("tracks");
             if track_notes_dir.exists() {
                 if let Ok(entries) = fs::read_dir(&track_notes_dir) {
                     for entry in entries.flatten() {
