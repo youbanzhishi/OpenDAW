@@ -70,7 +70,7 @@ impl Note {
     pub fn new(level: NoteLevel, title: &str, content: &str) -> Self {
         let now = chrono_now();
         Self {
-            id: format!("note_{}", now),
+            id: unique_note_id("note"),
             title: title.to_string(),
             content: content.to_string(),
             level,
@@ -85,7 +85,7 @@ impl Note {
     pub fn new_for_track(track_id: &str, title: &str, content: &str) -> Self {
         let mut note = Self::new(NoteLevel::Track, title, content);
         note.track_id = Some(track_id.to_string());
-        note.id = format!("note_track_{}_{}", track_id, chrono_now());
+        note.id = unique_note_id(&format!("note_track_{}", track_id));
         note
     }
 
@@ -425,12 +425,21 @@ pub enum NoteError {
 
 // ── Helpers ───────────────────────────────────────────────────────────
 
-/// 简单的时间戳（避免 chrono 依赖）
+/// 毫秒级时间戳（避免 chrono 依赖）
 fn chrono_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
-        .as_secs() as i64
+        .as_millis() as i64
+}
+
+/// 生成唯一ID（毫秒时间戳 + 随机后缀，避免同毫秒冲突）
+fn unique_note_id(prefix: &str) -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let ts = chrono_now();
+    let cnt = COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("{}_{}_{}", prefix, ts, cnt)
 }
 
 /// 文件名安全化
@@ -491,8 +500,11 @@ mod tests {
     #[test]
     fn test_note_search() {
         let mut store = NoteStore::new();
-        let note1 = Note::new(NoteLevel::Global, "混音理念", "温暖的混音风格");
-        let note2 = Note::new(NoteLevel::Project, "编曲思路", "流行曲风编曲");
+        let mut note1 = Note::new(NoteLevel::Global, "混音理念", "温暖的混音风格");
+        let mut note2 = Note::new(NoteLevel::Project, "编曲思路", "流行曲风编曲");
+        // 强制不同ID避免同毫秒冲突
+        note1.id = "note_test_search_1".to_string();
+        note2.id = "note_test_search_2".to_string();
         store.cache.insert(note1.id.clone(), note1);
         store.cache.insert(note2.id.clone(), note2);
 
