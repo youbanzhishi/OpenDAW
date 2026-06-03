@@ -1066,7 +1066,11 @@ impl From<&Note> for NoteInfo {
 #[tauri::command]
 pub fn notes_list() -> Result<Vec<NoteInfo>, String> {
     let store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
-    Ok(store.read_all_notes().iter().map(|n| NoteInfo::from(*n)).collect())
+    Ok(store
+        .read_all_notes()
+        .iter()
+        .map(|n| NoteInfo::from(*n))
+        .collect())
 }
 
 /// List notes by level (Global/Project/Track)
