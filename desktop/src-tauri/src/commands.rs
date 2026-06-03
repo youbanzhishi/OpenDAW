@@ -174,7 +174,6 @@ pub async fn get_analysis(
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string(),
-        bpm: data.get("bpm").and_then(|v| v.as_f64()).unwrap_or(120.0),
         sample_rate: data
             .get("sample_rate")
             .and_then(|v| v.as_u64())
@@ -348,7 +347,6 @@ pub async fn get_midi_notes(
             .cloned()
             .unwrap_or_default(),
         note_count: data.get("note_count").and_then(|v| v.as_u64()).unwrap_or(0) as usize,
-        bpm: data.get("bpm").and_then(|v| v.as_f64()).unwrap_or(120.0),
         total_beats: data
             .get("total_beats")
             .and_then(|v| v.as_f64())
@@ -409,7 +407,6 @@ pub async fn transport_play(state: State<'_, AppState>) -> Result<TransportStatu
         playing: true,
         recording: false,
         current_time_s: 0.0,
-        bpm: 120.0,
         time_sig: "4/4".into(),
     })
 }
@@ -420,7 +417,6 @@ pub async fn transport_stop(state: State<'_, AppState>) -> Result<TransportStatu
         playing: false,
         recording: false,
         current_time_s: 0.0,
-        bpm: 120.0,
         time_sig: "4/4".into(),
     })
 }
@@ -497,7 +493,6 @@ pub async fn get_project(
             .and_then(|v| v.as_str())
             .unwrap_or("Untitled")
             .to_string(),
-        bpm: data.get("bpm").and_then(|v| v.as_f64()).unwrap_or(120.0),
         sample_rate: data
             .get("sample_rate")
             .and_then(|v| v.as_u64())
@@ -1020,14 +1015,12 @@ pub fn import_project(file_path: String) -> Result<ImportProjectResult, String> 
         success: true,
         format: format_name.to_string(),
         project_name: config.name.clone(),
-        bpm: 120.0,
         track_count: config.tracks.len(),
         message: format!(
-            "Successfully imported {} project: {} ({} tracks, {} BPM)",
+            "Successfully imported {} project: {} ({} tracks)",
             format_name,
             &config.name,
-            config.tracks.len(),
-            120.0
+            config.tracks.len()
         ),
     })
 }
@@ -1073,7 +1066,7 @@ impl From<&Note> for NoteInfo {
 #[tauri::command]
 pub fn notes_list() -> Result<Vec<NoteInfo>, String> {
     let store = NOTE_STORE.lock().map_err(|e| e.to_string())?;
-    Ok(store.read_all_notes().iter().map(NoteInfo::from).collect())
+    Ok(store.read_all_notes().iter().map(|n| NoteInfo::from(*n)).collect())
 }
 
 /// List notes by level (Global/Project/Track)
@@ -1089,7 +1082,7 @@ pub fn notes_list_by_level(level: String) -> Result<Vec<NoteInfo>, String> {
     Ok(store
         .read_notes_by_level(lvl)
         .iter()
-        .map(NoteInfo::from)
+        .map(|n| NoteInfo::from(*n))
         .collect())
 }
 
@@ -1150,7 +1143,7 @@ pub fn notes_search(query: String) -> Result<Vec<NoteInfo>, String> {
     Ok(store
         .search_notes(&query)
         .iter()
-        .map(NoteInfo::from)
+        .map(|n| NoteInfo::from(*n))
         .collect())
 }
 
