@@ -63,6 +63,8 @@ jobs:
   desktop-build:
     name: Build Desktop ${{ matrix.platform }}
     runs-on: ${{ matrix.platform }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "10.15"
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +83,9 @@ jobs:
           node-version: 22
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+      - name: Add Rust targets for universal binary
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
