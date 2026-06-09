@@ -225,11 +225,10 @@ pub use export::audio_export::{
 };
 // Phase 37: 编曲混音知识系统
 pub use export::mix_report::{
-    ArrangementAnalysis, ArrangementTechnique, AutomationSidechainSection, AutomationInfo,
-    BusProcessingInfo, DesignIntentSection, DynamicChange, EffectChainInfo, EffectInfo,
-    EffectType, InstrumentInfo, InstrumentType, KnowledgeLinks, MixReport, MixReportGenerator,
-    MixingAnalysis, ProjectOverview, SectionInfo, SectionIntent, SidechainInfo, TrackMixParams,
-    SendInfo,
+    ArrangementAnalysis, ArrangementTechnique, AutomationInfo, AutomationSidechainSection,
+    BusProcessingInfo, DesignIntentSection, DynamicChange, EffectChainInfo, EffectInfo, EffectType,
+    InstrumentInfo, InstrumentType, KnowledgeLinks, MixReport, MixReportGenerator, MixingAnalysis,
+    ProjectOverview, SectionInfo, SectionIntent, SendInfo, SidechainInfo, TrackMixParams,
 };
 pub use template::{PresetName, ProjectTemplate, TemplateTrack, TrackType};
 

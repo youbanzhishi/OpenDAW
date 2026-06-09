@@ -392,8 +392,7 @@ impl MixReportGenerator {
     pub fn with_knowledge_links(mut self, store: &NoteStore) -> Self {
         let summary = store.agent_knowledge_summary();
         self.data.knowledge_links = KnowledgeLinks {
-            referenced_tags: summary.style_preferences
-                [..summary.style_preferences.len().min(10)]
+            referenced_tags: summary.style_preferences[..summary.style_preferences.len().min(10)]
                 .to_vec(),
             referenced_notes: Vec::new(),
             style_summary: Some(summary.to_markdown()),
@@ -495,15 +494,10 @@ impl MixReportGenerator {
                 for tech in &arr.techniques {
                     report.push_str(&format!("**{}**\n\n", tech.name));
                     report.push_str(&format!("{}\n\n", tech.description));
-                    report.push_str(&format!(
-                        "- 应用段落: {}\n",
-                        tech.applied_in.join("、")
-                    ));
+                    report.push_str(&format!("- 应用段落: {}\n", tech.applied_in.join("、")));
                     if !tech.related_tracks.is_empty() {
-                        report.push_str(&format!(
-                            "- 相关轨道: {}\n",
-                            tech.related_tracks.join("、")
-                        ));
+                        report
+                            .push_str(&format!("- 相关轨道: {}\n", tech.related_tracks.join("、")));
                     }
                     if let Some(ref intent) = tech.intent {
                         report.push_str(&format!("- 设计意图: {}\n", intent));
@@ -605,7 +599,10 @@ impl MixReportGenerator {
                 for auto in &asc.automations {
                     report.push_str(&format!(
                         "**{}** → {} ({}): {}\n",
-                        auto.track_name, auto.target_param, auto.automation_type, auto.curve_description
+                        auto.track_name,
+                        auto.target_param,
+                        auto.automation_type,
+                        auto.curve_description
                     ));
                     if let Some(ref intent) = auto.intent {
                         report.push_str(&format!("  意图: {}\n", intent));
@@ -651,10 +648,7 @@ impl MixReportGenerator {
                 for si in &di.section_intents {
                     report.push_str(&format!("**{}**: {}\n", si.section_name, si.intent));
                     if !si.techniques.is_empty() {
-                        report.push_str(&format!(
-                            "  手法: {}\n",
-                            si.techniques.join("、")
-                        ));
+                        report.push_str(&format!("  手法: {}\n", si.techniques.join("、")));
                     }
                 }
                 report.push('\n');
@@ -666,10 +660,7 @@ impl MixReportGenerator {
         if !kl.referenced_tags.is_empty() || kl.style_summary.is_some() {
             report.push_str("## 知识关联\n\n");
             if !kl.referenced_tags.is_empty() {
-                report.push_str(&format!(
-                    "关联标签: {}\n\n",
-                    kl.referenced_tags.join("、")
-                ));
+                report.push_str(&format!("关联标签: {}\n\n", kl.referenced_tags.join("、")));
             }
             if let Some(ref summary) = kl.style_summary {
                 report.push_str(summary);
@@ -710,14 +701,13 @@ mod tests {
 
     #[test]
     fn test_basic_report_generation() {
-        let generator = MixReportGenerator::new("测试项目")
-            .with_overview(ProjectOverview {
-                bpm: Some(120.0),
-                key: Some("C Major".to_string()),
-                duration_seconds: Some(240.0),
-                track_count: Some(8),
-                ..Default::default()
-            });
+        let generator = MixReportGenerator::new("测试项目").with_overview(ProjectOverview {
+            bpm: Some(120.0),
+            key: Some("C Major".to_string()),
+            duration_seconds: Some(240.0),
+            track_count: Some(8),
+            ..Default::default()
+        });
 
         let report = generator.generate();
         assert!(report.contains("测试项目"));

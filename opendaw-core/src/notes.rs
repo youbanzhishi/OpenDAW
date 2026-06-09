@@ -155,7 +155,10 @@ pub enum NoteAssociation {
     /// 关联到某个自动化轨
     Automation { automation_id: String },
     /// 关联到某个侧链配置
-    Sidechain { source_id: String, target_id: String },
+    Sidechain {
+        source_id: String,
+        target_id: String,
+    },
     /// 关联到某个效果器链
     EffectChain { chain_id: String },
     /// 关联到某个项目
@@ -187,7 +190,10 @@ impl NoteAssociation {
             NoteAssociation::Track { track_id } => track_id.clone(),
             NoteAssociation::Plugin { plugin_id } => plugin_id.clone(),
             NoteAssociation::Automation { automation_id } => automation_id.clone(),
-            NoteAssociation::Sidechain { source_id, target_id } => {
+            NoteAssociation::Sidechain {
+                source_id,
+                target_id,
+            } => {
                 format!("{}→{}", source_id, target_id)
             }
             NoteAssociation::EffectChain { chain_id } => chain_id.clone(),
@@ -449,14 +455,21 @@ impl Note {
         if !self.structured_tags.is_empty() {
             md.push_str("structured_tags:\n");
             for tag in &self.structured_tags {
-                md.push_str(&format!("  - name: {}\n    category: {}\n", tag.name, tag.category));
+                md.push_str(&format!(
+                    "  - name: {}\n    category: {}\n",
+                    tag.name, tag.category
+                ));
             }
         }
 
         if !self.associations.is_empty() {
             md.push_str("associations:\n");
             for assoc in &self.associations {
-                md.push_str(&format!("  - type: {}\n    entity: {}\n", assoc.assoc_type(), assoc.entity_id()));
+                md.push_str(&format!(
+                    "  - type: {}\n    entity: {}\n",
+                    assoc.assoc_type(),
+                    assoc.entity_id()
+                ));
             }
         }
 
@@ -1075,7 +1088,11 @@ mod tests {
 
     #[test]
     fn test_structured_tags() {
-        let mut note = Note::new(NoteLevel::Global, "副歌推动力", "副歌通过增加乐器和声像展开来推动");
+        let mut note = Note::new(
+            NoteLevel::Global,
+            "副歌推动力",
+            "副歌通过增加乐器和声像展开来推动",
+        );
         note.add_structured_tag(NoteTag::arrangement("副歌推动力"));
         note.add_structured_tag(NoteTag::mixing("声像展开"));
         note.add_structured_tag(NoteTag::intent("增加推动力"));

@@ -14,9 +14,8 @@ pub use audio_export::{
 };
 pub use midi_export::{MidiEvent, MidiExportConfig, MidiExporter, MidiTrack};
 pub use mix_report::{
-    ArrangementAnalysis, ArrangementTechnique, AutomationSidechainSection, AutomationInfo,
-    BusProcessingInfo, DesignIntentSection, DynamicChange, EffectChainInfo, EffectInfo,
-    EffectType, InstrumentInfo, InstrumentType, KnowledgeLinks, MixReport, MixReportGenerator,
-    MixingAnalysis, ProjectOverview, SectionInfo, SectionIntent, SidechainInfo, TrackMixParams,
-    SendInfo,
+    ArrangementAnalysis, ArrangementTechnique, AutomationInfo, AutomationSidechainSection,
+    BusProcessingInfo, DesignIntentSection, DynamicChange, EffectChainInfo, EffectInfo, EffectType,
+    InstrumentInfo, InstrumentType, KnowledgeLinks, MixReport, MixReportGenerator, MixingAnalysis,
+    ProjectOverview, SectionInfo, SectionIntent, SendInfo, SidechainInfo, TrackMixParams,
 };
