@@ -85,6 +85,12 @@ pub mod docs;
 pub mod template;
 
 // Phase 36: Note System (Markdown notes for Global/Project/Track)
+// Phase 37: 编曲混音知识系统
+//   - 标签分类体系（编曲手法/混音技巧/侧链配置/效果器链/风格偏好等）
+//   - 关联系统（笔记可关联到轨道、效果器、自动化、侧链等实体）
+//   - 知识聚合接口（按标签/关联检索，智能体友好）
+//   - .omr.md 编曲混音报告导出
+//   - KnowledgeSummary 用户风格画像
 pub mod notes;
 
 // PyO3 Python bindings (optional, requires python feature)
@@ -217,7 +223,18 @@ pub use export::audio_export::{
     ExportError as AudioExportError, ExportProgress, ExportResult as AudioExportResult,
     RenderPipeline,
 };
+// Phase 37: 编曲混音知识系统
+pub use export::mix_report::{
+    ArrangementAnalysis, ArrangementTechnique, AutomationSidechainSection, AutomationInfo,
+    BusProcessingInfo, DesignIntentSection, DynamicChange, EffectChainInfo, EffectInfo,
+    EffectType, InstrumentInfo, InstrumentType, KnowledgeLinks, MixReport, MixReportGenerator,
+    MixingAnalysis, ProjectOverview, SectionInfo, SectionIntent, SidechainInfo, TrackMixParams,
+    SendInfo,
+};
 pub use template::{PresetName, ProjectTemplate, TemplateTrack, TrackType};
 
 // Phase 36 重导出
-pub use notes::{Note, NoteError, NoteLevel, NoteStore};
+pub use notes::{
+    KnowledgeSummary, Note, NoteAssociation, NoteError, NoteLevel, NoteSource, NoteStore, NoteTag,
+    TagCategory,
+};
