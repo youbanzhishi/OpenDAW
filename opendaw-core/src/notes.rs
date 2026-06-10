@@ -318,7 +318,6 @@ impl Note {
 
     /// 添加结构化标签
     pub fn add_structured_tag(&mut self, tag: NoteTag) {
-    pub fn add_structured_tag(&mut self, tag: NoteTag) {
         if !self.structured_tags.contains(&tag) {
             // 同步到简单标签（向后兼容）- 在move之前访问tag.name
             if !self.tags.contains(&tag.name) {
