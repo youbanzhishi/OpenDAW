@@ -318,12 +318,13 @@ impl Note {
 
     /// 添加结构化标签
     pub fn add_structured_tag(&mut self, tag: NoteTag) {
+    pub fn add_structured_tag(&mut self, tag: NoteTag) {
         if !self.structured_tags.contains(&tag) {
-            self.structured_tags.push(tag);
-            // 同步到简单标签（向后兼容）
+            // 同步到简单标签（向后兼容）- 在move之前访问tag.name
             if !self.tags.contains(&tag.name) {
                 self.tags.push(tag.name.clone());
             }
+            self.structured_tags.push(tag);
         }
     }
 
