@@ -309,7 +309,8 @@ impl TechniquePackage {
 
         // Read manifest
         let manifest: PackageManifest = {
-            let mut file = zip.by_name("manifest.yaml")
+            let mut file = zip
+                .by_name("manifest.yaml")
                 .map_err(|e| PackageError::Invalid(format!("manifest.yaml not found: {e}")))?;
             let mut content = String::new();
             file.read_to_string(&mut content)?;
@@ -366,48 +367,66 @@ pub struct DAWMapper;
 impl DAWMapper {
     /// 内置效果器名映射表
     const BUILTIN_MAP: &'static [(&'static str, &'static [(&'static str, &'static str)])] = &[
-        ("EQ", &[
-            ("Ableton", "EQ Eight"),
-            ("Reaper", "ReaEQ"),
-            ("Logic", "Channel EQ"),
-            ("FLStudio", "Fruity Parametric EQ 2"),
-            ("OpenDAW", "VC-EQ"),
-        ]),
-        ("Compressor", &[
-            ("Ableton", "Compressor"),
-            ("Reaper", "ReaComp"),
-            ("Logic", "Compressor"),
-            ("FLStudio", "Fruity Compressor"),
-            ("OpenDAW", "VC-Comp"),
-        ]),
-        ("Reverb", &[
-            ("Ableton", "Reverb"),
-            ("Reaper", "ReaVerbate"),
-            ("Logic", "Space Designer"),
-            ("FLStudio", "Fruity Reeverb 2"),
-            ("OpenDAW", "VC-Reverb"),
-        ]),
-        ("Delay", &[
-            ("Ableton", "Simple Delay"),
-            ("Reaper", "ReaDelay"),
-            ("Logic", "Delay Designer"),
-            ("FLStudio", "Fruity Delay 3"),
-            ("OpenDAW", "VC-Delay"),
-        ]),
-        ("DeEsser", &[
-            ("Ableton", "Dynamic Tube"),
-            ("Reaper", "ReaXComp"),
-            ("Logic", "De-Esser"),
-            ("FLStudio", "Fruity Limiter"),
-            ("OpenDAW", "VC-DeEsser"),
-        ]),
-        ("Limiter", &[
-            ("Ableton", "Limiter"),
-            ("Reaper", "ReaLimit"),
-            ("Logic", "Limiter"),
-            ("FLStudio", "Fruity Limiter"),
-            ("OpenDAW", "VC-Limiter"),
-        ]),
+        (
+            "EQ",
+            &[
+                ("Ableton", "EQ Eight"),
+                ("Reaper", "ReaEQ"),
+                ("Logic", "Channel EQ"),
+                ("FLStudio", "Fruity Parametric EQ 2"),
+                ("OpenDAW", "VC-EQ"),
+            ],
+        ),
+        (
+            "Compressor",
+            &[
+                ("Ableton", "Compressor"),
+                ("Reaper", "ReaComp"),
+                ("Logic", "Compressor"),
+                ("FLStudio", "Fruity Compressor"),
+                ("OpenDAW", "VC-Comp"),
+            ],
+        ),
+        (
+            "Reverb",
+            &[
+                ("Ableton", "Reverb"),
+                ("Reaper", "ReaVerbate"),
+                ("Logic", "Space Designer"),
+                ("FLStudio", "Fruity Reeverb 2"),
+                ("OpenDAW", "VC-Reverb"),
+            ],
+        ),
+        (
+            "Delay",
+            &[
+                ("Ableton", "Simple Delay"),
+                ("Reaper", "ReaDelay"),
+                ("Logic", "Delay Designer"),
+                ("FLStudio", "Fruity Delay 3"),
+                ("OpenDAW", "VC-Delay"),
+            ],
+        ),
+        (
+            "DeEsser",
+            &[
+                ("Ableton", "Dynamic Tube"),
+                ("Reaper", "ReaXComp"),
+                ("Logic", "De-Esser"),
+                ("FLStudio", "Fruity Limiter"),
+                ("OpenDAW", "VC-DeEsser"),
+            ],
+        ),
+        (
+            "Limiter",
+            &[
+                ("Ableton", "Limiter"),
+                ("Reaper", "ReaLimit"),
+                ("Logic", "Limiter"),
+                ("FLStudio", "Fruity Limiter"),
+                ("OpenDAW", "VC-Limiter"),
+            ],
+        ),
     ];
 
     /// 将抽象效果器名映射到DAW特定名
@@ -439,17 +458,25 @@ impl DAWMapper {
             id: format!("{daw_id}_{effect_type}_preset"),
             daw: daw.clone(),
             name: format!("{} {} preset", daw.display_name(), effect_type),
-            description: format!("Auto-mapped {effect_type} preset for {}", daw.display_name()),
+            description: format!(
+                "Auto-mapped {effect_type} preset for {}",
+                daw.display_name()
+            ),
             chain: vec![DAWEffectInstance {
                 daw_plugin_name: daw_plugin,
-                format: daw.supported_effect_types().first().unwrap_or(&"VST3").to_string(),
+                format: daw
+                    .supported_effect_types()
+                    .first()
+                    .unwrap_or(&"VST3")
+                    .to_string(),
                 params: abstract_params.clone(),
                 bypassed: false,
             }],
             param_map: DAWParamMap {
                 daw,
                 effect_name_map: [(effect_type.to_string(), daw_plugin.clone())]
-                    .into_iter().collect(),
+                    .into_iter()
+                    .collect(),
                 param_name_map: HashMap::new(),
                 default_overrides: HashMap::new(),
                 notes: String::new(),
@@ -468,9 +495,18 @@ mod tests {
     fn test_daw_effect_name_mapping() {
         assert_eq!(DAWMapper::map_effect_name("EQ", &DAW::Ableton), "EQ Eight");
         assert_eq!(DAWMapper::map_effect_name("EQ", &DAW::Reaper), "ReaEQ");
-        assert_eq!(DAWMapper::map_effect_name("Compressor", &DAW::Logic), "Compressor");
-        assert_eq!(DAWMapper::map_effect_name("Reverb", &DAW::OpenDAW), "VC-Reverb");
-        assert_eq!(DAWMapper::map_effect_name("UnknownFX", &DAW::Ableton), "UnknownFX");
+        assert_eq!(
+            DAWMapper::map_effect_name("Compressor", &DAW::Logic),
+            "Compressor"
+        );
+        assert_eq!(
+            DAWMapper::map_effect_name("Reverb", &DAW::OpenDAW),
+            "VC-Reverb"
+        );
+        assert_eq!(
+            DAWMapper::map_effect_name("UnknownFX", &DAW::Ableton),
+            "UnknownFX"
+        );
     }
 
     #[test]
@@ -481,15 +517,21 @@ mod tests {
 
         assert_eq!(pkg.templates.len(), 1);
         assert_eq!(pkg.profiles.len(), 1);
-        assert!(pkg.manifest.templates.contains(&"vocal-chain.omt.yaml".to_string()));
-        assert!(pkg.manifest.profiles.contains(&"my-style.omp.yaml".to_string()));
+        assert!(pkg
+            .manifest
+            .templates
+            .contains(&"vocal-chain.omt.yaml".to_string()));
+        assert!(pkg
+            .manifest
+            .profiles
+            .contains(&"my-style.omp.yaml".to_string()));
     }
 
     #[test]
     fn test_package_rejects_invalid_extensions() {
         let mut pkg = TechniquePackage::new("test", "Test", "author");
-        pkg.add_template("invalid.txt", "content");  // should be ignored
-        pkg.add_profile("invalid.yaml", "content");  // should be ignored
+        pkg.add_template("invalid.txt", "content"); // should be ignored
+        pkg.add_profile("invalid.yaml", "content"); // should be ignored
         assert!(pkg.templates.is_empty());
         assert!(pkg.profiles.is_empty());
     }

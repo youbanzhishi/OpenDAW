@@ -31,8 +31,8 @@ pub use style_profile::{
     TempoPreference,
 };
 pub use technique_package::{
-    DAW, DAWEffectInstance, DAWMapper, DAWParamMap, DAWPreset, PackageError, PackageManifest,
-    TechniquePackage,
+    DAWEffectInstance, DAWMapper, DAWParamMap, DAWPreset, PackageError, PackageManifest,
+    TechniquePackage, DAW,
 };
 pub use technique_template::{
     ArrangementTechniqueTemplate, ParamRange, ProcessingChainTemplate, ProcessingStep,
