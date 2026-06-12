@@ -160,7 +160,7 @@ impl ConfidenceScore {
             if n == 0 {
                 return 0.0;
             }
-            (1.0 + (n as f64).ln() / 3.5).min(1.0)
+            (0.3 + (n as f64).ln() * 0.174).min(1.0)
         };
 
         Self {
