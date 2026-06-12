@@ -25,10 +25,11 @@ pub use mix_report::{
 };
 pub use style_profile::{
     ArrangementPreference, AutomationHabits, ConfidenceScore, FrequencyItem, InstrumentCombo,
-    MixingPreference, ParamPreference, ProfileAggregator, ProfileMeta, StyleProfile, TempoPreference,
+    MixingPreference, ParamPreference, ProfileAggregator, ProfileMeta, StyleProfile,
+    TempoPreference,
 };
 pub use technique_template::{
-    ArrangementTechniqueTemplate, ProcessingChainTemplate, ProcessingStep, ParamRange,
-    TemplateCategory, TemplateMeta, TemplateStats, TemplateTip, TechniqueExtractor,
-    TechniqueLibrary, TechniqueTemplate, TipType, UsageConditions,
+    ArrangementTechniqueTemplate, ParamRange, ProcessingChainTemplate, ProcessingStep,
+    TechniqueExtractor, TechniqueLibrary, TechniqueTemplate, TemplateCategory, TemplateMeta,
+    TemplateStats, TemplateTip, TipType, UsageConditions,
 };

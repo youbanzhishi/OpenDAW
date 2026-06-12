@@ -391,18 +391,16 @@ mod tests {
 
         let chains = vec![EffectChainInfo {
             target: "人声".to_string(),
-            chain: vec![
-                EffectInfo {
-                    name: "Compressor".to_string(),
-                    effect_type: EffectType::Compressor,
-                    key_params: {
-                        let mut p = HashMap::new();
-                        p.insert("threshold".to_string(), "-18dB".to_string());
-                        p
-                    },
-                    purpose: Some("控制动态".to_string()),
+            chain: vec![EffectInfo {
+                name: "Compressor".to_string(),
+                effect_type: EffectType::Compressor,
+                key_params: {
+                    let mut p = HashMap::new();
+                    p.insert("threshold".to_string(), "-18dB".to_string());
+                    p
                 },
-            ],
+                purpose: Some("控制动态".to_string()),
+            }],
             intent: Some("温柔压缩".to_string()),
         }];
 
@@ -431,7 +429,10 @@ mod tests {
         let templates = extractor.extract_arrangement_techniques(&techniques);
         assert_eq!(templates.len(), 1);
         assert_eq!(templates[0].meta.name, "副歌推动力");
-        assert_eq!(templates[0].arrangement_techniques[0].intent, Some("增强冲击力".to_string()));
+        assert_eq!(
+            templates[0].arrangement_techniques[0].intent,
+            Some("增强冲击力".to_string())
+        );
     }
 
     #[test]
@@ -517,7 +518,12 @@ mod tests {
             stats: TemplateStats::default(),
         });
 
-        assert_eq!(library.search_by_category(TemplateCategory::MixingChain).len(), 1);
+        assert_eq!(
+            library
+                .search_by_category(TemplateCategory::MixingChain)
+                .len(),
+            1
+        );
         assert_eq!(library.search_by_tag("人声").len(), 1);
         assert_eq!(library.search_by_genre("Pop").len(), 1);
         assert_eq!(library.search_by_genre("Jazz").len(), 0);
