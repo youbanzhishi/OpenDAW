@@ -381,6 +381,7 @@ fn chrono_now_iso() -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::export::mix_report::EffectType;
     use super::*;
     use crate::export::mix_report::{
         ArrangementTechnique, AutomationInfo, EffectChainInfo, EffectInfo, SidechainInfo,
