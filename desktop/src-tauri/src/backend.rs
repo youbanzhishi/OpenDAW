@@ -41,8 +41,9 @@ pub fn spawn_backend() -> Result<u32, String> {
         cmd = "python".to_string();
         args = vec!["-m".to_string(), BACKEND_MODULE.to_string()];
     } else {
-        cmd = get_bundled_backend_path();
-        args = vec![];
+        let (python_bin, module_arg) = get_bundled_backend_cmd();
+        cmd = python_bin;
+        args = module_arg;
     };
 
     println!("[VCMix] Spawning backend: {} {}", cmd, args.join(" "));
@@ -64,14 +65,49 @@ pub fn spawn_backend() -> Result<u32, String> {
     Ok(pid)
 }
 
-fn get_bundled_backend_path() -> String {
-    if cfg!(target_os = "macos") {
-        "python".to_string()
+/// Returns (python_executable, module_args) for the bundled Python backend.
+/// On macOS: looks for backend-venv/ at OpenDAW.app/Contents/Resources/ (same level as Contents/)
+/// via the executable at Contents/MacOS/OpenDAW → go up twice to find Resources.
+fn get_bundled_backend_cmd() -> (String, Vec<String>) {
+    let exe_path = std::env::current_exe().ok();
+    let exe_dir = exe_path.as_ref().and_then(|p| p.parent().map(|p| p.to_path_buf()));
+
+    let python_path = if cfg!(target_os = "macos") {
+        // macOS app structure: OpenDAW.app/Contents/MacOS/OpenDAW
+        // Resources: OpenDAW.app/Contents/Resources/
+        // Backend venv bundled at Contents/Resources/backend-venv/
+        // From MacOS/ dir: go up twice to get to app bundle root, then into Resources
+        let app_bundle_root = exe_dir
+            .as_ref()
+            .and_then(|d| d.parent())   // up from MacOS -> Contents
+            .and_then(|d| d.parent());  // up from Contents -> OpenDAW.app
+        let venv_python = app_bundle_root
+            .map(|r| r.join("Contents").join("Resources").join("backend-venv").join("bin").join("python"));
+        venv_python
+            .filter(|p| p.exists())
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "python3".to_string())
     } else if cfg!(target_os = "windows") {
-        "vcmix-backend.exe".to_string()
+        // Windows: backend-venv/ next to the .exe
+        let venv_python = exe_dir
+            .as_ref()
+            .map(|d| d.join("backend-venv").join("Scripts").join("python.exe"));
+        venv_python
+            .filter(|p| p.exists())
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "python".to_string())
     } else {
-        "vcmix-backend".to_string()
-    }
+        // Linux: backend-venv/ next to the executable
+        let venv_python = exe_dir
+            .as_ref()
+            .map(|d| d.join("backend-venv").join("bin").join("python"));
+        venv_python
+            .filter(|p| p.exists())
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "python3".to_string())
+    };
+
+    (python_path, vec!["-m".to_string(), BACKEND_MODULE.to_string()])
 }
 
 pub fn wait_for_backend(port: u16) -> Result<(), String> {
