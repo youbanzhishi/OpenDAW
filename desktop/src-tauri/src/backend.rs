@@ -83,6 +83,8 @@ fn get_bundled_backend_cmd() -> (String, Vec<String>) {
             .as_ref()
             .and_then(|d| d.parent()) // up from MacOS -> Contents
             .and_then(|d| d.parent()); // up from Contents -> OpenDAW.app
+        // CI post-build copies venv to: OpenDAW.app/Contents/Resources/backend-venv/
+        // From Contents/MacOS/OpenDAW: go up 2x to app bundle root, then into Contents/Resources
         let venv_python = app_bundle_root.map(|r| {
             r.join("Contents")
                 .join("Resources")

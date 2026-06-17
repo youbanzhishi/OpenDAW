@@ -175,6 +175,24 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: '--target universal-apple-darwin'
+      # After build, manually copy venv into bundle (no resources field in tauri.conf.json → no pre-build validation)
+      - name: Bundle Python venv into macOS app
+        if: matrix.target == 'macos'
+        shell: bash
+        run: |
+          echo "=== Copying Python venv into macOS app bundle ==="
+          APP_PATH=$(find target/universal-apple-darwin/release/bundle/macos -name "OpenDAW.app" 2>/dev/null | head -1)
+          if [ -n "$APP_PATH" ]; then
+            VENV_DEST="$APP_PATH/Contents/Resources/backend-venv"
+            echo "Copying venv to: $VENV_DEST"
+            mkdir -p "$APP_PATH/Contents/Resources"
+            cp -r desktop/backend-venv "$VENV_DEST"
+            echo "Venv bundled. Size: $(du -sh "$VENV_DEST" | cut -f1)"
+            echo "✅ Venv bundled into macOS app"
+          else
+            echo "❌ OpenDAW.app not found!"
+            exit 1
+          fi
       - name: Build Tauri app (non-macOS)
         if: matrix.target != 'macos'
         uses: tauri-apps/tauri-action@v0
@@ -187,6 +205,38 @@ jobs:
           releaseBody: 'Cross-platform desktop build for ${{ matrix.target }}'
           releaseDraft: true
           prerelease: false
+      - name: Bundle Python venv into Linux app
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          echo "=== Copying Python venv into Linux bundle ==="
+          EXE_DIR=$(find target/release -type f -name "opendaw-desktop" 2>/dev/null | xargs dirname 2>/dev/null | head -1)
+          if [ -n "$EXE_DIR" ]; then
+            VENV_DEST="$EXE_DIR/backend-venv"
+            mkdir -p "$EXE_DIR"
+            cp -r desktop/backend-venv "$VENV_DEST"
+            echo "Venv bundled. Size: $(du -sh "$VENV_DEST" | cut -f1)"
+            echo "✅ Venv bundled into Linux app"
+          else
+            echo "❌ Executable not found!"
+            exit 1
+          fi
+      - name: Bundle Python venv into Windows app
+        if: matrix.target == 'windows'
+        shell: bash
+        run: |
+          echo "=== Copying Python venv into Windows bundle ==="
+          EXE_DIR=$(find target/release -type f -name "opendaw-desktop.exe" 2>/dev/null | xargs dirname 2>/dev/null | head -1)
+          if [ -n "$EXE_DIR" ]; then
+            VENV_DEST="$EXE_DIR/backend-venv"
+            mkdir -p "$EXE_DIR"
+            cp -r desktop/backend-venv "$VENV_DEST"
+            echo "Venv bundled. Size: $(du -sh "$VENV_DEST" | cut -f1)"
+            echo "✅ Venv bundled into Windows app"
+          else
+            echo "❌ Executable not found!"
+            exit 1
+          fi
       - name: Verify build artifacts (Linux)
         if: matrix.target == 'linux'
         shell: bash
@@ -206,6 +256,10 @@ jobs:
           if [ -n "$APP_PATH" ]; then
             echo "Checking binary architectures in: $APP_PATH"
             lipo -archs "$APP_PATH/Contents/MacOS/OpenDAW" 2>/dev/null || echo "Could not check architectures"
+            # Verify venv is bundled
+            test -f "$APP_PATH/Contents/Resources/backend-venv/bin/python" && \
+              echo "✅ Python venv bundled in app" || \
+              echo "❌ Python venv MISSING from app bundle"
           fi
           test -n "$(find target -name '*.dmg' 2>/dev/null)" && echo "✅ DMG found" || echo "⚠️ No DMG"
       - name: Verify build artifacts (Windows)

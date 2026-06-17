@@ -34,9 +34,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "../../backend-venv/"
-    ],
+    "resources": [],
     "windows": {
       "digestAlgorithm": "sha256",
       "nsis": {
