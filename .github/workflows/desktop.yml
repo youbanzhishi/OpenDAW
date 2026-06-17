@@ -91,12 +91,13 @@ jobs:
       - name: Prepare frontend dist
         shell: bash
         run: |
-          mkdir -p desktop/src-tauri/frontend
-          cp desktop/src/index.html desktop/src-tauri/frontend/
-          cp desktop/src/style.css desktop/src-tauri/frontend/
-          cp desktop/src/app.js desktop/src-tauri/frontend/ 2>/dev/null || true
-          echo "Frontend dist prepared:"
+          echo "Frontend dist (uses desktop/src-tauri/frontend/ — the full OpenDAW DAW UI):"
           ls -la desktop/src-tauri/frontend/
+          echo "Checking critical files:"
+          test -f desktop/src-tauri/frontend/index.html && echo "  ✅ index.html" || echo "  ❌ index.html MISSING"
+          test -f desktop/src-tauri/frontend/style.css && echo "  ✅ style.css" || echo "  ❌ style.css MISSING"
+          test -f desktop/src-tauri/frontend/app.js && echo "  ✅ app.js" || echo "  ❌ app.js MISSING"
+          test -d desktop/src-tauri/frontend/canvas && echo "  ✅ canvas/ (DAW components)" || echo "  ⚠️ canvas/ missing (basic UI only)"
       - name: Install desktop npm dependencies
         working-directory: desktop
         shell: bash
