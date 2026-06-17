@@ -70,7 +70,9 @@ pub fn spawn_backend() -> Result<u32, String> {
 /// via the executable at Contents/MacOS/OpenDAW → go up twice to find Resources.
 fn get_bundled_backend_cmd() -> (String, Vec<String>) {
     let exe_path = std::env::current_exe().ok();
-    let exe_dir = exe_path.as_ref().and_then(|p| p.parent().map(|p| p.to_path_buf()));
+    let exe_dir = exe_path
+        .as_ref()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
 
     let python_path = if cfg!(target_os = "macos") {
         // macOS app structure: OpenDAW.app/Contents/MacOS/OpenDAW
@@ -79,10 +81,15 @@ fn get_bundled_backend_cmd() -> (String, Vec<String>) {
         // From MacOS/ dir: go up twice to get to app bundle root, then into Resources
         let app_bundle_root = exe_dir
             .as_ref()
-            .and_then(|d| d.parent())   // up from MacOS -> Contents
-            .and_then(|d| d.parent());  // up from Contents -> OpenDAW.app
-        let venv_python = app_bundle_root
-            .map(|r| r.join("Contents").join("Resources").join("backend-venv").join("bin").join("python"));
+            .and_then(|d| d.parent()) // up from MacOS -> Contents
+            .and_then(|d| d.parent()); // up from Contents -> OpenDAW.app
+        let venv_python = app_bundle_root.map(|r| {
+            r.join("Contents")
+                .join("Resources")
+                .join("backend-venv")
+                .join("bin")
+                .join("python")
+        });
         venv_python
             .filter(|p| p.exists())
             .map(|p| p.to_string_lossy().to_string())
@@ -107,7 +114,10 @@ fn get_bundled_backend_cmd() -> (String, Vec<String>) {
             .unwrap_or_else(|| "python3".to_string())
     };
 
-    (python_path, vec!["-m".to_string(), BACKEND_MODULE.to_string()])
+    (
+        python_path,
+        vec!["-m".to_string(), BACKEND_MODULE.to_string()],
+    )
 }
 
 pub fn wait_for_backend(port: u16) -> Result<(), String> {
