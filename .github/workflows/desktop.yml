@@ -154,7 +154,7 @@ jobs:
           python --version || python3 --version || { echo "Python not found!"; exit 1; }
           PYBIN=$(command -v python || command -v python3)
           "$PYBIN" -m venv desktop/backend-venv
-          desktop/backend-venv/Scripts/pip install --upgrade pip
+          desktop/backend-venv/Scripts/pip install --upgrade pip || true
           desktop/backend-venv/Scripts/pip install \
             numpy>=1.24.0 soundfile>=0.12.0 scipy>=1.10.0 \
             pyyaml>=6.0 pydantic>=2.0 mido>=1.3.0 \
