@@ -1,29 +1,30 @@
-//! AppState — Tauri managed state, holding Rust engine + Python backend + Audio Output
+//! OpenDAW Desktop — App State (v1.0.0)
+//!
+//! Pure Rust state management. No Python backend.
 
-use crate::audio_output::AudioOutputState;
 use audio_engine::AudioEngine;
 use opendaw_core::ExtensionRegistry;
-use parking_lot::Mutex;
 use std::sync::Arc;
 
+/// App State — manages Rust audio engine and extension registry
 pub struct AppState {
-    /// 实时音频引擎
-    pub engine: Arc<Mutex<AudioEngine>>,
-    /// 扩展注册中心
-    pub registry: Arc<Mutex<ExtensionRegistry>>,
-    /// Python后端状态（兼容旧流程）
-    pub backend: crate::backend::BackendState,
-    /// 音频输出状态（v0.25.0 新增）
-    pub audio_output: Arc<Mutex<AudioOutputState>>,
+    /// Real-time audio engine
+    pub engine: Arc<parking_lot::Mutex<AudioEngine>>,
+    /// Extension registry
+    pub registry: Arc<parking_lot::Mutex<ExtensionRegistry>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
-            engine: Arc::new(Mutex::new(AudioEngine::new())),
-            registry: Arc::new(Mutex::new(ExtensionRegistry::new())),
-            backend: crate::backend::BackendState::default(),
-            audio_output: Arc::new(Mutex::new(AudioOutputState::new())),
+            engine: Arc::new(parking_lot::Mutex::new(AudioEngine::new())),
+            registry: Arc::new(parking_lot::Mutex::new(ExtensionRegistry::new())),
         }
+    }
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
     }
 }
