@@ -2,10 +2,6 @@
 //!
 //! OpenDAW v1.0.0 is pure Rust. No Python backend required.
 
-use std::thread;
-use std::time::Duration;
-
-// Re-export command handlers from individual modules
 mod commands;
 mod state;
 
