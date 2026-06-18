@@ -34,7 +34,8 @@ jobs:
           workspaces: desktop/src-tauri -> target
           cache-on-failure: true
       - name: Cargo check (fast fail)
-        run: cargo check -p opendaw-desktop
+        working-directory: desktop/src-tauri
+        run: cargo check
 
   build:
     name: Build Desktop (${{ matrix.target }})
