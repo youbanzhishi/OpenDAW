@@ -241,17 +241,13 @@ pub fn set_track_pan(state: State<'_, AppState>, track_id: String, pan: f64) -> 
 #[tauri::command]
 pub fn mute_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine
-        .set_track_mute(&track_id, true)
-        .map_err(|e| e.to_string())
+    engine.toggle_track_mute(&track_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn unmute_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine
-        .set_track_mute(&track_id, false)
-        .map_err(|e| e.to_string())
+    engine.toggle_track_mute(&track_id).map_err(|e| e.to_string())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
