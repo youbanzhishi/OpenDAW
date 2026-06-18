@@ -3,7 +3,7 @@
 //! Pure Rust commands. No Python backend dependency.
 
 use crate::state::AppState;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use tauri::State;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -200,7 +200,9 @@ pub fn add_track(state: State<'_, AppState>, name: String) -> Result<TrackInfo, 
 #[tauri::command]
 pub fn remove_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine.unregister_track(&track_id).map_err(|e| e.to_string())
+    engine
+        .unregister_track(&track_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -229,25 +231,27 @@ pub fn set_track_volume(
 }
 
 #[tauri::command]
-pub fn set_track_pan(
-    state: State<'_, AppState>,
-    track_id: String,
-    pan: f64,
-) -> Result<(), String> {
+pub fn set_track_pan(state: State<'_, AppState>, track_id: String, pan: f64) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine.set_track_pan(&track_id, pan).map_err(|e| e.to_string())
+    engine
+        .set_track_pan(&track_id, pan)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn mute_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine.set_track_mute(&track_id, true).map_err(|e| e.to_string())
+    engine
+        .set_track_mute(&track_id, true)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn unmute_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine.set_track_mute(&track_id, false).map_err(|e| e.to_string())
+    engine
+        .set_track_mute(&track_id, false)
+        .map_err(|e| e.to_string())
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -336,18 +340,12 @@ pub fn scan_plugins() -> Result<usize, String> {
 }
 
 #[tauri::command]
-pub fn insert_plugin(
-    _track_id: String,
-    _plugin_id: String,
-) -> Result<(), String> {
+pub fn insert_plugin(_track_id: String, _plugin_id: String) -> Result<(), String> {
     Ok(())
 }
 
 #[tauri::command]
-pub fn remove_plugin(
-    _track_id: String,
-    _plugin_id: String,
-) -> Result<(), String> {
+pub fn remove_plugin(_track_id: String, _plugin_id: String) -> Result<(), String> {
     Ok(())
 }
 
