@@ -16,8 +16,8 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 parking_lot = "0.12"
 ctrlc = "3"
-opendaw-core = { path = "../opendaw-core" }
-audio-engine = { path = "../audio-engine" }
+opendaw-core = { path = "../../opendaw-core" }
+audio-engine = { path = "../../audio-engine" }
 
 [lib]
 name = "opendaw_desktop_lib"
