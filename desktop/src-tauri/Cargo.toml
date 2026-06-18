@@ -18,7 +18,6 @@ parking_lot = "0.12"
 ctrlc = "3"
 opendaw-core = { path = "../../opendaw-core" }
 audio-engine = { path = "../../audio-engine" }
-opendaw-extension = { path = "../../opendaw-extension" }
 
 [lib]
 name = "opendaw_desktop_lib"
