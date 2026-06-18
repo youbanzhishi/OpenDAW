@@ -3,10 +3,10 @@
 //! Pure Rust commands. No Python backend dependency.
 
 use crate::state::AppState;
+use audio_engine::AudioEngine;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use parking_lot::Mutex;
-use audio_engine::AudioEngine;
 use tauri::State;
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -193,7 +193,9 @@ pub fn add_track(state: State<'_, AppState>, name: String) -> Result<TrackInfo, 
 #[tauri::command]
 pub fn remove_track(state: State<'_, AppState>, track_id: String) -> Result<(), String> {
     let mut engine = state.engine.lock();
-    engine.unregister_track(&track_id).map_err(|e| e.to_string())
+    engine
+        .unregister_track(&track_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -225,11 +227,7 @@ pub fn set_track_volume(
 }
 
 #[tauri::command]
-pub fn set_track_pan(
-    state: State<'_, AppState>,
-    track_id: String,
-    pan: f64,
-) -> Result<(), String> {
+pub fn set_track_pan(state: State<'_, AppState>, track_id: String, pan: f64) -> Result<(), String> {
     let mut engine = state.engine.lock();
     engine
         .set_track_pan(&track_id, pan)
@@ -314,10 +312,7 @@ pub fn render(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn export_wav(
-    state: State<'_, AppState>,
-    output_path: String,
-) -> Result<String, String> {
+pub fn export_wav(state: State<'_, AppState>, output_path: String) -> Result<String, String> {
     // TODO: Implement WAV export
     Ok(output_path)
 }
