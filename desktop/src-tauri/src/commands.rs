@@ -243,6 +243,7 @@ pub fn mute_track(state: State<'_, AppState>, track_id: String) -> Result<(), St
     let mut engine = state.engine.lock();
     engine
         .toggle_track_mute(&track_id)
+        .map(|_| ())
         .map_err(|e| e.to_string())
 }
 
@@ -251,6 +252,7 @@ pub fn unmute_track(state: State<'_, AppState>, track_id: String) -> Result<(), 
     let mut engine = state.engine.lock();
     engine
         .toggle_track_mute(&track_id)
+        .map(|_| ())
         .map_err(|e| e.to_string())
 }
 
