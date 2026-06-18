@@ -1,9 +1,9 @@
 [package]
 name = "opendaw-desktop"
-version.workspace = true
+version = "1.0.1"
 description = "OpenDAW — AI-native open-source DAW (Tauri desktop shell)"
 authors = ["OpenDAW Team"]
-edition.workspace = true
+edition = "2021"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
