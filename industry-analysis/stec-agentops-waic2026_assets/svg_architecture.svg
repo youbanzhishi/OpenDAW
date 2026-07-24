@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" font-family="'Segoe UI', 'PingFang SC', sans-serif">
+  <!-- Background -->
+  <rect width="900" height="620" fill="#FAFBFC" rx="8"/>
+  
+  <!-- Title -->
+  <text x="450" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="#1F4E79">STEC AgentOps 平台分层架构</text>
+  <text x="450" y="50" text-anchor="middle" font-size="11" fill="#6B7280">基于公开资料推断 | 2026-07-17</text>
+
+  <!-- Layer 1: Application/Scenario Layer -->
+  <rect x="40" y="68" width="820" height="70" rx="6" fill="#E8F4FD" stroke="#5B8DB8" stroke-width="1.5"/>
+  <text x="55" y="88" font-size="12" font-weight="700" fill="#1F4E79">应用层 — 行业智能体产品矩阵</text>
+  <rect x="60" y="96" width="160" height="32" rx="4" fill="#5B8DB8" opacity="0.15" stroke="#5B8DB8" stroke-width="1"/>
+  <text x="140" y="117" text-anchor="middle" font-size="11" fill="#1F4E79" font-weight="600">智析 · 经营决策</text>
+  <rect x="240" y="96" width="160" height="32" rx="4" fill="#5B8DB8" opacity="0.15" stroke="#5B8DB8" stroke-width="1"/>
+  <text x="320" y="117" text-anchor="middle" font-size="11" fill="#1F4E79" font-weight="600">智管 · 现场管理</text>
+  <rect x="420" y="96" width="160" height="32" rx="4" fill="#5B8DB8" opacity="0.15" stroke="#5B8DB8" stroke-width="1"/>
+  <text x="500" y="117" text-anchor="middle" font-size="11" fill="#1F4E79" font-weight="600">智控 · 联动执行</text>
+  <rect x="600" y="96" width="240" height="32" rx="4" fill="#D9822B" opacity="0.12" stroke="#D9822B" stroke-width="1"/>
+  <text x="720" y="117" text-anchor="middle" font-size="11" fill="#D9822B" font-weight="600">城交运维 · 巡检/养护/应急</text>
+
+  <!-- Layer 2: Orchestration Layer (智城+) -->
+  <rect x="40" y="152" width="820" height="80" rx="6" fill="#FFF3E0" stroke="#D9822B" stroke-width="1.5"/>
+  <text x="55" y="172" font-size="12" font-weight="700" fill="#D9822B">编排层 — "智城+"运营大模型（管理中台/总指挥）</text>
+  <text x="55" y="192" font-size="10" fill="#6B7280">复杂任务拆解 → 分发 → 执行 | 百余个智能体 · 上千个Skills · 上百个MCP</text>
+  <rect x="55" y="200" width="120" height="22" rx="3" fill="#D9822B" opacity="0.15" stroke="#D9822B" stroke-width="0.8"/>
+  <text x="115" y="215" text-anchor="middle" font-size="9" fill="#D9822B">任务编排引擎</text>
+  <rect x="185" y="200" width="120" height="22" rx="3" fill="#D9822B" opacity="0.15" stroke="#D9822B" stroke-width="0.8"/>
+  <text x="245" y="215" text-anchor="middle" font-size="9" fill="#D9822B">知识库/语料汇聚</text>
+  <rect x="315" y="200" width="120" height="22" rx="3" fill="#D9822B" opacity="0.15" stroke="#D9822B" stroke-width="0.8"/>
+  <text x="375" y="215" text-anchor="middle" font-size="9" fill="#D9822B">100T+数据底座</text>
+  <rect x="445" y="200" width="140" height="22" rx="3" fill="#D9822B" opacity="0.15" stroke="#D9822B" stroke-width="0.8"/>
+  <text x="515" y="215" text-anchor="middle" font-size="9" fill="#D9822B">200万条专业语料</text>
+  <rect x="595" y="200" width="140" height="22" rx="3" fill="#D9822B" opacity="0.15" stroke="#D9822B" stroke-width="0.8"/>
+  <text x="665" y="215" text-anchor="middle" font-size="9" fill="#D9822B">跨系统调度与闭环</text>
+
+  <!-- Layer 3: Platform Core (AgentOps) -->
+  <rect x="40" y="246" width="820" height="100" rx="6" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="55" y="266" font-size="12" font-weight="700" fill="#2E7D32">平台核心层 — STEC AgentOps 能力底座</text>
+  
+  <!-- Four pillars -->
+  <rect x="55" y="276" width="180" height="58" rx="4" fill="white" stroke="#2E7D32" stroke-width="0.8"/>
+  <text x="145" y="294" text-anchor="middle" font-size="10" font-weight="600" fill="#2E7D32">开发更快</text>
+  <text x="145" y="308" text-anchor="middle" font-size="9" fill="#6B7280">低代码拖拽 · 标准化模板</text>
+  <text x="145" y="322" text-anchor="middle" font-size="9" fill="#6B7280">全生命周期管理</text>
+
+  <rect x="245" y="276" width="180" height="58" rx="4" fill="white" stroke="#2E7D32" stroke-width="0.8"/>
+  <text x="335" y="294" text-anchor="middle" font-size="10" font-weight="600" fill="#2E7D32">连接更广</text>
+  <text x="335" y="308" text-anchor="middle" font-size="9" fill="#6B7280">MCP协议 · 统一接口</text>
+  <text x="335" y="322" text-anchor="middle" font-size="9" fill="#6B7280">异构系统标准化接入</text>
+
+  <rect x="435" y="276" width="180" height="58" rx="4" fill="white" stroke="#2E7D32" stroke-width="0.8"/>
+  <text x="525" y="294" text-anchor="middle" font-size="10" font-weight="600" fill="#2E7D32">运行更稳</text>
+  <text x="525" y="308" text-anchor="middle" font-size="9" fill="#6B7280">统一调度 · 托管运行</text>
+  <text x="525" y="322" text-anchor="middle" font-size="9" fill="#6B7280">灰度发布 · 持续运营</text>
+
+  <rect x="625" y="276" width="220" height="58" rx="4" fill="white" stroke="#2E7D32" stroke-width="0.8"/>
+  <text x="735" y="294" text-anchor="middle" font-size="10" font-weight="600" fill="#2E7D32">治理更安全</text>
+  <text x="735" y="308" text-anchor="middle" font-size="9" fill="#6B7280">权限分级审计 · 异常熔断</text>
+  <text x="735" y="322" text-anchor="middle" font-size="9" fill="#6B7280">语料动态蒸馏 · 安全治理</text>
+
+  <!-- Layer 4: Connection Layer -->
+  <rect x="40" y="360" width="820" height="75" rx="6" fill="#F3E5F5" stroke="#7B1FA2" stroke-width="1.5"/>
+  <text x="55" y="380" font-size="12" font-weight="700" fill="#7B1FA2">连接层 — 统一集成总线</text>
+  
+  <rect x="55" y="390" width="110" height="34" rx="4" fill="white" stroke="#7B1FA2" stroke-width="0.8"/>
+  <text x="110" y="411" text-anchor="middle" font-size="10" fill="#7B1FA2">大模型层</text>
+  
+  <rect x="175" y="390" width="110" height="34" rx="4" fill="white" stroke="#7B1FA2" stroke-width="0.8"/>
+  <text x="230" y="411" text-anchor="middle" font-size="10" fill="#7B1FA2">知识库</text>
+  
+  <rect x="295" y="390" width="110" height="34" rx="4" fill="white" stroke="#7B1FA2" stroke-width="0.8"/>
+  <text x="350" y="411" text-anchor="middle" font-size="10" fill="#7B1FA2">ERP/GIS</text>
+  
+  <rect x="415" y="390" width="110" height="34" rx="4" fill="white" stroke="#7B1FA2" stroke-width="0.8"/>
+  <text x="470" y="411" text-anchor="middle" font-size="10" fill="#7B1FA2">IoT平台</text>
+  
+  <rect x="535" y="390" width="110" height="34" rx="4" fill="white" stroke="#7B1FA2" stroke-width="0.8"/>
+  <text x="590" y="411" text-anchor="middle" font-size="10" fill="#7B1FA2">BIM系统</text>
+  
+  <rect x="655" y="390" width="110" height="34" rx="4" fill="white" stroke="#7B1FA2" stroke-width="0.8"/>
+  <text x="710" y="411" text-anchor="middle" font-size="10" fill="#7B1FA2">工单/养护</text>
+  
+  <rect x="775" y="390" width="70" height="34" rx="4" fill="white" stroke="#7B1FA2" stroke-width="0.8"/>
+  <text x="810" y="411" text-anchor="middle" font-size="10" fill="#7B1FA2">更多...</text>
+
+  <!-- Layer 5: Data Foundation -->
+  <rect x="40" y="450" width="820" height="60" rx="6" fill="#FBE9E7" stroke="#C62828" stroke-width="1.5"/>
+  <text x="55" y="470" font-size="12" font-weight="700" fill="#C62828">数据底座 — 多源业务数据</text>
+  <text x="55" y="492" font-size="10" fill="#6B7280">100T+ 多源业务数据 · 10,000+ 专业报告 · 200万条专业语料 · 历史病害样本 · 传感器时序数据 · BIM模型</text>
+  <text x="55" y="505" font-size="10" fill="#6B7280">覆盖：桥梁、隧道、快速路 · 上海 5,127座桥梁 · 4,800公里快速路 · 127条越江隧道</text>
+
+  <!-- Arrows between layers -->
+  <line x1="450" y1="138" x2="450" y2="152" stroke="#6B7280" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="450" y1="232" x2="450" y2="246" stroke="#6B7280" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="450" y1="346" x2="450" y2="360" stroke="#6B7280" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="450" y1="435" x2="450" y2="450" stroke="#6B7280" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#6B7280"/>
+    </marker>
+  </defs>
+
+  <!-- Legend -->
+  <rect x="40" y="525" width="820" height="80" rx="4" fill="white" stroke="#E0E0E0" stroke-width="1"/>
+  <text x="55" y="545" font-size="10" font-weight="600" fill="#1F4E79">关键人物</text>
+  <text x="55" y="560" font-size="9" fill="#6B7280">杨惠文 — 隧道股份数字集团数字能力中心负责人（AgentOps平台架构）</text>
+  <text x="55" y="575" font-size="9" fill="#6B7280">彭崇梅 — 隧道股份城市运营总经理助理（"智城+"运营大模型/编排机制）</text>
+  <text x="55" y="590" font-size="9" fill="#6B7280">丁炜 — 隧道股份副总裁（发布仪式出席）</text>
+  
+  <text x="520" y="545" font-size="10" font-weight="600" fill="#1F4E79">信息来源</text>
+  <text x="520" y="560" font-size="9" fill="#6B7280">隧道股份官网 · 上海国资委 · 上观新闻 · 上海证券报 · 头条</text>
+  <text x="520" y="575" font-size="9" fill="#6B7280">注：架构图基于公开报道推断，非官方发布</text>
+</svg>

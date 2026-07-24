@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" font-family="'Segoe UI', 'PingFang SC', sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc"/>
+      <stop offset="100%" style="stop-color:#eef2f7"/>
+    </linearGradient>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="900" height="620" fill="url(#bg)" rx="12"/>
+  
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#1a2332">Agent Native Cloud 三层架构</text>
+  <text x="450" y="56" text-anchor="middle" font-size="12" fill="#6b7280">Infra → Platform → Desktop · 来源：阿里云WAIC 2026发布</text>
+
+  <!-- Desktop Layer (Top) -->
+  <rect x="40" y="75" width="820" height="110" rx="10" fill="#fef3e2" stroke="#f59e0b" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="60" y="100" font-size="14" font-weight="700" fill="#92400e">Desktop 层 — 业务界面连接</text>
+  <rect x="60" y="112" width="185" height="56" rx="6" fill="#fff" stroke="#fbbf24" stroke-width="1"/>
+  <text x="152" y="135" text-anchor="middle" font-size="11" font-weight="600" fill="#78350f">无影 Agentic Computer</text>
+  <text x="152" y="152" text-anchor="middle" font-size="9" fill="#92400e">7×24 桌面级环境 · 80%场景覆盖</text>
+  
+  <rect x="260" y="112" width="185" height="56" rx="6" fill="#fff" stroke="#fbbf24" stroke-width="1"/>
+  <text x="352" y="135" text-anchor="middle" font-size="11" font-weight="600" fill="#78350f">ANOLISA 操作系统</text>
+  <text x="352" y="152" text-anchor="middle" font-size="9" fill="#92400e">Agent专属OS · Token优化30%</text>
+  
+  <rect x="460" y="112" width="185" height="56" rx="6" fill="#fff" stroke="#fbbf24" stroke-width="1"/>
+  <text x="552" y="135" text-anchor="middle" font-size="11" font-weight="600" fill="#78350f">智能体专用型实例</text>
+  <text x="552" y="152" text-anchor="middle" font-size="9" fill="#92400e">算力+Token一体化打包</text>
+  
+  <rect x="660" y="112" width="185" height="56" rx="6" fill="#fff" stroke="#fbbf24" stroke-width="1"/>
+  <text x="752" y="135" text-anchor="middle" font-size="11" font-weight="600" fill="#78350f">IM 集成入口</text>
+  <text x="752" y="152" text-anchor="middle" font-size="9" fill="#92400e">钉钉/飞书/企微 @Agent</text>
+
+  <!-- Platform Layer (Middle) -->
+  <rect x="40" y="200" width="820" height="155" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="60" y="226" font-size="14" font-weight="700" fill="#1e40af">Platform 层 — 企业级 Agent PaaS 控制平面</text>
+  
+  <!-- Platform modules -->
+  <rect x="60" y="238" width="110" height="48" rx="6" fill="#dbeafe" stroke="#60a5fa" stroke-width="1"/>
+  <text x="115" y="257" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">AgentRun</text>
+  <text x="115" y="272" text-anchor="middle" font-size="8" fill="#3b82f6">全生命周期管理</text>
+  
+  <rect x="180" y="238" width="110" height="48" rx="6" fill="#dbeafe" stroke="#60a5fa" stroke-width="1"/>
+  <text x="235" y="257" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">AgentTeams</text>
+  <text x="235" y="272" text-anchor="middle" font-size="8" fill="#3b82f6">多Agent治理协作</text>
+  
+  <rect x="300" y="238" width="110" height="48" rx="6" fill="#dbeafe" stroke="#60a5fa" stroke-width="1"/>
+  <text x="355" y="257" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">AgentLoop</text>
+  <text x="355" y="272" text-anchor="middle" font-size="8" fill="#3b82f6">观测评估优化</text>
+  
+  <rect x="420" y="238" width="110" height="48" rx="6" fill="#dbeafe" stroke="#60a5fa" stroke-width="1"/>
+  <text x="475" y="257" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">Identity</text>
+  <text x="475" y="272" text-anchor="middle" font-size="8" fill="#3b82f6">身份与权限</text>
+  
+  <rect x="540" y="238" width="110" height="48" rx="6" fill="#dbeafe" stroke="#60a5fa" stroke-width="1"/>
+  <text x="595" y="257" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">Gateway</text>
+  <text x="595" y="272" text-anchor="middle" font-size="8" fill="#3b82f6">凭证托管护栏</text>
+  
+  <rect x="660" y="238" width="90" height="48" rx="6" fill="#dbeafe" stroke="#60a5fa" stroke-width="1"/>
+  <text x="705" y="257" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">Policy</text>
+  <text x="705" y="272" text-anchor="middle" font-size="8" fill="#3b82f6">规则与阻断</text>
+  
+  <rect x="760" y="238" width="85" height="48" rx="6" fill="#dbeafe" stroke="#60a5fa" stroke-width="1"/>
+  <text x="802" y="257" text-anchor="middle" font-size="10" font-weight="600" fill="#1e40af">资产注册</text>
+  <text x="802" y="272" text-anchor="middle" font-size="8" fill="#3b82f6">Skill/MCP</text>
+
+  <!-- Platform governance bar -->
+  <rect x="60" y="298" width="790" height="42" rx="6" fill="#bfdbfe" stroke="#93c5fd" stroke-width="1"/>
+  <text x="450" y="322" text-anchor="middle" font-size="10" fill="#1e40af">统一治理面：可观测 · 评估与优化 · 版本管理(灰度/回滚) · 零信任安全模型 · Higress AI Gateway</text>
+
+  <!-- Infra Layer (Bottom) -->
+  <rect x="40" y="370" width="820" height="130" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="60" y="396" font-size="14" font-weight="700" fill="#166534">Infra 层 — 可信运行环境</text>
+  
+  <rect x="60" y="408" width="175" height="76" rx="6" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+  <text x="147" y="430" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">Agent Sandbox</text>
+  <text x="147" y="446" text-anchor="middle" font-size="8" fill="#15803d">MicroVM级隔离</text>
+  <text x="147" y="460" text-anchor="middle" font-size="8" fill="#15803d">15,000沙箱/分钟弹性</text>
+  <text x="147" y="474" text-anchor="middle" font-size="8" fill="#15803d">兼容E2B/K8s协议</text>
+  
+  <rect x="250" y="408" width="175" height="76" rx="6" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+  <text x="337" y="430" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">TokenWorks (PAI-EAS)</text>
+  <text x="337" y="446" text-anchor="middle" font-size="8" fill="#15803d">推理路由与调度</text>
+  <text x="337" y="460" text-anchor="middle" font-size="8" fill="#15803d">会话亲和·前缀缓存</text>
+  <text x="337" y="474" text-anchor="middle" font-size="8" fill="#15803d">PD分离·负载均衡</text>
+  
+  <rect x="440" y="408" width="175" height="76" rx="6" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+  <text x="527" y="430" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">灵骏真武 M890</text>
+  <text x="527" y="446" text-anchor="middle" font-size="8" fill="#15803d">64卡超节点实例</text>
+  <text x="527" y="460" text-anchor="middle" font-size="8" fill="#15803d">800GB/s卡间互联</text>
+  <text x="527" y="474" text-anchor="middle" font-size="8" fill="#15803d">十万亿参数MoE推理</text>
+  
+  <rect x="630" y="408" width="215" height="76" rx="6" fill="#dcfce7" stroke="#4ade80" stroke-width="1"/>
+  <text x="737" y="430" text-anchor="middle" font-size="10" font-weight="600" fill="#166534">Database / FS / Network</text>
+  <text x="737" y="446" text-anchor="middle" font-size="8" fill="#15803d">CPFS百PiB容量/百TB/s</text>
+  <text x="737" y="460" text-anchor="middle" font-size="8" fill="#15803d">KVCacheStore百万QPS</text>
+  <text x="737" y="474" text-anchor="middle" font-size="8" fill="#15803d">TPN/HPN8.0/AgenticFS</text>
+
+  <!-- Vertical integration arrow -->
+  <text x="450" y="530" text-anchor="middle" font-size="11" fill="#6b7280">▲ 垂直集成栈：平头哥真武芯片 → SAIL开源软件栈 → TokenWorks推理 → AgentRun运行时 → AgentLoop观测 → AgentTeams编排</text>
+  
+  <!-- Footer -->
+  <text x="450" y="555" text-anchor="middle" font-size="9" fill="#9ca3af">数据来源：阿里云WAIC 2026官方发布 · 阿里云开发者社区 · The New Claw Times · 2026-07-23整理</text>
+  
+  <!-- Chip layer label -->
+  <rect x="40" y="570" width="820" height="36" rx="8" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1"/>
+  <text x="450" y="592" text-anchor="middle" font-size="11" font-weight="600" fill="#4b5563">芯片层 · 平头哥真武Zhenwu · 累计出货56万片(截至2026.04) · SAIL AI软件栈已开源 · 覆盖400+客户/20+行业</text>
+</svg>
